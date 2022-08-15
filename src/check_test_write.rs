@@ -13,7 +13,7 @@ use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
-    deserialize, display_output_path, overwrite_all_paths, read_input_file, write_new_paths,
+    deserialize, display_file_info, overwrite_all_paths, read_input_file, write_new_paths,
 };
 
 pub struct NewFilesBundle {
@@ -55,11 +55,7 @@ pub fn file_info_from_paths(
 
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
-            ExecMode::Write => {
-                display_output_path(&file_info)?;
-                new_files.push(file_info);
-            }
-            ExecMode::Compare => {
+            ExecMode::Write | ExecMode::Compare => {
                 if let Some(either) = compare_check(config, &file_info, file_map.clone()) {
                     match either {
                         Either::Left(file_info) => new_filenames.push(file_info),
@@ -207,38 +203,52 @@ fn compare_check(
 
     // must check whether metadata is none first
     let res = if file_info.metadata.is_none() {
-        if config.exec_mode == ExecMode::Compare {
-            eprintln!("{:?}: Path is a new file", file_info.path);
+        match config.exec_mode {
+            ExecMode::Compare => eprintln!("{:?}: Path is a new file", file_info.path),
+            ExecMode::Write => display_file_info(file_info),
+            _ => unreachable!(),
         }
         Some((file_info.clone(), is_same_hash))
     } else if is_same_filename && is_same_hash {
-        if config.exec_mode == ExecMode::Compare {
-            eprintln!("{:?}: OK", file_info.path);
+        match config.exec_mode {
+            ExecMode::Compare => eprintln!("{:?}: OK", file_info.path),
+            ExecMode::Write => display_file_info(file_info),
+            _ => unreachable!(),
         }
         None
     } else if is_same_hash {
         if config.exec_mode == ExecMode::Compare {
             // know we are in Compare mode, so require write_new and overwrite_old
             // to specify things will be overwritten
-            if config.opt_write_new && config.opt_overwrite_old {
-                eprintln!(
-                    "{:?}: OK, but path has same hash for new filename.  Hash data will be overwritten.",
-                    file_info.path
-                );
-            } else {
-                eprintln!(
-                    "{:?}: OK, but path has same hash for new filename",
-                    file_info.path
-                );
+            match config.exec_mode {
+                ExecMode::Compare => {
+                    if config.opt_write_new && config.opt_overwrite_old {
+                        eprintln!(
+                            "{:?}: OK, but path has same hash for new filename.  Hash data will be overwritten.",
+                            file_info.path
+                        );
+                    } else {
+                        eprintln!(
+                            "{:?}: OK, but path has same hash for new filename",
+                            file_info.path
+                        );
+                    }
+                }
+                ExecMode::Write => display_file_info(file_info),
+                _ => unreachable!(),
             }
         }
         Some((file_info.clone(), is_same_hash))
     } else if is_same_filename {
-        if config.exec_mode == ExecMode::Compare {
-            eprintln!(
-                "{:?}: WARNING, path has new hash for same filename",
-                file_info.path
-            );
+        match config.exec_mode {
+            ExecMode::Compare => {
+                eprintln!(
+                    "{:?}: WARNING, path has new hash for same filename",
+                    file_info.path
+                );
+            }
+            ExecMode::Write => display_file_info(file_info),
+            _ => unreachable!(),
         }
         None
     } else {
