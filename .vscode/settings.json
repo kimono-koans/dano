@@ -1,7 +1,9 @@
 {
     "cSpell.words": [
+        "alloc",
         "canonicalize",
         "Dano",
+        "itertools",
         "openpgp",
         "Rdlr",
         "serde",
