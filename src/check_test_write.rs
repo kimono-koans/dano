@@ -16,11 +16,16 @@ use crate::util::{
     deserialize, display_output_path, overwrite_all_paths, read_input_file, write_new_paths,
 };
 
+pub struct NewFilesBundle {
+    new_filenames: Vec<FileInfo>,
+    new_files: Vec<FileInfo>,
+}
+
 pub fn file_info_from_paths(
     config: &Config,
     requested_paths: &[PathBuf],
     paths_from_file: &[FileInfo],
-) -> DanoResult<(Vec<FileInfo>, Vec<FileInfo>)> {
+) -> DanoResult<NewFilesBundle> {
     let rx_item = {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
             crossbeam::channel::unbounded();
@@ -75,7 +80,10 @@ pub fn file_info_from_paths(
         std::process::exit(exit_code)
     }
 
-    Ok((new_filenames, new_files))
+    Ok(NewFilesBundle {
+        new_filenames,
+        new_files,
+    })
 }
 
 fn is_same_hash(
@@ -99,25 +107,25 @@ fn is_same_hash(
 
 pub fn overwrite_and_write_new(
     config: &Config,
-    new_filenames: Vec<FileInfo>,
-    new_files: Vec<FileInfo>,
+    new_file_bundle: &NewFilesBundle,
 ) -> DanoResult<()> {
     if config.exec_mode == ExecMode::Write
-        || (config.exec_mode == ExecMode::Compare && config.opt_write_new) && !new_files.is_empty()
+        || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
+            && !new_file_bundle.new_files.is_empty()
     {
-        write_new_paths(config, &new_files)?
+        write_new_paths(config, &new_file_bundle.new_files)?
     } else if !config.opt_silent {
         eprintln!("No new paths to write.");
     }
 
-    if !new_filenames.is_empty()
+    if !new_file_bundle.new_filenames.is_empty()
         && (config.exec_mode == ExecMode::Write && config.opt_overwrite_old)
         || (config.exec_mode == ExecMode::Compare
             && config.opt_overwrite_old
             && config.opt_write_new)
     {
         // append new paths
-        write_new_paths(config, &new_filenames)?;
+        write_new_paths(config, &new_file_bundle.new_filenames)?;
 
         // read back
         let paths_from_file_with_duplicates: Vec<FileInfo> =

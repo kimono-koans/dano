@@ -127,7 +127,7 @@ impl Config {
             ExecMode::Write
         };
 
-        let mut paths: Vec<PathBuf> = {
+        let paths: Vec<PathBuf> = {
             let res: Vec<PathBuf> = if let Some(input_files) = matches.values_of_os("INPUT_FILES") {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
@@ -147,18 +147,6 @@ impl Config {
         if paths.is_empty() && matches!(exec_mode, ExecMode::Write | ExecMode::Compare) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
-
-        // deduplicate path_buf and sort --
-        // so input of ./.z* and ./.zshrc will only print ./.zshrc once
-        paths = if paths.len() > 1 {
-            paths.sort_unstable();
-            // dedup needs to be sorted/ordered first to work (not like a BTreeMap)
-            paths.dedup();
-
-            paths
-        } else {
-            paths
-        };
 
         let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
@@ -222,10 +210,9 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write => {
-            let (new_filenames, new_files) =
-                file_info_from_paths(&config, &config.paths, &paths_from_file)?;
+            let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            overwrite_and_write_new(&config, new_filenames, new_files)
+            overwrite_and_write_new(&config, &new_file_bundle)
         }
         ExecMode::Compare => {
             if paths_from_file.is_empty() {
@@ -235,10 +222,9 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            let (new_filenames, new_files) =
-                file_info_from_paths(&config, &config.paths, &paths_from_file)?;
+            let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            overwrite_and_write_new(&config, new_filenames, new_files)
+            overwrite_and_write_new(&config, &new_file_bundle)
         }
         ExecMode::Test => {
             if paths_from_file.is_empty() {
