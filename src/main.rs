@@ -15,10 +15,8 @@ use std::{
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
-
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
-
 use serde::{Deserialize, Serialize};
 use which::which;
 
@@ -120,7 +118,7 @@ impl Config {
             .into());
         };
 
-        let exec_mode = if matches.is_present("COMPARE") {
+        let exec_mode = if matches.is_present("DETAILED_COMPARE") {
             ExecMode::DetailedCompare
         } else if matches.is_present("CHECK") {
             ExecMode::Check
@@ -348,7 +346,10 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            print_hashes(&hashes_from_file);
+            hashes_from_file
+                .iter()
+                .try_for_each(display_output_path)?;
+
             Ok(())
         }
     }
@@ -478,25 +479,6 @@ fn compare_hash_collections(
     }
 
     Ok(new_files)
-}
-
-fn print_hashes(new_files: &[FileInfo]) {
-    new_files
-        .iter()
-        .for_each(|file_info| match &file_info.metadata {
-            Some(metadata) => {
-                eprintln!(
-                    "{}={:x} : {:?}",
-                    metadata.hash_algo, metadata.hash_value, file_info.path
-                );
-            }
-            None => {
-                eprintln!(
-                    "WARNING: Could not generate checksum for: {:?}",
-                    file_info.path
-                );
-            }
-        })
 }
 
 fn write_new_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
