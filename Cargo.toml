@@ -12,3 +12,4 @@ which = { version = "4.2.4", default-features = false }
 serde = { version = "1.0.143", features = ["derive"] }
 serde_json = "1.0.83"
 itertools = { version = "0.10.3" } # use_std, use_alloc for into_group_map_by()
+crossbeam = "0.8.2"
