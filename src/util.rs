@@ -39,8 +39,8 @@ impl Error for DanoError {
     }
 }
 
-fn overwrite_old_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = append_output_file(&config.pwd)?;
+pub fn overwrite_all_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
+    let mut output_file = overwrite_output_file(&config.pwd)?;
 
     new_files
         .iter()
@@ -97,7 +97,7 @@ pub fn read_input_file(pwd: &Path) -> DanoResult<File> {
     }
 }
 
-fn overwrite_output_file(pwd: &Path) -> DanoResult<File> {
+pub fn overwrite_output_file(pwd: &Path) -> DanoResult<File> {
     // creates script file in user's home dir or will fail if file already exists
     if let Ok(output_file) = OpenOptions::new()
         // should overwrite the file always
@@ -152,7 +152,7 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
     stdin.read_to_end(&mut buffer)?;
 
     let broken_string: Vec<String> = std::str::from_utf8(&buffer)?
-        .split_ascii_whitespace()
+        .split(&['\n', '\0'])
         .into_iter()
         .map(|i| i.to_owned())
         .collect();
