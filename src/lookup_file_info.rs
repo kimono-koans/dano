@@ -64,15 +64,17 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
         .output()?;
     let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
 
+    let phantom_file_info = FileInfo {
+        path: path.to_owned(),
+        metadata: None,
+    };
+
     // stderr_string is a string not an error, so here we build an err or output
     if stdout_string.is_empty() {
         // ffmpeg won't work with a non-media file so it solely
         // prints to stderr here, we want to still print our request
         // and keep moving so we don't return an error
-        tx_item.send(FileInfo {
-            path: path.to_owned(),
-            metadata: None,
-        })?;
+        tx_item.send(phantom_file_info)?;
 
         Ok(())
     } else {
@@ -86,10 +88,7 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
                     modify_time: path.metadata()?.modified()?,
                 }),
             },
-            None => FileInfo {
-                path: path.to_owned(),
-                metadata: None,
-            },
+            None => phantom_file_info,
         };
 
         tx_item.send(res)?;

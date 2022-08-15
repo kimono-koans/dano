@@ -41,6 +41,7 @@ pub fn file_info_from_paths(
 
         // explicitly drop here of we will hold onto the ref and loop forever
         drop(tx_item);
+
         rx_item
     };
 
@@ -206,17 +207,17 @@ fn compare_check(
 
     // must check whether metadata is none first
     let res = if file_info.metadata.is_none() {
-        if config.exec_mode != ExecMode::Write {
+        if config.exec_mode == ExecMode::Compare {
             eprintln!("{:?}: Path is a new file", file_info.path);
         }
         Some((file_info.clone(), is_same_hash))
     } else if is_same_filename && is_same_hash {
-        if config.exec_mode != ExecMode::Write {
+        if config.exec_mode == ExecMode::Compare {
             eprintln!("{:?}: OK", file_info.path);
         }
         None
     } else if is_same_hash {
-        if config.exec_mode != ExecMode::Write {
+        if config.exec_mode == ExecMode::Compare {
             // know we are in Compare mode, so require write_new and overwrite_old
             // to specify things will be overwritten
             if config.opt_write_new && config.opt_overwrite_old {
@@ -233,7 +234,7 @@ fn compare_check(
         }
         Some((file_info.clone(), is_same_hash))
     } else if is_same_filename {
-        if config.exec_mode != ExecMode::Write {
+        if config.exec_mode == ExecMode::Compare {
             eprintln!(
                 "{:?}: WARNING, path has new hash for same filename",
                 file_info.path
