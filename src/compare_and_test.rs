@@ -13,7 +13,7 @@ use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
-    deserialize, display_file_info, overwrite_all_paths, read_input_file, write_new_paths,
+    deserialize, overwrite_all_paths, print_file_info, read_input_file, write_new_paths,
 };
 
 pub struct CompareHashesBundle {
@@ -220,7 +220,7 @@ fn compare_check(
         match config.exec_mode {
             ExecMode::Compare => eprintln!("{:?}: OK", &file_info.path),
             ExecMode::Write(_) => {
-                let _ = display_file_info(file_info);
+                let _ = print_file_info(file_info);
             }
             _ => unreachable!(),
         }
@@ -244,7 +244,7 @@ fn compare_check(
                     }
                 }
                 ExecMode::Write(_) => {
-                    let _ = display_file_info(file_info);
+                    let _ = print_file_info(file_info);
                 }
                 _ => unreachable!(),
             }
@@ -259,7 +259,7 @@ fn compare_check(
                 );
             }
             ExecMode::Write(_) => {
-                let _ = display_file_info(file_info);
+                let _ = print_file_info(file_info);
             }
             _ => unreachable!(),
         }
@@ -270,7 +270,7 @@ fn compare_check(
                 eprintln!("{:?}: Path is a new file", file_info.path);
             }
             ExecMode::Write(_) => {
-                let _ = display_file_info(file_info);
+                let _ = print_file_info(file_info);
             }
             _ => unreachable!(),
         }

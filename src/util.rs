@@ -61,7 +61,7 @@ fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> 
             let out_string = serialized + "\n";
             match &config.exec_mode {
                 ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
-                    print_output_buf(&out_string)?
+                    print_out_buf(&out_string)?
                 }
                 _ => write_out(&out_string, output_file)?,
             }
@@ -71,7 +71,17 @@ fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> 
     }
 }
 
-pub fn print_output_buf(output_buf: &str) -> DanoResult<()> {
+pub fn print_err_buf(err_buf: &str) -> DanoResult<()> {
+    // mutex keeps threads from writing over each other
+    let err = std::io::stderr();
+    let mut err_locked = err.lock();
+    err_locked.write_all(err_buf.as_bytes())?;
+    err_locked.flush()?;
+
+    Ok(())
+}
+
+pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
     // mutex keeps threads from writing over each other
     let out = std::io::stdout();
     let mut out_locked = out.lock();
@@ -81,7 +91,7 @@ pub fn print_output_buf(output_buf: &str) -> DanoResult<()> {
     Ok(())
 }
 
-pub fn display_file_info(file_info: &FileInfo) -> DanoResult<()> {
+pub fn print_file_info(file_info: &FileInfo) -> DanoResult<()> {
     let err_buf = match &file_info.metadata {
         Some(metadata) => {
             format!(
@@ -97,12 +107,7 @@ pub fn display_file_info(file_info: &FileInfo) -> DanoResult<()> {
         }
     };
 
-    let err = std::io::stderr();
-    let mut err_locked = err.lock();
-    err_locked.write_all(err_buf.as_bytes())?;
-    err_locked.flush()?;
-
-    Ok(())
+    print_err_buf(&err_buf)
 }
 
 pub fn read_input_file(config: &Config) -> DanoResult<File> {

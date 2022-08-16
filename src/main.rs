@@ -17,7 +17,7 @@ mod lookup_file_info;
 mod util;
 
 use crate::lookup_file_info::FileInfo;
-use crate::util::{deserialize, display_file_info, read_input_file, read_stdin, DanoError};
+use crate::util::{deserialize, print_file_info, read_input_file, read_stdin, DanoError};
 use compare_and_test::{file_info_from_paths, write_to_file};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -309,7 +309,7 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            paths_from_file.iter().try_for_each(display_file_info)?;
+            paths_from_file.iter().try_for_each(print_file_info)?;
 
             Ok(())
         }
