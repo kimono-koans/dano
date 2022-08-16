@@ -24,10 +24,13 @@ pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
-        .about("")
+        .about("dano is a wrapper for ffmpeg that hashes the internal file streams of certain media files, \
+        and stores them in a format which can be used to verify such hashes later.  This is handy, because, \
+        should you choose to change metadata tags, or change file names, the media hashes will remain the same.")
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
+                .help("input files to be hashed.")
                 .takes_value(true)
                 .multiple_values(true)
                 .value_parser(clap::builder::ValueParser::os_string())
@@ -35,6 +38,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("OUTPUT_FILE")
+                .help("output file which will hold the hashes. If not specified, the 'dano_hashes.txt' will be used in the PWD.")
                 .long("output-file")
                 .takes_value(true)
                 .min_values(1)
@@ -44,6 +48,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("HASH_FILE")
+                .help("file from which to read the hashes.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the PWD).")
                 .long("hash-file")
                 .takes_value(true)
                 .min_values(1)
@@ -51,44 +56,66 @@ fn parse_args() -> ArgMatches {
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(3),
         )
-        .arg(Arg::new("WRITE").short('w').long("write").display_order(4))
+        .arg(
+            Arg::new("WRITE")
+                .help("write the input files hashes to disk.")
+                .short('w')
+                .long("write")
+                .display_order(4))
         .arg(Arg::new("TEST").short('t').long("test").display_order(5))
         .arg(
             Arg::new("COMPARE")
+                .help("compare the input files to the hashes located in the hash file.")
                 .short('c')
                 .long("compare")
                 .display_order(6),
         )
-        .arg(Arg::new("PRINT").short('p').long("print").display_order(7))
+        .arg(
+            Arg::new("PRINT")
+            .help("pretty print the hashes in the hash file.")
+            .short('p')
+            .long("print")
+            .display_order(7))
         .arg(
             Arg::new("SILENT")
+                .help("quiet many informational messages while in WRITE mode.")
                 .short('s')
                 .long("silent")
+                .requires("WRITE")
                 .display_order(8),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
+                .help("if one file's hash matches another's, but they have different file name's, overwrite the old file info with the most current file info.")
                 .long("overwrite")
                 .conflicts_with_all(&["TEST", "PRINT"])
                 .display_order(9),
         )
         .arg(
             Arg::new("WRITE_NEW")
+                .help("if new files are present in COMPARE mode, append such file info to the hash file.")
                 .long("write-new")
                 .requires("COMPARE")
                 .display_order(10),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
+                .help("by default, dano filters file extensions recognized by ffmpeg.  Disable such filtering here.")
                 .long("disable-filter")
                 .display_order(11),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
+                .help("use canonical paths instead of potentially relative paths.")
                 .long("canonical-paths")
                 .display_order(12),
         )
-        .arg(Arg::new("DRY_RUN").long("dry-run").display_order(13))
+        .arg(
+            Arg::new("DRY_RUN")
+            .help("print the information to stdout that would be written to disk.")
+            .long("dry-run")
+            .requires("WRITE")
+            .display_order(13))
         .get_matches()
 }
 
@@ -106,14 +133,12 @@ enum ExecMode {
     Print,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Config {
     exec_mode: ExecMode,
     opt_write_new: bool,
     opt_silent: bool,
     opt_overwrite_old: bool,
-    pwd: PathBuf,
     output_file: PathBuf,
     hash_file: PathBuf,
     paths: Vec<PathBuf>,
@@ -201,7 +226,6 @@ impl Config {
             opt_silent,
             opt_write_new,
             opt_overwrite_old,
-            pwd,
             output_file,
             hash_file,
             paths,

@@ -191,7 +191,9 @@ fn check(
                 eprintln!("{:?}: WARNING, path does not exist", &file_info.path)
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(file_info);
+                if !config.opt_silent {
+                    let _ = print_file_info(file_info);
+                }
             }
             _ => unreachable!(),
         }
@@ -201,7 +203,9 @@ fn check(
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => eprintln!("{:?}: OK", &file_info.path),
             ExecMode::Write(_) => {
-                let _ = print_file_info(file_info);
+                if !config.opt_silent {
+                    let _ = print_file_info(file_info);
+                }
             }
             _ => unreachable!(),
         }
@@ -224,7 +228,9 @@ fn check(
                 }
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(file_info);
+                if !config.opt_silent {
+                    let _ = print_file_info(file_info);
+                }
             }
             _ => unreachable!(),
         }
@@ -238,7 +244,9 @@ fn check(
                 );
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(file_info);
+                if !config.opt_silent {
+                    let _ = print_file_info(file_info);
+                }
             }
             _ => unreachable!(),
         }
@@ -249,7 +257,9 @@ fn check(
                 eprintln!("{:?}: Path is a new file", file_info.path);
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(file_info);
+                if !config.opt_silent {
+                    let _ = print_file_info(file_info);
+                }
             }
             _ => unreachable!(),
         }
