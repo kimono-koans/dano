@@ -30,7 +30,7 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("input files to be hashed.")
+                .help("input files to be hashed.  NULL or NEWLINE delimited only.")
                 .takes_value(true)
                 .multiple_values(true)
                 .value_parser(clap::builder::ValueParser::os_string())
@@ -323,7 +323,7 @@ fn exec() -> DanoResult<()> {
                 .map(|file_info| file_info.path.clone())
                 .collect();
 
-            let rx_item = exec_lookup_file_info(&config.paths)?;
+            let rx_item = exec_lookup_file_info(&paths_to_test)?;
 
             let _ = exec_process_file_info(&config, &paths_to_test, &paths_from_file, rx_item)?;
 
