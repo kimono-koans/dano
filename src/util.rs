@@ -103,7 +103,7 @@ pub fn overwrite_output_file(pwd: &Path) -> DanoResult<File> {
         .write(true)
         // create_new() will only create if DNE
         // create on a file that exists just opens
-        .create(true)
+        .truncate(true)
         .open(pwd.join("dano_hashes.txt"))
     {
         Ok(output_file)
