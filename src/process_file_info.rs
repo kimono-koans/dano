@@ -222,7 +222,7 @@ fn check(
             ExecMode::Compare | ExecMode::Test => {
                 if config.opt_write_new && config.opt_overwrite_old {
                     eprintln!(
-                        "{:?}: OK, but path has same hash for new filename.  Old file info will be overwritten.",
+                        "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.",
                         file_info.path
                     );
                 } else {
