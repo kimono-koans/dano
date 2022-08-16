@@ -180,7 +180,7 @@ fn get_file_map(
         .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
 
     let res = match config.exec_mode {
-        ExecMode::Test => requested_paths
+        ExecMode::Write | ExecMode::Test => requested_paths
             .iter()
             .map(|path| match paths_from_file_map.get(path) {
                 Some(metadata) => (path.to_owned(), metadata.to_owned()),
@@ -188,7 +188,7 @@ fn get_file_map(
             })
             .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>(),
         ExecMode::Compare => paths_from_file_map,
-        ExecMode::Write | ExecMode::Print => BTreeMap::new(),
+        ExecMode::Print => BTreeMap::new(),
     };
     Ok(res)
 }
@@ -208,14 +208,14 @@ fn compare_check(
             ExecMode::Write => display_file_info(file_info),
             _ => unreachable!(),
         }
-        Some((file_info.clone(), is_same_hash))
+        None
     } else if is_same_filename && is_same_hash {
         match config.exec_mode {
             ExecMode::Compare => eprintln!("{:?}: OK", file_info.path),
             ExecMode::Write => display_file_info(file_info),
             _ => unreachable!(),
         }
-        None
+        Some((file_info.clone(), is_same_hash))
     } else if is_same_hash {
         if config.exec_mode == ExecMode::Compare {
             // know we are in Compare mode, so require write_new and overwrite_old
@@ -250,7 +250,7 @@ fn compare_check(
             ExecMode::Write => display_file_info(file_info),
             _ => unreachable!(),
         }
-        None
+        Some((file_info.clone(), is_same_hash))
     } else {
         None
     };

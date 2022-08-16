@@ -48,8 +48,6 @@ fn parse_args() -> ArgMatches {
             Arg::new("SILENT")
                 .short('s')
                 .long("silent")
-                .requires("CHECK")
-                .requires("WRITE")
                 .display_order(6),
         )
         .arg(
