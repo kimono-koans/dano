@@ -10,7 +10,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::lookup_file_info::FileInfo;
+use crate::{lookup_file_info::FileInfo, DryRun, ExecMode};
 use crate::{Config, DanoResult};
 
 #[derive(Debug, Clone)]
@@ -39,31 +39,46 @@ impl Error for DanoError {
 }
 
 pub fn overwrite_all_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = overwrite_output_file(&config)?;
+    let mut output_file = overwrite_output_file(config)?;
 
     new_files
         .iter()
-        .try_for_each(|file_info| write_path(file_info, &mut output_file))
+        .try_for_each(|file_info| write_path(config, file_info, &mut output_file))
 }
 
 pub fn write_new_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = append_output_file(&config)?;
+    let mut output_file = append_output_file(config)?;
 
     new_files
         .iter()
-        .try_for_each(|file_info| write_path(file_info, &mut output_file))
+        .try_for_each(|file_info| write_path(config, file_info, &mut output_file))
 }
 
-fn write_path(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
+fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
     match &file_info.metadata {
         Some(_metadata) => {
             let serialized = serialize(file_info)?;
             let out_string = serialized + "\n";
-            write_out(&out_string, output_file)?;
+            match &config.exec_mode {
+                ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
+                    print_output_buf(&out_string)?
+                }
+                _ => write_out(&out_string, output_file)?,
+            }
             Ok(())
         }
         None => Ok(()),
     }
+}
+
+pub fn print_output_buf(output_buf: &str) -> DanoResult<()> {
+    // mutex keeps threads from writing over each other
+    let out = std::io::stdout();
+    let mut out_locked = out.lock();
+    out_locked.write_all(output_buf.as_bytes())?;
+    out_locked.flush()?;
+
+    Ok(())
 }
 
 pub fn display_file_info(file_info: &FileInfo) {
@@ -84,10 +99,7 @@ pub fn display_file_info(file_info: &FileInfo) {
 }
 
 pub fn read_input_file(config: &Config) -> DanoResult<File> {
-    if let Ok(input_file) = OpenOptions::new()
-        .read(true)
-        .open(&config.output_file)
-    {
+    if let Ok(input_file) = OpenOptions::new().read(true).open(&config.output_file) {
         Ok(input_file)
     } else {
         Err(DanoError::new("dano could not open a file to write to").into())

@@ -59,7 +59,7 @@ pub fn file_info_from_paths(
 
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
-            ExecMode::Write | ExecMode::Compare => {
+            ExecMode::Write(_) | ExecMode::Compare => {
                 if let Some(either) = compare_check(config, &file_info, file_map.clone()) {
                     match either {
                         Either::Left(file_info) => new_filenames.push(file_info),
@@ -106,11 +106,8 @@ fn is_same_hash(
     }
 }
 
-pub fn overwrite_and_write_new(
-    config: &Config,
-    new_file_bundle: &NewFilesBundle,
-) -> DanoResult<()> {
-    if config.exec_mode == ExecMode::Write
+pub fn write_to_file(config: &Config, new_file_bundle: &NewFilesBundle) -> DanoResult<()> {
+    if matches!(config.exec_mode, ExecMode::Write(_))
         || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
             && !new_file_bundle.new_files.is_empty()
     {
@@ -120,7 +117,7 @@ pub fn overwrite_and_write_new(
     }
 
     if !new_file_bundle.new_filenames.is_empty()
-        && (config.exec_mode == ExecMode::Write && config.opt_overwrite_old)
+        && (matches!(config.exec_mode, ExecMode::Write(_)) && config.opt_overwrite_old)
         || (config.exec_mode == ExecMode::Compare
             && config.opt_overwrite_old
             && config.opt_write_new)
@@ -129,15 +126,14 @@ pub fn overwrite_and_write_new(
         write_new_paths(config, &new_file_bundle.new_filenames)?;
 
         // read back
-        let paths_from_file_with_duplicates: Vec<FileInfo> =
-            if config.output_file.exists() {
-                let mut input_file = read_input_file(&config)?;
-                let mut buffer = String::new();
-                input_file.read_to_string(&mut buffer)?;
-                buffer.lines().flat_map(deserialize).collect()
-            } else {
-                Vec::new()
-            };
+        let paths_from_file_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
+            let mut input_file = read_input_file(config)?;
+            let mut buffer = String::new();
+            input_file.read_to_string(&mut buffer)?;
+            buffer.lines().flat_map(deserialize).collect()
+        } else {
+            Vec::new()
+        };
 
         // then dedup
         let unique_paths: Vec<FileInfo> = paths_from_file_with_duplicates
@@ -184,7 +180,7 @@ fn get_file_map(
         .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
 
     let res = match config.exec_mode {
-        ExecMode::Write | ExecMode::Test => requested_paths
+        ExecMode::Write(_) | ExecMode::Test => requested_paths
             .iter()
             .map(|path| match paths_from_file_map.get(path) {
                 Some(metadata) => (path.to_owned(), metadata.to_owned()),
@@ -209,14 +205,14 @@ fn compare_check(
     let res = if file_info.metadata.is_none() {
         match config.exec_mode {
             ExecMode::Compare => eprintln!("{:?}: Path is a new file", file_info.path),
-            ExecMode::Write => display_file_info(file_info),
+            ExecMode::Write(_) => display_file_info(file_info),
             _ => unreachable!(),
         }
         None
     } else if is_same_filename && is_same_hash {
         match config.exec_mode {
             ExecMode::Compare => eprintln!("{:?}: OK", file_info.path),
-            ExecMode::Write => display_file_info(file_info),
+            ExecMode::Write(_) => display_file_info(file_info),
             _ => unreachable!(),
         }
         Some((file_info.clone(), is_same_hash))
@@ -238,7 +234,7 @@ fn compare_check(
                         );
                     }
                 }
-                ExecMode::Write => display_file_info(file_info),
+                ExecMode::Write(_) => display_file_info(file_info),
                 _ => unreachable!(),
             }
         }
@@ -251,7 +247,7 @@ fn compare_check(
                     file_info.path
                 );
             }
-            ExecMode::Write => display_file_info(file_info),
+            ExecMode::Write(_) => display_file_info(file_info),
             _ => unreachable!(),
         }
         Some((file_info.clone(), is_same_hash))

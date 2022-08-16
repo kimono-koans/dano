@@ -19,7 +19,7 @@ mod util;
 
 use crate::lookup_file_info::FileInfo;
 use crate::util::{deserialize, display_file_info, read_input_file, read_stdin, DanoError};
-use compare_and_test::{file_info_from_paths, overwrite_and_write_new};
+use compare_and_test::{file_info_from_paths, write_to_file};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -80,14 +80,21 @@ fn parse_args() -> ArgMatches {
                 .long("canonical-paths")
                 .display_order(11),
         )
+        .arg(Arg::new("DRY_RUN").long("dry-run").display_order(12))
         .get_matches()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DryRun {
+    Enabled,
+    Disabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ExecMode {
     Test,
     Compare,
-    Write,
+    Write(DryRun),
     Print,
 }
 
@@ -132,8 +139,12 @@ impl Config {
             ExecMode::Test
         } else if matches.is_present("PRINT") && !matches.is_present("WRITE") {
             ExecMode::Print
+        } else if matches.is_present("DRY_RUN")
+            || (matches.is_present("PRINT") && matches.is_present("WRITE"))
+        {
+            ExecMode::Write(DryRun::Enabled)
         } else {
-            ExecMode::Write
+            ExecMode::Write(DryRun::Disabled)
         };
 
         let opt_write_new = matches.is_present("WRITE_NEW");
@@ -153,7 +164,7 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Write => read_stdin()?.par_iter().map(PathBuf::from).collect(),
+                    ExecMode::Write(_) => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                     ExecMode::Compare => read_dir(&pwd)?
                         .par_bridge()
                         .flatten()
@@ -165,7 +176,7 @@ impl Config {
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &output_file)
         };
 
-        if paths.is_empty() && matches!(exec_mode, ExecMode::Write | ExecMode::Compare) {
+        if paths.is_empty() && matches!(exec_mode, ExecMode::Write(_) | ExecMode::Compare) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
 
@@ -181,7 +192,12 @@ impl Config {
     }
 }
 
-fn parse_paths(raw_paths: &[PathBuf], opt_disable_filter: bool, opt_canonical_paths: bool, output_file: &Path) -> Vec<PathBuf> {
+fn parse_paths(
+    raw_paths: &[PathBuf],
+    opt_disable_filter: bool,
+    opt_canonical_paths: bool,
+    output_file: &Path,
+) -> Vec<PathBuf> {
     let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
 
     raw_paths
@@ -194,23 +210,23 @@ fn parse_paths(raw_paths: &[PathBuf], opt_disable_filter: bool, opt_canonical_pa
                 false
             }
         })
-        .filter(|path| path.file_name() != Some(&OsStr::new(output_file)))
+        .filter(|path| path.file_name() != Some(OsStr::new(output_file)))
         .filter(|path| {
             if !opt_disable_filter {
                 auto_extension_filter
-                .lines()
-                .any(|extension| path.extension() == Some(OsStr::new(extension)))
+                    .lines()
+                    .any(|extension| path.extension() == Some(OsStr::new(extension)))
             } else {
                 true
             }
         })
-        .map(|path| 
+        .map(|path| {
             if opt_canonical_paths {
                 path.canonicalize().unwrap_or_else(|_| path.to_owned())
             } else {
                 path.to_owned()
             }
-        )
+        })
         .collect()
 }
 
@@ -237,10 +253,10 @@ fn exec() -> DanoResult<()> {
     };
 
     match &config.exec_mode {
-        ExecMode::Write => {
+        ExecMode::Write(_) => {
             let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            overwrite_and_write_new(&config, &new_file_bundle)
+            write_to_file(&config, &new_file_bundle)
         }
         ExecMode::Compare => {
             if paths_from_file.is_empty() {
@@ -252,7 +268,7 @@ fn exec() -> DanoResult<()> {
 
             let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            overwrite_and_write_new(&config, &new_file_bundle)
+            write_to_file(&config, &new_file_bundle)
         }
         ExecMode::Test => {
             if paths_from_file.is_empty() {
