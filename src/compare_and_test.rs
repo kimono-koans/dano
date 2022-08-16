@@ -32,10 +32,14 @@ pub fn file_info_from_paths(
 
         let requested_paths_clone = requested_paths.to_owned();
 
+        let num_cpus = num_cpus::get();
+
+        let num_threads = num_cpus * 2usize;
+
         let thread_pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(8usize)
+            .num_threads(num_threads)
             .build()
-            .expect("Could not initialize rayon threadpool");
+            .expect("Could not initialize rayon thread pool");
 
         thread::spawn(move || {
             thread_pool.in_place_scope(|file_info_scope| {
@@ -48,9 +52,8 @@ pub fn file_info_from_paths(
             });
         });
 
+        // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
         //drop(tx_item);
-
-        // implicitly drop tx_item otherwise we will hold onto the ref and loop forever
         rx_item
     };
 

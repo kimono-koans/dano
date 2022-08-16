@@ -2,11 +2,13 @@
     "cSpell.words": [
         "alloc",
         "canonicalize",
+        "cpus",
         "Dano",
         "itertools",
         "openpgp",
         "Rdlr",
         "serde",
-        "Swinford"
+        "Swinford",
+        "threadpool"
     ]
 }

@@ -132,6 +132,7 @@ dependencies = [
  "clap",
  "crossbeam",
  "itertools",
+ "num_cpus",
  "rayon",
  "serde",
  "serde_json",
