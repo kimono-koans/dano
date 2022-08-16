@@ -38,7 +38,7 @@ pub fn exec_process_file_info(
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare => {
-                if let (Some(either), _) = check(config, &file_info, file_map.clone()) {
+                if let (Some(either), _) = verify_file_info(config, &file_info, file_map.clone()) {
                     match either {
                         Either::Left(file_info) => hash_matches.push(file_info),
                         Either::Right(file_info) => hash_non_matches.push(file_info),
@@ -46,7 +46,7 @@ pub fn exec_process_file_info(
                 }
             }
             ExecMode::Test => {
-                let (_, test_exit_code) = check(config, &file_info, file_map.clone());
+                let (_, test_exit_code) = verify_file_info(config, &file_info, file_map.clone());
                 if test_exit_code != 0 {
                     exit_code = test_exit_code
                 }
@@ -180,7 +180,7 @@ fn get_file_map(
     Ok(res)
 }
 
-fn check(
+fn verify_file_info(
     config: &Config,
     file_info: &FileInfo,
     file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
