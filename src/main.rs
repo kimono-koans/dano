@@ -22,6 +22,8 @@ use process_file_info::{exec_process_file_info, write_to_file};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
+const FILE_INFO_VERSION: usize = 1;
+
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
         .about("dano is a wrapper for ffmpeg that hashes the internal file streams of certain media files, \
@@ -139,6 +141,7 @@ pub struct Config {
     opt_write_new: bool,
     opt_silent: bool,
     opt_overwrite_old: bool,
+    pwd: PathBuf,
     output_file: PathBuf,
     hash_file: PathBuf,
     paths: Vec<PathBuf>,
@@ -226,6 +229,7 @@ impl Config {
             opt_silent,
             opt_write_new,
             opt_overwrite_old,
+            pwd,
             output_file,
             hash_file,
             paths,

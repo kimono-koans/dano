@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::util::DanoError;
-use crate::DanoResult;
+use crate::{DanoResult, FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileInfo {
@@ -68,7 +68,7 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
 
     let phantom_file_info = FileInfo {
         path: path.to_owned(),
-        version: 1,
+        version: FILE_INFO_VERSION,
         metadata: None,
     };
 
@@ -84,7 +84,7 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
         let res = match stdout_string.split_once('=') {
             Some((first, last)) => FileInfo {
                 path: path.to_owned(),
-                version: 1,
+                version: FILE_INFO_VERSION,
                 metadata: Some(FileMetadata {
                     last_written: timestamp.to_owned(),
                     hash_algo: first.into(),

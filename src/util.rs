@@ -1,6 +1,6 @@
 // (c) Robert Swinford <robert.swinford<...at...>gmail.com>
 //
-// For the full copyright and license information, please view the LICENSE file
+// For the full copyright and license information, please view the LICE&NSE file
 // that was distributed with this source code.
 
 use std::{
@@ -10,7 +10,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{lookup_file_info::FileInfo, DryRun, ExecMode};
+use crate::{lookup_file_info::FileInfo, DryRun, ExecMode, FILE_INFO_VERSION};
 use crate::{Config, DanoResult};
 
 #[derive(Debug, Clone)]
@@ -118,9 +118,19 @@ pub fn read_input_file(config: &Config) -> DanoResult<File> {
     }
 }
 
+fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> {
+    write_out(
+        format!(
+            "// DANO, FILE FORMAT VERSION:{}\n// Invoked from: {:?}\n",
+            FILE_INFO_VERSION, config.pwd
+        )
+        .as_str(),
+        output_file,
+    )
+}
+
 pub fn overwrite_output_file(config: &Config) -> DanoResult<File> {
-    // creates script file in user's home dir or will fail if file already exists
-    if let Ok(output_file) = OpenOptions::new()
+    if let Ok(mut output_file) = OpenOptions::new()
         // should overwrite the file always
         // FYI append() is for adding to the file
         .write(true)
@@ -129,6 +139,7 @@ pub fn overwrite_output_file(config: &Config) -> DanoResult<File> {
         .truncate(true)
         .open(&config.output_file)
     {
+        print_file_header(config, &mut output_file)?;
         Ok(output_file)
     } else {
         Err(DanoError::new("dano could not open a file to write to.").into())
@@ -136,8 +147,10 @@ pub fn overwrite_output_file(config: &Config) -> DanoResult<File> {
 }
 
 fn append_output_file(config: &Config) -> DanoResult<File> {
-    // creates script file in user's home dir or will fail if file already exists
-    if let Ok(output_file) = OpenOptions::new()
+    // check if output file DNE/is first run
+    let is_first_run = !config.output_file.exists();
+
+    if let Ok(mut output_file) = OpenOptions::new()
         // should overwrite the file always
         // FYI append() is for adding to the file
         .append(true)
@@ -146,6 +159,9 @@ fn append_output_file(config: &Config) -> DanoResult<File> {
         .create(true)
         .open(&config.output_file)
     {
+        if is_first_run {
+            print_file_header(config, &mut output_file)?
+        }
         Ok(output_file)
     } else {
         Err(DanoError::new("dano could not open a file to write to.").into())
