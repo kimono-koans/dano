@@ -30,7 +30,7 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("input files to be hashed.  NULL or NEWLINE delimited only.")
+                .help("input files to be hashed.  INPUT_FILE can also be read from stdin for NULL or NEWLINE delimited inputs.")
                 .takes_value(true)
                 .multiple_values(true)
                 .value_parser(clap::builder::ValueParser::os_string())
