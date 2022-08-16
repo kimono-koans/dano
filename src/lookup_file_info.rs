@@ -6,10 +6,11 @@
 use std::{
     path::{Path, PathBuf},
     process::Command as ExecProcess,
+    thread,
     time::SystemTime,
 };
 
-use crossbeam::channel::Sender;
+use crossbeam::channel::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use which::which;
 
@@ -94,4 +95,35 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
         tx_item.send(res)?;
         Ok(())
     }
+}
+
+pub fn exec_lookup_file_info(requested_paths: &[PathBuf]) -> DanoResult<Receiver<FileInfo>> {
+    let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
+        crossbeam::channel::unbounded();
+
+    let requested_paths_clone = requested_paths.to_owned();
+
+    let num_cpus = num_cpus::get();
+
+    let num_threads = num_cpus * 2usize;
+
+    let thread_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .expect("Could not initialize rayon thread pool");
+
+    thread::spawn(move || {
+        thread_pool.in_place_scope(|file_info_scope| {
+            requested_paths_clone.iter().for_each(|path_buf| {
+                let tx_item_clone = tx_item.clone();
+                file_info_scope.spawn(move |_| {
+                    let _ = FileInfo::send_file_info(path_buf, tx_item_clone);
+                })
+            });
+        });
+    });
+
+    // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
+    // explicit drop is: drop(tx_item);
+    Ok(rx_item)
 }

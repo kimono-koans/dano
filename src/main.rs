@@ -12,13 +12,13 @@ use std::{
 use clap::{crate_name, crate_version, Arg, ArgMatches};
 use rayon::prelude::*;
 
-mod compare_and_test;
 mod lookup_file_info;
+mod process_file_info;
 mod util;
 
-use crate::lookup_file_info::FileInfo;
+use crate::lookup_file_info::{exec_lookup_file_info, FileInfo};
 use crate::util::{deserialize, print_file_info, read_input_file, read_stdin, DanoError};
-use compare_and_test::{file_info_from_paths, write_to_file};
+use process_file_info::{exec_process_file_info, write_to_file};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -278,8 +278,10 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
+            let rx_item = exec_lookup_file_info(&config.paths)?;
+
             let compare_hashes_bundle =
-                file_info_from_paths(&config, &config.paths, &paths_from_file)?;
+                exec_process_file_info(&config, &config.paths, &paths_from_file, rx_item)?;
 
             write_to_file(&config, &compare_hashes_bundle)
         }
@@ -296,7 +298,10 @@ fn exec() -> DanoResult<()> {
                 .iter()
                 .map(|file_info| file_info.path.clone())
                 .collect();
-            let _ = file_info_from_paths(&config, &paths_to_test, &paths_from_file)?;
+
+            let rx_item = exec_lookup_file_info(&config.paths)?;
+
+            let _ = exec_process_file_info(&config, &paths_to_test, &paths_from_file, rx_item)?;
 
             // test will exit on file dne with special exit code so we don't return here
             unreachable!()

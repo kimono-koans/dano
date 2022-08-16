@@ -3,9 +3,9 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::{collections::BTreeMap, io::Read, path::PathBuf, sync::Arc, thread, time::SystemTime};
+use std::{collections::BTreeMap, io::Read, path::PathBuf, sync::Arc, time::SystemTime};
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 
@@ -21,42 +21,12 @@ pub struct CompareHashesBundle {
     hash_non_matches: Vec<FileInfo>,
 }
 
-pub fn file_info_from_paths(
+pub fn exec_process_file_info(
     config: &Config,
     requested_paths: &[PathBuf],
     paths_from_file: &[FileInfo],
+    rx_item: Receiver<FileInfo>,
 ) -> DanoResult<CompareHashesBundle> {
-    let rx_item = {
-        let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
-            crossbeam::channel::unbounded();
-
-        let requested_paths_clone = requested_paths.to_owned();
-
-        let num_cpus = num_cpus::get();
-
-        let num_threads = num_cpus * 2usize;
-
-        let thread_pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(num_threads)
-            .build()
-            .expect("Could not initialize rayon thread pool");
-
-        thread::spawn(move || {
-            thread_pool.in_place_scope(|file_info_scope| {
-                requested_paths_clone.iter().for_each(|path_buf| {
-                    let tx_item_clone = tx_item.clone();
-                    file_info_scope.spawn(move |_| {
-                        let _ = FileInfo::send_file_info(path_buf, tx_item_clone);
-                    })
-                });
-            });
-        });
-
-        // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
-        // explicit drop is: drop(tx_item);
-        rx_item
-    };
-
     // prepare for loop
     let file_map = Arc::new(get_file_map(config, paths_from_file, requested_paths)?);
     let mut exit_code = 0;
