@@ -97,7 +97,8 @@ pub fn write_to_file(
             let mut input_file = read_input_file(config)?;
             let mut buffer = String::new();
             input_file.read_to_string(&mut buffer)?;
-            buffer.lines().flat_map(deserialize).collect()
+            // important this blows up because if you change the struct it can't deserialize
+            buffer.lines().map(deserialize).collect::<DanoResult<Vec<FileInfo>>>()?
         } else {
             Vec::new()
         };
