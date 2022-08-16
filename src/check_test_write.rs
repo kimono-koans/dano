@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::{collections::BTreeMap, io::Read, path::PathBuf, sync::Arc, time::SystemTime};
+use std::{collections::BTreeMap, io::Read, path::PathBuf, sync::Arc, thread, time::SystemTime};
 
 use crossbeam::channel::{Receiver, Sender};
 use itertools::{Either, Itertools};
@@ -30,18 +30,22 @@ pub fn file_info_from_paths(
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
             crossbeam::channel::unbounded();
 
-        requested_paths.iter().for_each(|path_buf| {
-            let tx_item_clone = tx_item.clone();
-            rayon::scope(|file_info_scope| {
-                file_info_scope.spawn(move |_| {
-                    let _ = FileInfo::send_file_info(path_buf, tx_item_clone);
-                })
+        let requested_paths_clone = requested_paths.to_owned();
+
+        thread::spawn(move || {
+            rayon::in_place_scope(|file_info_scope| {
+                requested_paths_clone.iter().for_each(|path_buf| {
+                    let tx_item_clone = tx_item.clone();
+                    file_info_scope.spawn(move |_| {
+                        let _ = FileInfo::send_file_info(path_buf, tx_item_clone);
+                    })
+                });
             });
         });
 
-        // explicitly drop here of we will hold onto the ref and loop forever
-        drop(tx_item);
+        //drop(tx_item);
 
+        // implicitly drop tx_item otherwise we will hold onto the ref and loop forever
         rx_item
     };
 
