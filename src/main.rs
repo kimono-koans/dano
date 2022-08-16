@@ -28,58 +28,67 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("")
                 .takes_value(true)
                 .multiple_values(true)
-                .last(true)
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(1),
         )
         .arg(
             Arg::new("OUTPUT_FILE")
-                .help("")
+                .long("output-file")
                 .takes_value(true)
+                .min_values(1)
+                .require_equals(true)
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(2),
         )
-        .arg(Arg::new("WRITE").short('w').long("write").display_order(3))
-        .arg(Arg::new("TEST").short('t').long("test").display_order(4))
+        .arg(
+            Arg::new("HASH_FILE")
+                .long("hash-file")
+                .takes_value(true)
+                .min_values(1)
+                .require_equals(true)
+                .value_parser(clap::builder::ValueParser::os_string())
+                .display_order(3),
+        )
+        .arg(Arg::new("WRITE").short('w').long("write").display_order(4))
+        .arg(Arg::new("TEST").short('t').long("test").display_order(5))
         .arg(
             Arg::new("COMPARE")
                 .short('c')
                 .long("compare")
-                .display_order(5),
+                .display_order(6),
         )
-        .arg(Arg::new("PRINT").short('p').long("print").display_order(6))
+        .arg(Arg::new("PRINT").short('p').long("print").display_order(7))
         .arg(
             Arg::new("SILENT")
                 .short('s')
                 .long("silent")
-                .display_order(7),
+                .display_order(8),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .long("overwrite")
                 .conflicts_with_all(&["TEST", "PRINT"])
-                .display_order(8),
+                .display_order(9),
         )
         .arg(
             Arg::new("WRITE_NEW")
                 .long("write-new")
                 .requires("COMPARE")
-                .display_order(9),
+                .display_order(10),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
                 .long("disable-filter")
-                .display_order(10),
+                .display_order(11),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
                 .long("canonical-paths")
-                .display_order(11),
+                .display_order(12),
         )
-        .arg(Arg::new("DRY_RUN").long("dry-run").display_order(12))
+        .arg(Arg::new("DRY_RUN").long("dry-run").display_order(13))
         .get_matches()
 }
 
@@ -106,6 +115,7 @@ pub struct Config {
     opt_overwrite_old: bool,
     pwd: PathBuf,
     output_file: PathBuf,
+    hash_file: PathBuf,
     paths: Vec<PathBuf>,
 }
 
@@ -159,6 +169,12 @@ impl Config {
             pwd.join("dano_hashes.txt")
         };
 
+        let hash_file = if let Some(hash_file) = matches.value_of_os("HASH_FILE") {
+            PathBuf::from(hash_file)
+        } else {
+            output_file.clone()
+        };
+
         let paths: Vec<PathBuf> = {
             let res: Vec<PathBuf> = if let Some(input_files) = matches.values_of_os("INPUT_FILES") {
                 input_files.par_bridge().map(PathBuf::from).collect()
@@ -173,7 +189,7 @@ impl Config {
                     ExecMode::Test | ExecMode::Print => Vec::new(),
                 }
             };
-            parse_paths(&res, opt_disable_filter, opt_canonical_paths, &output_file)
+            parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
         if paths.is_empty() && matches!(exec_mode, ExecMode::Write(_) | ExecMode::Compare) {
@@ -187,6 +203,7 @@ impl Config {
             opt_overwrite_old,
             pwd,
             output_file,
+            hash_file,
             paths,
         })
     }
@@ -196,7 +213,7 @@ fn parse_paths(
     raw_paths: &[PathBuf],
     opt_disable_filter: bool,
     opt_canonical_paths: bool,
-    output_file: &Path,
+    hash_file: &Path,
 ) -> Vec<PathBuf> {
     let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
 
@@ -210,7 +227,7 @@ fn parse_paths(
                 false
             }
         })
-        .filter(|path| path.file_name() != Some(OsStr::new(output_file)))
+        .filter(|path| path.file_name() != Some(OsStr::new(hash_file)))
         .filter(|path| {
             if !opt_disable_filter {
                 auto_extension_filter
@@ -261,9 +278,10 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
+            let compare_hashes_bundle =
+                file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            write_to_file(&config, &new_file_bundle)
+            write_to_file(&config, &compare_hashes_bundle)
         }
         ExecMode::Test => {
             if paths_from_file.is_empty() {
@@ -291,7 +309,7 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            paths_from_file.iter().for_each(display_file_info);
+            paths_from_file.iter().try_for_each(display_file_info)?;
 
             Ok(())
         }

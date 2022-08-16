@@ -81,25 +81,32 @@ pub fn print_output_buf(output_buf: &str) -> DanoResult<()> {
     Ok(())
 }
 
-pub fn display_file_info(file_info: &FileInfo) {
-    match &file_info.metadata {
+pub fn display_file_info(file_info: &FileInfo) -> DanoResult<()> {
+    let err_buf = match &file_info.metadata {
         Some(metadata) => {
-            eprintln!(
-                "{}={:x} : {:?}",
+            format!(
+                "{}={:x} : {:?}\n",
                 metadata.hash_algo, metadata.hash_value, file_info.path
-            );
+            )
         }
         None => {
-            eprintln!(
-                "WARNING: Could not generate checksum for: {:?}",
+            format!(
+                "WARNING: Could not generate checksum for: {:?}\n",
                 file_info.path
-            );
+            )
         }
-    }
+    };
+
+    let err = std::io::stderr();
+    let mut err_locked = err.lock();
+    err_locked.write_all(err_buf.as_bytes())?;
+    err_locked.flush()?;
+
+    Ok(())
 }
 
 pub fn read_input_file(config: &Config) -> DanoResult<File> {
-    if let Ok(input_file) = OpenOptions::new().read(true).open(&config.output_file) {
+    if let Ok(input_file) = OpenOptions::new().read(true).open(&config.hash_file) {
         Ok(input_file)
     } else {
         Err(DanoError::new("dano could not open a file to write to").into())

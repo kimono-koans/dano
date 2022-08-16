@@ -16,16 +16,16 @@ use crate::util::{
     deserialize, display_file_info, overwrite_all_paths, read_input_file, write_new_paths,
 };
 
-pub struct NewFilesBundle {
-    new_filenames: Vec<FileInfo>,
-    new_files: Vec<FileInfo>,
+pub struct CompareHashesBundle {
+    hash_matches: Vec<FileInfo>,
+    hash_non_matches: Vec<FileInfo>,
 }
 
 pub fn file_info_from_paths(
     config: &Config,
     requested_paths: &[PathBuf],
     paths_from_file: &[FileInfo],
-) -> DanoResult<NewFilesBundle> {
+) -> DanoResult<CompareHashesBundle> {
     let rx_item = {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
             crossbeam::channel::unbounded();
@@ -61,17 +61,17 @@ pub fn file_info_from_paths(
     let file_map = Arc::new(get_file_map(config, paths_from_file, requested_paths)?);
     let mut exit_code = 0;
     // L
-    let mut new_filenames = Vec::new();
+    let mut hash_matches = Vec::new();
     // R
-    let mut new_files = Vec::new();
+    let mut hash_non_matches = Vec::new();
 
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare => {
                 if let Some(either) = compare_check(config, &file_info, file_map.clone()) {
                     match either {
-                        Either::Left(file_info) => new_filenames.push(file_info),
-                        Either::Right(file_info) => new_files.push(file_info),
+                        Either::Left(file_info) => hash_matches.push(file_info),
+                        Either::Right(file_info) => hash_non_matches.push(file_info),
                     }
                 }
             }
@@ -91,52 +91,36 @@ pub fn file_info_from_paths(
     }
 
     // sort new paths before writing to file, threads may complete in non-sorted order
-    new_filenames.sort_unstable_by_key(|file_info| file_info.clone().path);
-    new_files.sort_unstable_by_key(|file_info| file_info.clone().path);
+    hash_matches.sort_unstable_by_key(|file_info| file_info.clone().path);
+    hash_non_matches.sort_unstable_by_key(|file_info| file_info.clone().path);
 
-    Ok(NewFilesBundle {
-        new_filenames,
-        new_files,
+    Ok(CompareHashesBundle {
+        hash_matches,
+        hash_non_matches,
     })
 }
 
-fn is_same_hash(
-    paths_from_file_map: &BTreeMap<PathBuf, Option<FileMetadata>>,
-    path: &FileInfo,
-) -> bool {
-    let paths_from_file_map_by_hash = paths_from_file_map
-        .iter()
-        .filter_map(|(path, metadata)| {
-            metadata
-                .as_ref()
-                .map(|metadata| (metadata.hash_value, path))
-        })
-        .collect::<BTreeMap<u128, &PathBuf>>();
-
-    match &path.metadata {
-        Some(metadata) => paths_from_file_map_by_hash.contains_key(&metadata.hash_value),
-        None => false,
-    }
-}
-
-pub fn write_to_file(config: &Config, new_file_bundle: &NewFilesBundle) -> DanoResult<()> {
+pub fn write_to_file(
+    config: &Config,
+    compare_hashes_bundle: &CompareHashesBundle,
+) -> DanoResult<()> {
     if matches!(config.exec_mode, ExecMode::Write(_))
         || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
-            && !new_file_bundle.new_files.is_empty()
+            && !compare_hashes_bundle.hash_non_matches.is_empty()
     {
-        write_new_paths(config, &new_file_bundle.new_files)?
-    } else if !config.opt_silent {
+        write_new_paths(config, &compare_hashes_bundle.hash_non_matches)?
+    } else if !config.opt_silent && matches!(config.exec_mode, ExecMode::Write(_)) {
         eprintln!("No new paths to write.");
     }
 
-    if !new_file_bundle.new_filenames.is_empty()
-        && (matches!(config.exec_mode, ExecMode::Write(_)) && config.opt_overwrite_old)
-        || (config.exec_mode == ExecMode::Compare
-            && config.opt_overwrite_old
-            && config.opt_write_new)
+    if !compare_hashes_bundle.hash_matches.is_empty()
+        && ((matches!(config.exec_mode, ExecMode::Write(_)) && config.opt_overwrite_old)
+            || (config.exec_mode == ExecMode::Compare
+                && config.opt_overwrite_old
+                && config.opt_write_new))
     {
         // append new paths
-        write_new_paths(config, &new_file_bundle.new_filenames)?;
+        write_new_paths(config, &compare_hashes_bundle.hash_matches)?;
 
         // read back
         let paths_from_file_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
@@ -174,11 +158,24 @@ pub fn write_to_file(config: &Config, new_file_bundle: &NewFilesBundle) -> DanoR
     }
 }
 
-fn is_same_filename(
-    paths_from_file_map: &BTreeMap<PathBuf, Option<FileMetadata>>,
-    path: &FileInfo,
-) -> bool {
-    paths_from_file_map.contains_key(&path.path)
+fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
+    let file_map_by_hash = file_map
+        .iter()
+        .filter_map(|(path, metadata)| {
+            metadata
+                .as_ref()
+                .map(|metadata| (metadata.hash_value, path))
+        })
+        .collect::<BTreeMap<u128, &PathBuf>>();
+
+    match &path.metadata {
+        Some(metadata) => file_map_by_hash.contains_key(&metadata.hash_value),
+        None => false,
+    }
+}
+
+fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
+    file_map.contains_key(&path.path)
 }
 
 fn get_file_map(
@@ -193,14 +190,16 @@ fn get_file_map(
         .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
 
     let res = match config.exec_mode {
-        ExecMode::Write(_) | ExecMode::Test => requested_paths
+        // for write and test, we take the paths /available/ from file and make
+        // dummy versions of the rest
+        ExecMode::Test => requested_paths
             .iter()
             .map(|path| match paths_from_file_map.get(path) {
                 Some(metadata) => (path.to_owned(), metadata.to_owned()),
                 None => (path.to_owned(), None),
             })
             .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>(),
-        ExecMode::Compare => paths_from_file_map,
+        ExecMode::Write(_) | ExecMode::Compare => paths_from_file_map,
         ExecMode::Print => BTreeMap::new(),
     };
     Ok(res)
@@ -209,26 +208,23 @@ fn get_file_map(
 fn compare_check(
     config: &Config,
     file_info: &FileInfo,
-    paths_from_file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
+    file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
 ) -> Option<Either<FileInfo, FileInfo>> {
-    let is_same_hash = is_same_hash(&paths_from_file_map, file_info);
-    let is_same_filename = is_same_filename(&paths_from_file_map, file_info);
+    let is_same_hash = is_same_hash(&file_map, file_info);
+    let is_same_filename = is_same_filename(&file_map, file_info);
 
     // must check whether metadata is none first
-    let res = if file_info.metadata.is_none() {
-        match config.exec_mode {
-            ExecMode::Compare => eprintln!("{:?}: Path is a new file", file_info.path),
-            ExecMode::Write(_) => display_file_info(file_info),
-            _ => unreachable!(),
-        }
+    if file_info.metadata.is_none() {
         None
     } else if is_same_filename && is_same_hash {
         match config.exec_mode {
-            ExecMode::Compare => eprintln!("{:?}: OK", file_info.path),
-            ExecMode::Write(_) => display_file_info(file_info),
+            ExecMode::Compare => eprintln!("{:?}: OK", &file_info.path),
+            ExecMode::Write(_) => {
+                let _ = display_file_info(file_info);
+            }
             _ => unreachable!(),
         }
-        Some((file_info.clone(), is_same_hash))
+        Some(Either::Left(file_info.clone()))
     } else if is_same_hash {
         if config.exec_mode == ExecMode::Compare {
             // know we are in Compare mode, so require write_new and overwrite_old
@@ -237,7 +233,7 @@ fn compare_check(
                 ExecMode::Compare => {
                     if config.opt_write_new && config.opt_overwrite_old {
                         eprintln!(
-                            "{:?}: OK, but path has same hash for new filename.  Hash data will be overwritten.",
+                            "{:?}: OK, but path has same hash for new filename.  Old file info will be overwritten.",
                             file_info.path
                         );
                     } else {
@@ -247,11 +243,13 @@ fn compare_check(
                         );
                     }
                 }
-                ExecMode::Write(_) => display_file_info(file_info),
+                ExecMode::Write(_) => {
+                    let _ = display_file_info(file_info);
+                }
                 _ => unreachable!(),
             }
         }
-        Some((file_info.clone(), is_same_hash))
+        Some(Either::Left(file_info.clone()))
     } else if is_same_filename {
         match config.exec_mode {
             ExecMode::Compare => {
@@ -260,23 +258,23 @@ fn compare_check(
                     file_info.path
                 );
             }
-            ExecMode::Write(_) => display_file_info(file_info),
+            ExecMode::Write(_) => {
+                let _ = display_file_info(file_info);
+            }
             _ => unreachable!(),
         }
-        Some((file_info.clone(), is_same_hash))
-    } else {
         None
-    };
-
-    match res {
-        Some((file_info, is_same_hash)) => {
-            if is_same_hash {
-                Some(Either::Left(file_info))
-            } else {
-                Some(Either::Right(file_info))
+    } else {
+        match config.exec_mode {
+            ExecMode::Compare => {
+                eprintln!("{:?}: Path is a new file", file_info.path);
             }
+            ExecMode::Write(_) => {
+                let _ = display_file_info(file_info);
+            }
+            _ => unreachable!(),
         }
-        None => None,
+        Some(Either::Right(file_info.clone()))
     }
 }
 
