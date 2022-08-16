@@ -8,7 +8,6 @@ use std::{
     fmt,
     fs::{File, OpenOptions},
     io::{Read, Write},
-    path::Path,
 };
 
 use crate::lookup_file_info::FileInfo;
@@ -40,7 +39,7 @@ impl Error for DanoError {
 }
 
 pub fn overwrite_all_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = overwrite_output_file(&config.pwd)?;
+    let mut output_file = overwrite_output_file(&config)?;
 
     new_files
         .iter()
@@ -48,7 +47,7 @@ pub fn overwrite_all_paths(config: &Config, new_files: &[FileInfo]) -> DanoResul
 }
 
 pub fn write_new_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = append_output_file(&config.pwd)?;
+    let mut output_file = append_output_file(&config)?;
 
     new_files
         .iter()
@@ -84,10 +83,10 @@ pub fn display_file_info(file_info: &FileInfo) {
     }
 }
 
-pub fn read_input_file(pwd: &Path) -> DanoResult<File> {
+pub fn read_input_file(config: &Config) -> DanoResult<File> {
     if let Ok(input_file) = OpenOptions::new()
         .read(true)
-        .open(pwd.join("dano_hashes.txt"))
+        .open(&config.output_file)
     {
         Ok(input_file)
     } else {
@@ -95,7 +94,7 @@ pub fn read_input_file(pwd: &Path) -> DanoResult<File> {
     }
 }
 
-pub fn overwrite_output_file(pwd: &Path) -> DanoResult<File> {
+pub fn overwrite_output_file(config: &Config) -> DanoResult<File> {
     // creates script file in user's home dir or will fail if file already exists
     if let Ok(output_file) = OpenOptions::new()
         // should overwrite the file always
@@ -104,7 +103,7 @@ pub fn overwrite_output_file(pwd: &Path) -> DanoResult<File> {
         // create_new() will only create if DNE
         // create on a file that exists just opens
         .truncate(true)
-        .open(pwd.join("dano_hashes.txt"))
+        .open(&config.output_file)
     {
         Ok(output_file)
     } else {
@@ -112,7 +111,7 @@ pub fn overwrite_output_file(pwd: &Path) -> DanoResult<File> {
     }
 }
 
-fn append_output_file(pwd: &Path) -> DanoResult<File> {
+fn append_output_file(config: &Config) -> DanoResult<File> {
     // creates script file in user's home dir or will fail if file already exists
     if let Ok(output_file) = OpenOptions::new()
         // should overwrite the file always
@@ -121,7 +120,7 @@ fn append_output_file(pwd: &Path) -> DanoResult<File> {
         // create_new() will only create if DNE
         // create on a file that exists just opens
         .create(true)
-        .open(pwd.join("dano_hashes.txt"))
+        .open(&config.output_file)
     {
         Ok(output_file)
     } else {

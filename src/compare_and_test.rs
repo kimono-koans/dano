@@ -130,8 +130,8 @@ pub fn overwrite_and_write_new(
 
         // read back
         let paths_from_file_with_duplicates: Vec<FileInfo> =
-            if config.pwd.join("dano_hashes.txt").exists() {
-                let mut input_file = read_input_file(&config.pwd)?;
+            if config.output_file.exists() {
+                let mut input_file = read_input_file(&config)?;
                 let mut buffer = String::new();
                 input_file.read_to_string(&mut buffer)?;
                 buffer.lines().flat_map(deserialize).collect()

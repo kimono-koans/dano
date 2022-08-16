@@ -5,21 +5,21 @@
 
 use std::{
     ffi::OsStr,
-    fs::{canonicalize, read_dir},
+    fs::read_dir,
     io::Read,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
 use rayon::prelude::*;
 
-mod check_test_write;
+mod compare_and_test;
 mod lookup_file_info;
 mod util;
 
 use crate::lookup_file_info::FileInfo;
 use crate::util::{deserialize, display_file_info, read_input_file, read_stdin, DanoError};
-use check_test_write::{file_info_from_paths, overwrite_and_write_new};
+use compare_and_test::{file_info_from_paths, overwrite_and_write_new};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -35,40 +35,50 @@ fn parse_args() -> ArgMatches {
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(1),
         )
-        .arg(Arg::new("WRITE").short('w').long("write").display_order(2))
-        .arg(Arg::new("TEST").short('t').long("test").display_order(3))
+        .arg(
+            Arg::new("OUTPUT_FILE")
+                .help("")
+                .takes_value(true)
+                .multiple_values(false)
+                .value_parser(clap::builder::ValueParser::os_string())
+                .display_order(2),
+        )
+        .arg(Arg::new("WRITE").short('w').long("write").display_order(3))
+        .arg(Arg::new("TEST").short('t').long("test").display_order(4))
         .arg(
             Arg::new("COMPARE")
                 .short('c')
                 .long("compare")
-                .display_order(4),
+                .display_order(5),
         )
-        .arg(Arg::new("PRINT").short('p').long("print").display_order(5))
+        .arg(Arg::new("PRINT").short('p').long("print").display_order(6))
         .arg(
             Arg::new("SILENT")
                 .short('s')
                 .long("silent")
-                .display_order(6),
-        )
-        .arg(
-            Arg::new("OVERWRITE_OLD")
-                .short('o')
-                .long("overwrite")
-                .conflicts_with_all(&["TEST", "PRINT"])
                 .display_order(7),
         )
         .arg(
-            Arg::new("WRITE_NEW")
-                .short('n')
-                .long("write-new")
-                .requires("COMPARE")
+            Arg::new("OVERWRITE_OLD")
+                .long("overwrite")
+                .conflicts_with_all(&["TEST", "PRINT"])
                 .display_order(8),
         )
         .arg(
-            Arg::new("DISABLE_FILTER")
-                .short('d')
-                .long("disable-filter")
+            Arg::new("WRITE_NEW")
+                .long("write-new")
+                .requires("COMPARE")
                 .display_order(9),
+        )
+        .arg(
+            Arg::new("DISABLE_FILTER")
+                .long("disable-filter")
+                .display_order(10),
+        )
+        .arg(
+            Arg::new("CANONICAL_PATHS")
+                .long("canonical-paths")
+                .display_order(11),
         )
         .get_matches()
 }
@@ -88,6 +98,7 @@ pub struct Config {
     opt_silent: bool,
     opt_overwrite_old: bool,
     pwd: PathBuf,
+    output_file: PathBuf,
     paths: Vec<PathBuf>,
 }
 
@@ -119,10 +130,22 @@ impl Config {
             ExecMode::Compare
         } else if matches.is_present("TEST") {
             ExecMode::Test
-        } else if matches.is_present("PRINT") {
+        } else if matches.is_present("PRINT") && !matches.is_present("WRITE") {
             ExecMode::Print
         } else {
             ExecMode::Write
+        };
+
+        let opt_write_new = matches.is_present("WRITE_NEW");
+        let opt_silent = matches.is_present("SILENT");
+        let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
+        let opt_disable_filter = matches.is_present("DISABLE_FILTER");
+        let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
+
+        let output_file = if let Some(output_file) = matches.value_of_os("OUTPUT_FILE") {
+            PathBuf::from(output_file)
+        } else {
+            pwd.join("dano_hashes.txt")
         };
 
         let paths: Vec<PathBuf> = {
@@ -139,16 +162,12 @@ impl Config {
                     ExecMode::Test | ExecMode::Print => Vec::new(),
                 }
             };
-            parse_paths(&res)
+            parse_paths(&res, opt_disable_filter, opt_canonical_paths, &output_file)
         };
 
         if paths.is_empty() && matches!(exec_mode, ExecMode::Write | ExecMode::Compare) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
-
-        let opt_write_new = matches.is_present("WRITE_NEW");
-        let opt_silent = matches.is_present("SILENT");
-        let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
 
         Ok(Config {
             exec_mode,
@@ -156,12 +175,13 @@ impl Config {
             opt_write_new,
             opt_overwrite_old,
             pwd,
+            output_file,
             paths,
         })
     }
 }
 
-fn parse_paths(raw_paths: &[PathBuf]) -> Vec<PathBuf> {
+fn parse_paths(raw_paths: &[PathBuf], opt_disable_filter: bool, opt_canonical_paths: bool, output_file: &Path) -> Vec<PathBuf> {
     let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
 
     raw_paths
@@ -174,13 +194,23 @@ fn parse_paths(raw_paths: &[PathBuf]) -> Vec<PathBuf> {
                 false
             }
         })
-        .filter(|path| path.file_name() != Some(OsStr::new("dano_hashes.txt")))
+        .filter(|path| path.file_name() != Some(&OsStr::new(output_file)))
         .filter(|path| {
-            auto_extension_filter
+            if !opt_disable_filter {
+                auto_extension_filter
                 .lines()
                 .any(|extension| path.extension() == Some(OsStr::new(extension)))
+            } else {
+                true
+            }
         })
-        .flat_map(canonicalize)
+        .map(|path| 
+            if opt_canonical_paths {
+                path.canonicalize().unwrap_or_else(|_| path.to_owned())
+            } else {
+                path.to_owned()
+            }
+        )
         .collect()
 }
 
@@ -198,7 +228,7 @@ fn exec() -> DanoResult<()> {
     let config = Config::new()?;
 
     let paths_from_file: Vec<FileInfo> = if config.pwd.join("dano_hashes.txt").exists() {
-        let mut input_file = read_input_file(&config.pwd)?;
+        let mut input_file = read_input_file(&config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
         buffer.lines().flat_map(deserialize).collect()
