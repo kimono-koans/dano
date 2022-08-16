@@ -32,8 +32,13 @@ pub fn file_info_from_paths(
 
         let requested_paths_clone = requested_paths.to_owned();
 
+        let thread_pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(8usize)
+            .build()
+            .expect("Could not initialize rayon threadpool");
+
         thread::spawn(move || {
-            rayon::in_place_scope(|file_info_scope| {
+            thread_pool.in_place_scope(|file_info_scope| {
                 requested_paths_clone.iter().for_each(|path_buf| {
                     let tx_item_clone = tx_item.clone();
                     file_info_scope.spawn(move |_| {
@@ -77,9 +82,14 @@ pub fn file_info_from_paths(
         }
     }
 
+    // exit with non-zero status is test is not "OK"
     if matches!(config.exec_mode, ExecMode::Test) {
         std::process::exit(exit_code)
     }
+
+    // sort new paths before writing to file, threads may complete in non-sorted order
+    new_filenames.sort_unstable_by_key(|file_info| file_info.clone().path);
+    new_files.sort_unstable_by_key(|file_info| file_info.clone().path);
 
     Ok(NewFilesBundle {
         new_filenames,
@@ -147,7 +157,7 @@ pub fn write_to_file(config: &Config, new_file_bundle: &NewFilesBundle) -> DanoR
                 group_file_info
                     .into_iter()
                     .max_by_key(|file_info| match &file_info.metadata {
-                        Some(metadata) => metadata.last_checked,
+                        Some(metadata) => metadata.last_written,
                         None => SystemTime::UNIX_EPOCH,
                     })
             })

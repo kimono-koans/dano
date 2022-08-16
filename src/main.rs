@@ -2,7 +2,6 @@
 //
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
-
 use std::{
     ffi::OsStr,
     fs::read_dir,
@@ -32,6 +31,7 @@ fn parse_args() -> ArgMatches {
                 .help("")
                 .takes_value(true)
                 .multiple_values(true)
+                .last(true)
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(1),
         )
@@ -39,7 +39,6 @@ fn parse_args() -> ArgMatches {
             Arg::new("OUTPUT_FILE")
                 .help("")
                 .takes_value(true)
-                .multiple_values(false)
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(2),
         )
@@ -98,6 +97,7 @@ enum ExecMode {
     Print,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Config {
     exec_mode: ExecMode,
@@ -243,7 +243,7 @@ fn main() {
 fn exec() -> DanoResult<()> {
     let config = Config::new()?;
 
-    let paths_from_file: Vec<FileInfo> = if config.pwd.join("dano_hashes.txt").exists() {
+    let paths_from_file: Vec<FileInfo> = if config.output_file.exists() {
         let mut input_file = read_input_file(&config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
@@ -253,13 +253,8 @@ fn exec() -> DanoResult<()> {
     };
 
     match &config.exec_mode {
-        ExecMode::Write(_) => {
-            let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
-
-            write_to_file(&config, &new_file_bundle)
-        }
-        ExecMode::Compare => {
-            if paths_from_file.is_empty() {
+        ExecMode::Write(_) | ExecMode::Compare => {
+            if paths_from_file.is_empty() && matches!(config.exec_mode, ExecMode::Compare) {
                 return Err(DanoError::new(
                     "Nothing to check or print.  Hash file does not exist.",
                 )

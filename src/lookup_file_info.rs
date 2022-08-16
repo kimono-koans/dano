@@ -26,7 +26,7 @@ pub struct FileInfo {
 pub struct FileMetadata {
     pub hash_algo: Box<str>,
     pub hash_value: u128,
-    pub last_checked: SystemTime,
+    pub last_written: SystemTime,
     pub modify_time: SystemTime,
 }
 
@@ -82,7 +82,7 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
             Some((first, last)) => FileInfo {
                 path: path.to_owned(),
                 metadata: Some(FileMetadata {
-                    last_checked: timestamp.to_owned(),
+                    last_written: timestamp.to_owned(),
                     hash_algo: first.into(),
                     hash_value: { u128::from_str_radix(last, 16)? },
                     modify_time: path.metadata()?.modified()?,
