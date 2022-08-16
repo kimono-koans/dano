@@ -35,6 +35,7 @@ pub fn exec_process_file_info(
     // R
     let mut hash_non_matches = Vec::new();
 
+    // loop while recv from channel
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare => {
