@@ -160,7 +160,6 @@ m2a
 mpa
 mpc
 mjpg
-txt
 mpl2
 sub
 msf
@@ -223,7 +222,6 @@ asc
 diz
 ice
 nfo
-txt
 vt
 ty
 ty+
@@ -237,7 +235,6 @@ rcv
 viv
 idx
 vpk
-txt
 vqf
 vql
 vqe

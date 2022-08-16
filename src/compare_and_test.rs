@@ -53,7 +53,7 @@ pub fn file_info_from_paths(
         });
 
         // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
-        //drop(tx_item);
+        // explicit drop is: drop(tx_item);
         rx_item
     };
 
@@ -68,7 +68,7 @@ pub fn file_info_from_paths(
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare => {
-                if let Some(either) = compare_check(config, &file_info, file_map.clone()) {
+                if let (Some(either), _) = check(config, &file_info, file_map.clone()) {
                     match either {
                         Either::Left(file_info) => hash_matches.push(file_info),
                         Either::Right(file_info) => hash_non_matches.push(file_info),
@@ -76,9 +76,9 @@ pub fn file_info_from_paths(
                 }
             }
             ExecMode::Test => {
-                let ret_val = test_check(&file_info, file_map.clone());
-                if ret_val != 0 {
-                    exit_code = ret_val
+                let (_, test_exit_code) = check(config, &file_info, file_map.clone());
+                if test_exit_code != 0 {
+                    exit_code = test_exit_code
                 }
             }
             ExecMode::Print => unreachable!(),
@@ -205,20 +205,31 @@ fn get_file_map(
     Ok(res)
 }
 
-fn compare_check(
+fn check(
     config: &Config,
     file_info: &FileInfo,
     file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
-) -> Option<Either<FileInfo, FileInfo>> {
+) -> (Option<Either<FileInfo, FileInfo>>, i32) {
     let is_same_hash = is_same_hash(&file_map, file_info);
     let is_same_filename = is_same_filename(&file_map, file_info);
+    let mut test_exit_code = 0;
 
     // must check whether metadata is none first
-    if file_info.metadata.is_none() {
+    let opt_file_info = if file_info.metadata.is_none() {
+        match config.exec_mode {
+            ExecMode::Compare | ExecMode::Test => {
+                eprintln!("{:?}: WARNING, path does not exist", &file_info.path)
+            }
+            ExecMode::Write(_) => {
+                let _ = print_file_info(file_info);
+            }
+            _ => unreachable!(),
+        }
+        test_exit_code = 2;
         None
     } else if is_same_filename && is_same_hash {
         match config.exec_mode {
-            ExecMode::Compare => eprintln!("{:?}: OK", &file_info.path),
+            ExecMode::Compare | ExecMode::Test => eprintln!("{:?}: OK", &file_info.path),
             ExecMode::Write(_) => {
                 let _ = print_file_info(file_info);
             }
@@ -226,33 +237,31 @@ fn compare_check(
         }
         Some(Either::Left(file_info.clone()))
     } else if is_same_hash {
-        if config.exec_mode == ExecMode::Compare {
-            // know we are in Compare mode, so require write_new and overwrite_old
-            // to specify things will be overwritten
-            match config.exec_mode {
-                ExecMode::Compare => {
-                    if config.opt_write_new && config.opt_overwrite_old {
-                        eprintln!(
-                            "{:?}: OK, but path has same hash for new filename.  Old file info will be overwritten.",
-                            file_info.path
-                        );
-                    } else {
-                        eprintln!(
-                            "{:?}: OK, but path has same hash for new filename",
-                            file_info.path
-                        );
-                    }
+        // know we are in Compare mode, so require write_new and overwrite_old
+        // to specify things will be overwritten
+        match config.exec_mode {
+            ExecMode::Compare | ExecMode::Test => {
+                if config.opt_write_new && config.opt_overwrite_old {
+                    eprintln!(
+                        "{:?}: OK, but path has same hash for new filename.  Old file info will be overwritten.",
+                        file_info.path
+                    );
+                } else {
+                    eprintln!(
+                        "{:?}: OK, but path has same hash for new filename",
+                        file_info.path
+                    );
                 }
-                ExecMode::Write(_) => {
-                    let _ = print_file_info(file_info);
-                }
-                _ => unreachable!(),
             }
+            ExecMode::Write(_) => {
+                let _ = print_file_info(file_info);
+            }
+            _ => unreachable!(),
         }
         Some(Either::Left(file_info.clone()))
     } else if is_same_filename {
         match config.exec_mode {
-            ExecMode::Compare => {
+            ExecMode::Compare | ExecMode::Test => {
                 eprintln!(
                     "{:?}: WARNING, path has new hash for same filename",
                     file_info.path
@@ -266,7 +275,7 @@ fn compare_check(
         None
     } else {
         match config.exec_mode {
-            ExecMode::Compare => {
+            ExecMode::Compare | ExecMode::Test => {
                 eprintln!("{:?}: Path is a new file", file_info.path);
             }
             ExecMode::Write(_) => {
@@ -275,36 +284,7 @@ fn compare_check(
             _ => unreachable!(),
         }
         Some(Either::Right(file_info.clone()))
-    }
-}
+    };
 
-fn test_check(
-    requested_path: &FileInfo,
-    requested_paths_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
-) -> i32 {
-    let is_same_hash = is_same_hash(&requested_paths_map, requested_path);
-    let is_same_filename = is_same_filename(&requested_paths_map, requested_path);
-    let mut exit_code = 0;
-
-    // must check whether metadata is none first
-    // a number of checks compare paths against themselves
-    // like HERE, so always check if we were able to run ffmpeg on the path
-    if requested_path.metadata.is_none() {
-        eprintln!("{:?}: WARNING, path does not exist", requested_path.path);
-        exit_code = 2;
-    } else if is_same_filename && is_same_hash {
-        eprintln!("{:?}: OK", requested_path.path);
-    } else if is_same_hash {
-        eprintln!(
-            "{:?}: OK, but path has same hash for new filename",
-            requested_path.path
-        );
-    } else if is_same_filename {
-        eprintln!(
-            "{:?}: WARNING, path has new hash for same filename",
-            requested_path.path
-        );
-    }
-
-    exit_code
+    (opt_file_info, test_exit_code)
 }
