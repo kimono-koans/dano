@@ -92,6 +92,7 @@ fn parse_args() -> ArgMatches {
                 .takes_value(true)
                 .min_values(1)
                 .require_equals(true)
+                .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(7))
         .arg(
             Arg::new("SILENT")
