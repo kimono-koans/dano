@@ -19,6 +19,7 @@ use crate::DanoResult;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileInfo {
+    pub version: usize,
     pub path: PathBuf,
     pub metadata: Option<FileMetadata>,
 }
@@ -67,6 +68,7 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
 
     let phantom_file_info = FileInfo {
         path: path.to_owned(),
+        version: 1,
         metadata: None,
     };
 
@@ -82,6 +84,7 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
         let res = match stdout_string.split_once('=') {
             Some((first, last)) => FileInfo {
                 path: path.to_owned(),
+                version: 1,
                 metadata: Some(FileMetadata {
                     last_written: timestamp.to_owned(),
                     hash_algo: first.into(),
