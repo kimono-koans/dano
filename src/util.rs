@@ -67,21 +67,19 @@ fn write_path(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
     }
 }
 
-pub fn display_output_path(file_info: &FileInfo) -> DanoResult<()> {
+pub fn display_file_info(file_info: &FileInfo) {
     match &file_info.metadata {
         Some(metadata) => {
             eprintln!(
                 "{}={:x} : {:?}",
                 metadata.hash_algo, metadata.hash_value, file_info.path
             );
-            Ok(())
         }
         None => {
             eprintln!(
                 "WARNING: Could not generate checksum for: {:?}",
                 file_info.path
             );
-            Ok(())
         }
     }
 }
@@ -153,6 +151,7 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
 
     let broken_string: Vec<String> = std::str::from_utf8(&buffer)?
         .split(&['\n', '\0'])
+        .filter(|i| !i.is_empty())
         .into_iter()
         .map(|i| i.to_owned())
         .collect();

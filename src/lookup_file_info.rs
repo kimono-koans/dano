@@ -9,11 +9,12 @@ use std::{
     time::SystemTime,
 };
 
+use crossbeam::channel::Sender;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::util::{display_output_path, DanoError};
-use crate::{Config, DanoResult, ExecMode};
+use crate::util::DanoError;
+use crate::DanoResult;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileInfo {
@@ -30,9 +31,9 @@ pub struct FileMetadata {
 }
 
 impl FileInfo {
-    pub fn new(config: &Config, path: &Path) -> DanoResult<Self> {
+    pub fn send_file_info(path: &Path, tx_item: Sender<FileInfo>) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
-            exec_ffmpeg(config, path, &ffmpeg_command)
+            exec_ffmpeg(path, &ffmpeg_command, tx_item)
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -42,7 +43,7 @@ impl FileInfo {
     }
 }
 
-fn exec_ffmpeg(config: &Config, path: &Path, ffmpeg_command: &Path) -> DanoResult<FileInfo> {
+fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) -> DanoResult<()> {
     // all snapshots should have the same timestamp
     let timestamp = &SystemTime::now();
     let path_clone = path.to_string_lossy();
@@ -63,9 +64,19 @@ fn exec_ffmpeg(config: &Config, path: &Path, ffmpeg_command: &Path) -> DanoResul
         .output()?;
     let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
 
+    let phantom_file_info = FileInfo {
+        path: path.to_owned(),
+        metadata: None,
+    };
+
     // stderr_string is a string not an error, so here we build an err or output
     if stdout_string.is_empty() {
-        Err(DanoError::new("Unable to exec ffmpeg").into())
+        // ffmpeg won't work with a non-media file so it solely
+        // prints to stderr here, we want to still print our request
+        // and keep moving so we don't return an error
+        tx_item.send(phantom_file_info)?;
+
+        Ok(())
     } else {
         let res = match stdout_string.split_once('=') {
             Some((first, last)) => FileInfo {
@@ -77,16 +88,10 @@ fn exec_ffmpeg(config: &Config, path: &Path, ffmpeg_command: &Path) -> DanoResul
                     modify_time: path.metadata()?.modified()?,
                 }),
             },
-            None => FileInfo {
-                path: path.to_owned(),
-                metadata: None,
-            },
+            None => phantom_file_info,
         };
 
-        if config.exec_mode == ExecMode::Write && !config.opt_silent {
-            display_output_path(&res)?;
-        }
-
-        Ok(res)
+        tx_item.send(res)?;
+        Ok(())
     }
 }

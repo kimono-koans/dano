@@ -4,26 +4,22 @@
 // that was distributed with this source code.
 
 use std::{
-    collections::BTreeMap,
     ffi::OsStr,
     fs::{canonicalize, read_dir},
     io::Read,
     path::PathBuf,
-    time::SystemTime,
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
-use itertools::{Either, Itertools};
 use rayon::prelude::*;
-use util::overwrite_all_paths;
 
+mod check_test_write;
 mod lookup_file_info;
 mod util;
 
-use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::util::{
-    deserialize, display_output_path, read_input_file, read_stdin, write_new_paths, DanoError,
-};
+use crate::lookup_file_info::FileInfo;
+use crate::util::{deserialize, display_file_info, read_input_file, read_stdin, DanoError};
+use check_test_write::{file_info_from_paths, overwrite_and_write_new};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -52,8 +48,6 @@ fn parse_args() -> ArgMatches {
             Arg::new("SILENT")
                 .short('s')
                 .long("silent")
-                .requires("CHECK")
-                .requires("WRITE")
                 .display_order(6),
         )
         .arg(
@@ -131,7 +125,7 @@ impl Config {
             ExecMode::Write
         };
 
-        let mut paths: Vec<PathBuf> = {
+        let paths: Vec<PathBuf> = {
             let res: Vec<PathBuf> = if let Some(input_files) = matches.values_of_os("INPUT_FILES") {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
@@ -151,18 +145,6 @@ impl Config {
         if paths.is_empty() && matches!(exec_mode, ExecMode::Write | ExecMode::Compare) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
-
-        // deduplicate path_buf and sort --
-        // so input of ./.z* and ./.zshrc will only print ./.zshrc once
-        paths = if paths.len() > 1 {
-            paths.sort_unstable();
-            // dedup needs to be sorted/ordered first to work (not like a BTreeMap)
-            paths.dedup();
-
-            paths
-        } else {
-            paths
-        };
 
         let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
@@ -226,12 +208,9 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write => {
-            let paths_from_input = file_info_from_paths(&config, &config.paths)?;
+            let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            let (new_filenames, new_files) =
-                compare_hash_collections(&config, &paths_from_file, &paths_from_input)?;
-
-            overwrite_and_write_new(&config, new_filenames, new_files)
+            overwrite_and_write_new(&config, &new_file_bundle)
         }
         ExecMode::Compare => {
             if paths_from_file.is_empty() {
@@ -241,12 +220,9 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            let paths_from_input = file_info_from_paths(&config, &config.paths)?;
+            let new_file_bundle = file_info_from_paths(&config, &config.paths, &paths_from_file)?;
 
-            let (new_filenames, new_files) =
-                compare_hash_collections(&config, &paths_from_file, &paths_from_input)?;
-
-            overwrite_and_write_new(&config, new_filenames, new_files)
+            overwrite_and_write_new(&config, &new_file_bundle)
         }
         ExecMode::Test => {
             if paths_from_file.is_empty() {
@@ -261,10 +237,7 @@ fn exec() -> DanoResult<()> {
                 .iter()
                 .map(|file_info| file_info.path.clone())
                 .collect();
-            let file_info_to_test = file_info_from_paths(&config, &paths_to_test)?;
-
-            // then compare
-            let _ = compare_hash_collections(&config, &paths_from_file, &file_info_to_test)?;
+            let _ = file_info_from_paths(&config, &paths_to_test, &paths_from_file)?;
 
             // test will exit on file dne with special exit code so we don't return here
             unreachable!()
@@ -277,223 +250,9 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            paths_from_file.iter().try_for_each(display_output_path)?;
+            paths_from_file.iter().for_each(display_file_info);
 
             Ok(())
         }
     }
-}
-
-fn file_info_from_paths(config: &Config, paths: &[PathBuf]) -> DanoResult<Vec<FileInfo>> {
-    let mut hashes: Vec<FileInfo> = paths
-        .par_iter()
-        .flat_map(|path| FileInfo::new(config, path.as_path()))
-        .collect();
-
-    hashes.par_sort_unstable_by_key(|file_info| file_info.path.clone());
-
-    Ok(hashes)
-}
-
-fn is_same_hash(
-    paths_from_file_map: &BTreeMap<PathBuf, Option<FileMetadata>>,
-    path: &FileInfo,
-) -> bool {
-    let paths_from_file_map_by_hash = paths_from_file_map
-        .iter()
-        .filter_map(|(path, metadata)| {
-            metadata
-                .as_ref()
-                .map(|metadata| (metadata.hash_value, path))
-        })
-        .collect::<BTreeMap<u128, &PathBuf>>();
-
-    match &path.metadata {
-        Some(metadata) => paths_from_file_map_by_hash.contains_key(&metadata.hash_value),
-        None => false,
-    }
-}
-
-fn overwrite_and_write_new(
-    config: &Config,
-    new_filenames: Vec<FileInfo>,
-    new_files: Vec<FileInfo>,
-) -> DanoResult<()> {
-    if config.exec_mode == ExecMode::Write
-        || (config.exec_mode == ExecMode::Compare && config.opt_write_new) && !new_files.is_empty()
-    {
-        write_new_paths(config, &new_files)?
-    } else if !config.opt_silent {
-        eprintln!("No new paths to write.");
-    }
-
-    if !new_filenames.is_empty()
-        && (config.exec_mode == ExecMode::Write && config.opt_overwrite_old)
-        || (config.exec_mode == ExecMode::Compare
-            && config.opt_overwrite_old
-            && config.opt_write_new)
-    {
-        // append new paths
-        write_new_paths(config, &new_filenames)?;
-
-        // read back
-        let paths_from_file_with_duplicates: Vec<FileInfo> =
-            if config.pwd.join("dano_hashes.txt").exists() {
-                let mut input_file = read_input_file(&config.pwd)?;
-                let mut buffer = String::new();
-                input_file.read_to_string(&mut buffer)?;
-                buffer.lines().flat_map(deserialize).collect()
-            } else {
-                Vec::new()
-            };
-
-        // then dedup
-        let unique_paths: Vec<FileInfo> = paths_from_file_with_duplicates
-            .iter()
-            .into_group_map_by(|file_info| match &file_info.metadata {
-                Some(metadata) => metadata.hash_value,
-                None => u128::MIN,
-            })
-            .into_iter()
-            .flat_map(|(_hash, group_file_info)| {
-                group_file_info
-                    .into_iter()
-                    .max_by_key(|file_info| match &file_info.metadata {
-                        Some(metadata) => metadata.last_checked,
-                        None => SystemTime::UNIX_EPOCH,
-                    })
-            })
-            .cloned()
-            .collect();
-
-        // and overwrite
-        overwrite_all_paths(config, &unique_paths)
-    } else {
-        Ok(())
-    }
-}
-
-fn is_same_filename(
-    paths_from_file_map: &BTreeMap<PathBuf, Option<FileMetadata>>,
-    path: &FileInfo,
-) -> bool {
-    paths_from_file_map.contains_key(&path.path)
-}
-
-fn compare_hash_collections(
-    config: &Config,
-    paths_from_file: &[FileInfo],
-    requested_paths: &[FileInfo],
-) -> DanoResult<(Vec<FileInfo>, Vec<FileInfo>)> {
-    let (new_filenames, new_files) = match config.exec_mode {
-        ExecMode::Compare | ExecMode::Write => {
-            compare_check(config, paths_from_file, requested_paths)
-        }
-        ExecMode::Test => {
-            let exit_code = test_check(paths_from_file, requested_paths);
-            // exit with code 2 on finding a file that DNE
-            std::process::exit(exit_code);
-        }
-        ExecMode::Print => unreachable!(),
-    };
-
-    Ok((new_filenames, new_files))
-}
-
-fn compare_check(
-    config: &Config,
-    paths_from_file: &[FileInfo],
-    requested_paths: &[FileInfo],
-) -> (Vec<FileInfo>, Vec<FileInfo>) {
-    let paths_from_file_map: BTreeMap<PathBuf, Option<FileMetadata>> = paths_from_file
-        .par_iter()
-        .cloned()
-        .map(|file_info| (file_info.path, file_info.metadata))
-        .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
-
-    let (new_filenames, new_files) = requested_paths
-        .par_iter()
-        .filter_map(|file_info| {
-            let is_same_hash = is_same_hash(&paths_from_file_map, file_info);
-            let is_same_filename = is_same_filename(&paths_from_file_map, file_info);
-
-            if is_same_filename && is_same_hash {
-                if config.exec_mode != ExecMode::Write {
-                    eprintln!("{:?}: OK", file_info.path);
-                }
-                None
-            } else if is_same_filename {
-                if config.exec_mode != ExecMode::Write {
-                    eprintln!(
-                        "{:?}: WARNING, path has new hash for same filename",
-                        file_info.path
-                    );
-                }
-                None
-            } else if is_same_hash {
-                if config.exec_mode != ExecMode::Write {
-                    // know we are in Compare mode, so require write_new and overwrite_old
-                    // to specify things will be overwritten
-                    if config.opt_write_new && config.opt_overwrite_old {
-                        eprintln!(
-                            "{:?}: OK, but path has same hash for new filename.  Hash data will be overwritten.",
-                            file_info.path
-                        );
-                    } else {
-                        eprintln!(
-                            "{:?}: OK, but path has same hash for new filename",
-                            file_info.path
-                        );
-                    }
-                }
-                Some((file_info.clone(), is_same_hash))
-            } else {
-                if config.exec_mode != ExecMode::Write {
-                    eprintln!("{:?}: Path is a new file", file_info.path);
-                }
-                Some((file_info.clone(), is_same_hash))
-            }
-        })
-        .partition_map(|(file_info, same_hash)| {
-            if same_hash {
-                Either::Left(file_info)
-            } else {
-                Either::Right(file_info)
-            }
-        });
-    (new_filenames, new_files)
-}
-
-fn test_check(paths_from_file: &[FileInfo], requested_paths: &[FileInfo]) -> i32 {
-    let requested_paths_map: BTreeMap<PathBuf, Option<FileMetadata>> = requested_paths
-        .par_iter()
-        .cloned()
-        .map(|file_info| (file_info.path, file_info.metadata))
-        .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
-
-    let exit_code = paths_from_file.iter().fold(0, |mut exit_code, file_info| {
-        let is_same_hash = is_same_hash(&requested_paths_map, file_info);
-        let is_same_filename = is_same_filename(&requested_paths_map, file_info);
-
-        if is_same_filename && is_same_hash {
-            eprintln!("{:?}: OK", file_info.path);
-        } else if is_same_filename {
-            eprintln!(
-                "{:?}: WARNING, path has new hash for same filename",
-                file_info.path
-            );
-        } else if is_same_hash {
-            eprintln!(
-                "{:?}: OK, but path has same hash for new filename",
-                file_info.path
-            );
-        } else {
-            eprintln!("{:?}: WARNING, path does not exist", file_info.path);
-            exit_code = 2;
-        }
-
-        exit_code
-    });
-
-    exit_code
 }
