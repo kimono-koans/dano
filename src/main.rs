@@ -51,6 +51,7 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("HASH_FILE")
                 .help("file from which to read the hashes.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the PWD).")
+                .short('k')
                 .long("hash-file")
                 .takes_value(true)
                 .min_values(1)
@@ -60,14 +61,19 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE")
-                .help("write the input files hashes to disk.")
+                .help("write the input files' hashes to a hash file.")
                 .short('w')
                 .long("write")
                 .display_order(4))
-        .arg(Arg::new("TEST").short('t').long("test").display_order(5))
+        .arg(
+            Arg::new("TEST")
+                .help("compare the hashes in a hash file to the files currently on disk.")
+                .short('t')
+                .long("test")
+                .display_order(5))
         .arg(
             Arg::new("COMPARE")
-                .help("compare the input files to the hashes located in the hash file.")
+                .help("compare the input files to the hashes in the hash file.")
                 .short('c')
                 .long("compare")
                 .display_order(6),
@@ -78,6 +84,15 @@ fn parse_args() -> ArgMatches {
             .short('p')
             .long("print")
             .display_order(7))
+        .arg(
+            Arg::new("NUM_THREADS")
+                .help("requested number of threads to use for file processing.  Default is twice the number of CPUs.")
+                .short('j')
+                .long("threads")
+                .takes_value(true)
+                .min_values(1)
+                .require_equals(true)
+                .display_order(7))
         .arg(
             Arg::new("SILENT")
                 .help("quiet many informational messages while in WRITE mode.")
@@ -102,7 +117,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("DISABLE_FILTER")
-                .help("by default, dano filters file extensions recognized by ffmpeg.  Disable such filtering here.")
+                .help("by default, dano filters file extensions not recognized by ffmpeg.  Disable such filtering here.")
                 .long("disable-filter")
                 .display_order(11),
         )
@@ -138,6 +153,7 @@ enum ExecMode {
 #[derive(Debug, Clone)]
 pub struct Config {
     exec_mode: ExecMode,
+    opt_num_threads: Option<usize>,
     opt_write_new: bool,
     opt_silent: bool,
     opt_overwrite_old: bool,
@@ -181,9 +197,18 @@ impl Config {
             || (matches.is_present("PRINT") && matches.is_present("WRITE"))
         {
             ExecMode::Write(DryRun::Enabled)
-        } else {
+        } else if matches.is_present("WRITE") {
             ExecMode::Write(DryRun::Disabled)
+        } else {
+            return Err(DanoError::new(
+                "You must specify an execution mode: COMPARE, TEST, WRITE, or PRINT",
+            )
+            .into());
         };
+
+        let opt_num_threads = matches
+            .value_of_lossy("NUM_THREADS")
+            .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
 
         let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
@@ -226,6 +251,7 @@ impl Config {
 
         Ok(Config {
             exec_mode,
+            opt_num_threads,
             opt_silent,
             opt_write_new,
             opt_overwrite_old,
@@ -306,7 +332,7 @@ fn exec() -> DanoResult<()> {
                 .into());
             }
 
-            let rx_item = exec_lookup_file_info(&config.paths)?;
+            let rx_item = exec_lookup_file_info(&config, &config.paths)?;
 
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &config.paths, &paths_from_file, rx_item)?;
@@ -327,7 +353,7 @@ fn exec() -> DanoResult<()> {
                 .map(|file_info| file_info.path.clone())
                 .collect();
 
-            let rx_item = exec_lookup_file_info(&paths_to_test)?;
+            let rx_item = exec_lookup_file_info(&config, &paths_to_test)?;
 
             let _ = exec_process_file_info(&config, &paths_to_test, &paths_from_file, rx_item)?;
 
