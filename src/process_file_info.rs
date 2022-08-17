@@ -197,51 +197,50 @@ fn verify_file_info(
                 eprintln!("{:?}: WARNING, path does not exist", &file_info.path)
             }
             ExecMode::Write(_) => {
-                if !config.opt_silent {
-                    let _ = print_file_info(file_info);
-                }
+                let _ = print_file_info(file_info);
             }
             _ => unreachable!(),
         }
         test_exit_code = 2;
         None
     } else if is_same_filename && is_same_hash {
-        match config.exec_mode {
-            ExecMode::Compare | ExecMode::Test => eprintln!("{:?}: OK", &file_info.path),
-            ExecMode::Write(_) => {
-                if !config.opt_silent {
+        if !config.opt_silent {
+            match config.exec_mode {
+                ExecMode::Compare | ExecMode::Test => eprintln!("{:?}: OK", &file_info.path),
+                ExecMode::Write(_) => {
                     let _ = print_file_info(file_info);
                 }
+                _ => unreachable!(),
             }
-            _ => unreachable!(),
         }
         Some(Either::Left(file_info.clone()))
     } else if is_same_hash {
         // know we are in Compare mode, so require write_new and overwrite_old
         // to specify things will be overwritten
-        match config.exec_mode {
-            ExecMode::Compare | ExecMode::Test => {
-                if config.opt_write_new && config.opt_overwrite_old {
-                    eprintln!(
-                        "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.",
-                        file_info.path
-                    );
-                } else {
-                    eprintln!(
-                        "{:?}: OK, but path has same hash for new filename",
-                        file_info.path
-                    );
+        if !config.opt_silent {
+            match config.exec_mode {
+                ExecMode::Compare | ExecMode::Test => {
+                    if config.opt_write_new && config.opt_overwrite_old {
+                        eprintln!(
+                            "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.",
+                            file_info.path
+                        );
+                    } else {
+                        eprintln!(
+                            "{:?}: OK, but path has same hash for new filename",
+                            file_info.path
+                        );
+                    }
                 }
-            }
-            ExecMode::Write(_) => {
-                if !config.opt_silent {
+                ExecMode::Write(_) => {
                     let _ = print_file_info(file_info);
                 }
+                _ => unreachable!(),
             }
-            _ => unreachable!(),
         }
         Some(Either::Left(file_info.clone()))
     } else if is_same_filename {
+        // always print, even in silent
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
                 eprintln!(
@@ -250,24 +249,22 @@ fn verify_file_info(
                 );
             }
             ExecMode::Write(_) => {
-                if !config.opt_silent {
-                    let _ = print_file_info(file_info);
-                }
+                let _ = print_file_info(file_info);
             }
             _ => unreachable!(),
         }
         None
     } else {
-        match config.exec_mode {
-            ExecMode::Compare | ExecMode::Test => {
-                eprintln!("{:?}: Path is a new file", file_info.path);
-            }
-            ExecMode::Write(_) => {
-                if !config.opt_silent {
+        if !config.opt_silent {
+            match config.exec_mode {
+                ExecMode::Compare | ExecMode::Test => {
+                    eprintln!("{:?}: Path is a new file", file_info.path);
+                }
+                ExecMode::Write(_) => {
                     let _ = print_file_info(file_info);
                 }
+                _ => unreachable!(),
             }
-            _ => unreachable!(),
         }
         Some(Either::Right(file_info.clone()))
     };

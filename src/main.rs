@@ -29,7 +29,7 @@ fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
         .about("dano is a wrapper for ffmpeg that checksums the internal file streams of certain media files, \
         and stores them in a format which can be used to verify such checksums later.  This is handy, because, \
-        should you choose to change metadata tags, or change file names, the media checksums will remain the same.")
+        should you choose to change metadata tags, or change file names, the media checksums *should* remain the same.")
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
@@ -97,7 +97,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(7))
         .arg(
             Arg::new("SILENT")
-                .help("quiet many informational messages while in WRITE mode.")
+                .help("quiet many informational messages.")
                 .short('s')
                 .long("silent")
                 .requires("WRITE")
