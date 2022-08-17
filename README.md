@@ -46,6 +46,8 @@ Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`
 
 ## Installation
 
+For now, `dano` depends on `ffmpeg`.
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
 cargo install --git https://github.com/kimono-koans/dano.git 
