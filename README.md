@@ -8,7 +8,7 @@ As a ZFS fan, I realize ZFS probably appeals to certain kind of person (like me!
 
 And because checksums are so cheap, we should expect them everywhere.  
 
-## Because `flac` is really clever?
+### Because `flac` is really clever?
 
 To me, this is what makes FLAC so great, and most other media format 2nd rate.  FLAC has first class support for writing and checking checksums of the streams held within a container.
 
@@ -19,7 +19,7 @@ So when I ask whether the FLAC audio stream has the same checksum as when I orig
 Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 ```
 
-## Why can't I do that everywhere?
+### Why can't I do that everywhere?
 
 The question is why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what ffmpeg provides easy to use.
 

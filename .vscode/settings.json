@@ -9,10 +9,12 @@
         "hashdeep",
         "itertools",
         "openpgp",
+        "proto",
         "Rdlr",
         "serde",
         "Swinford",
         "threadpool",
+        "tlsv",
         "Wray",
         "xattr",
         "XATTRS"
