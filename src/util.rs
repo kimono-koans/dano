@@ -10,7 +10,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{lookup_file_info::FileInfo, DryRun, ExecMode, FILE_INFO_VERSION};
+use crate::{lookup_file_info::FileInfo, DryRun, ExecMode, FILE_INFO_VERSION, XATTR_NAME};
 use crate::{Config, DanoResult};
 
 #[derive(Debug, Clone)]
@@ -63,12 +63,18 @@ fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> 
                 ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
                     print_out_buf(&out_string)?
                 }
+                ExecMode::Write(_) if config.opt_xattr => write_out_xattr(&out_string, file_info)?,
                 _ => write_out(&out_string, output_file)?,
             }
             Ok(())
         }
         None => Ok(()),
     }
+}
+
+fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
+    // this is a relatively large xattr(?), may need to change later
+    xattr::set(&file_info.path, XATTR_NAME, out_string.as_bytes()).map_err(|err| err.into())
 }
 
 pub fn print_err_buf(err_buf: &str) -> DanoResult<()> {
@@ -142,7 +148,7 @@ pub fn overwrite_output_file(config: &Config) -> DanoResult<File> {
         print_file_header(config, &mut output_file)?;
         Ok(output_file)
     } else {
-        Err(DanoError::new("dano could not open a file to write to.").into())
+        Err(DanoError::new("dano could not open a file to overwrite.").into())
     }
 }
 
@@ -164,7 +170,7 @@ fn append_output_file(config: &Config) -> DanoResult<File> {
         }
         Ok(output_file)
     } else {
-        Err(DanoError::new("dano could not open a file to write to.").into())
+        Err(DanoError::new("dano could not open a file to append.").into())
     }
 }
 
@@ -191,7 +197,8 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
     let broken_string: Vec<String> = std::str::from_utf8(&buffer)?
         // always split on newline or null char
         .split(&['\n', '\0'])
-        .into_iter().flat_map(|s| {
+        .into_iter()
+        .flat_map(|s| {
             // hacky quote parsing is better than nothing?
             if s.contains('\"') {
                 s.split('\"')

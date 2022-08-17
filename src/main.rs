@@ -23,12 +23,13 @@ use process_file_info::{exec_process_file_info, write_to_file};
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 const FILE_INFO_VERSION: usize = 1;
+const XATTR_NAME: &str = "user.dano.checksum";
 
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
-        .about("dano is a wrapper for ffmpeg that hashes the internal file streams of certain media files, \
-        and stores them in a format which can be used to verify such hashes later.  This is handy, because, \
-        should you choose to change metadata tags, or change file names, the media hashes will remain the same.")
+        .about("dano is a wrapper for ffmpeg that checksums the internal file streams of certain media files, \
+        and stores them in a format which can be used to verify such checksums later.  This is handy, because, \
+        should you choose to change metadata tags, or change file names, the media checksums will remain the same.")
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
@@ -243,13 +244,15 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Write(_) => read_stdin()?.par_iter().map(PathBuf::from).collect(),
+                    ExecMode::Test | ExecMode::Write(_) => {
+                        read_stdin()?.par_iter().map(PathBuf::from).collect()
+                    }
                     ExecMode::Compare => read_dir(&pwd)?
                         .par_bridge()
                         .flatten()
                         .map(|dir_entry| dir_entry.path())
                         .collect(),
-                    ExecMode::Test | ExecMode::Print => Vec::new(),
+                    ExecMode::Print => Vec::new(),
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
@@ -325,7 +328,18 @@ fn main() {
 fn exec() -> DanoResult<()> {
     let config = Config::new()?;
 
-    let paths_from_file: Vec<FileInfo> = if config.output_file.exists() {
+    let file_info_from_xattrs = {
+        config
+            .paths
+            .iter()
+            .flat_map(|path| xattr::get(path, XATTR_NAME))
+            .flatten()
+            .flat_map(|s| std::str::from_utf8(&s).map(|i| i.to_owned()))
+            .flat_map(|s| deserialize(&s))
+            .collect()
+    };
+
+    let file_info_from_hash_file: Vec<FileInfo> = if config.output_file.exists() {
         let mut input_file = read_input_file(&config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
@@ -334,52 +348,46 @@ fn exec() -> DanoResult<()> {
         Vec::new()
     };
 
+    let mut recorded_file_info: Vec<FileInfo> = [file_info_from_hash_file, file_info_from_xattrs]
+        .into_iter()
+        .flatten()
+        .collect();
+
+    recorded_file_info.sort_by_key(|file_info| file_info.path.clone());
+    recorded_file_info.dedup_by_key(|file_info| file_info.path.clone());
+
+    if recorded_file_info.is_empty() && !matches!(config.exec_mode, ExecMode::Write(_)) {
+        return Err(DanoError::new(
+            "Nothing to check or print.  No record of file checksums present.",
+        )
+        .into());
+    }
+
     match &config.exec_mode {
         ExecMode::Write(_) | ExecMode::Compare => {
-            if paths_from_file.is_empty() && matches!(config.exec_mode, ExecMode::Compare) {
-                return Err(DanoError::new(
-                    "Nothing to check or print.  Hash file does not exist.",
-                )
-                .into());
-            }
-
             let rx_item = exec_lookup_file_info(&config, &config.paths)?;
 
             let compare_hashes_bundle =
-                exec_process_file_info(&config, &config.paths, &paths_from_file, rx_item)?;
+                exec_process_file_info(&config, &config.paths, &recorded_file_info, rx_item)?;
 
             write_to_file(&config, &compare_hashes_bundle)
         }
         ExecMode::Test => {
-            if paths_from_file.is_empty() {
-                return Err(DanoError::new(
-                    "Nothing to check or print.  Hash file does not exist.",
-                )
-                .into());
-            }
-
             // recreate the FileInfo struct for the structs retrieved from file to compare
-            let paths_to_test: Vec<PathBuf> = paths_from_file
+            let paths_to_test: Vec<PathBuf> = recorded_file_info
                 .iter()
                 .map(|file_info| file_info.path.clone())
                 .collect();
 
             let rx_item = exec_lookup_file_info(&config, &paths_to_test)?;
 
-            let _ = exec_process_file_info(&config, &paths_to_test, &paths_from_file, rx_item)?;
+            let _ = exec_process_file_info(&config, &paths_to_test, &recorded_file_info, rx_item)?;
 
             // test will exit on file dne with special exit code so we don't return here
             unreachable!()
         }
         ExecMode::Print => {
-            if paths_from_file.is_empty() {
-                return Err(DanoError::new(
-                    "Nothing to check or print.  Hash file does not exist.",
-                )
-                .into());
-            }
-
-            paths_from_file.iter().try_for_each(print_file_info)?;
+            recorded_file_info.iter().try_for_each(print_file_info)?;
 
             Ok(())
         }

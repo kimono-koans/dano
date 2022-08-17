@@ -24,11 +24,11 @@ pub struct CompareHashesBundle {
 pub fn exec_process_file_info(
     config: &Config,
     requested_paths: &[PathBuf],
-    paths_from_file: &[FileInfo],
+    recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
 ) -> DanoResult<CompareHashesBundle> {
     // prepare for loop
-    let file_map = Arc::new(get_file_map(config, paths_from_file, requested_paths)?);
+    let file_map = Arc::new(get_file_map(config, recorded_file_info, requested_paths)?);
     let mut exit_code = 0;
     // L
     let mut hash_matches = Vec::new();
@@ -94,7 +94,7 @@ pub fn write_to_file(
         write_new_paths(config, &compare_hashes_bundle.hash_matches)?;
 
         // read back
-        let paths_from_file_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
+        let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
             let mut input_file = read_input_file(config)?;
             let mut buffer = String::new();
             input_file.read_to_string(&mut buffer)?;
@@ -109,7 +109,7 @@ pub fn write_to_file(
         };
 
         // then dedup
-        let unique_paths: Vec<FileInfo> = paths_from_file_with_duplicates
+        let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
             .iter()
             .into_group_map_by(|file_info| match &file_info.metadata {
                 Some(metadata) => metadata.hash_value,
@@ -156,10 +156,10 @@ fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &F
 
 fn get_file_map(
     config: &Config,
-    paths_from_file: &[FileInfo],
+    recorded_file_info: &[FileInfo],
     requested_paths: &[PathBuf],
 ) -> DanoResult<BTreeMap<PathBuf, Option<FileMetadata>>> {
-    let paths_from_file_map = paths_from_file
+    let recorded_file_info_map = recorded_file_info
         .par_iter()
         .cloned()
         .map(|file_info| (file_info.path, file_info.metadata))
@@ -170,12 +170,12 @@ fn get_file_map(
         // dummy versions of the rest
         ExecMode::Test => requested_paths
             .iter()
-            .map(|path| match paths_from_file_map.get(path) {
+            .map(|path| match recorded_file_info_map.get(path) {
                 Some(metadata) => (path.to_owned(), metadata.to_owned()),
                 None => (path.to_owned(), None),
             })
             .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>(),
-        ExecMode::Write(_) | ExecMode::Compare => paths_from_file_map,
+        ExecMode::Write(_) | ExecMode::Compare => recorded_file_info_map,
         ExecMode::Print => BTreeMap::new(),
     };
     Ok(res)
