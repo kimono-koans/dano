@@ -51,30 +51,32 @@ pub fn write_all_new_paths(
     new_files: &[FileInfo],
     write_type: WriteType,
 ) -> DanoResult<()> {
-    new_files
-        .iter()
-        .map(|file_info| {
-            let opt_output_file: Option<File> = match &config.exec_mode {
-                ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => None,
-                ExecMode::Write(_) if config.opt_xattr => None,
-                _ => 
-                    match write_type {
-                        WriteType::Append => append_output_file(config).ok(),
-                        WriteType::OverwriteAll => overwrite_output_file(config).ok(),
-                    },
+    match &config.exec_mode {
+        ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled || config.opt_xattr => new_files
+            .iter()
+            .try_for_each(|file_info| write_non_file(config, file_info)),
+        _ => {
+            let mut output_file = match write_type {
+                WriteType::Append => append_output_file(config)?,
+                WriteType::OverwriteAll => overwrite_output_file(config)?,
             };
-            (file_info, opt_output_file)
-        })
-        .try_for_each(|(file_info, opt_output_file)| match opt_output_file {
-            Some(mut output_file) => {
-                let serialized = serialize(file_info)? + "\n";
-                write_out(&serialized, &mut output_file)
+
+            // why not a closure?! long story!
+            for file_info in new_files {
+                write_to_file(file_info, &mut output_file)?
             }
-            None => write_non_output_file(config, file_info),
-        })
+
+            Ok(())
+        }
+    }
 }
 
-fn write_non_output_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
+fn write_to_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
+    let serialized = serialize(file_info)? + "\n";
+    write_out(&serialized, output_file)
+}
+
+fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
             let serialized = serialize(file_info)? + "\n";
