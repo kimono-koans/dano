@@ -328,33 +328,7 @@ fn main() {
 fn exec() -> DanoResult<()> {
     let config = Config::new()?;
 
-    let file_info_from_xattrs = {
-        config
-            .paths
-            .iter()
-            .flat_map(|path| xattr::get(path, XATTR_NAME))
-            .flatten()
-            .flat_map(|s| std::str::from_utf8(&s).map(|i| i.to_owned()))
-            .flat_map(|s| deserialize(&s))
-            .collect()
-    };
-
-    let file_info_from_hash_file: Vec<FileInfo> = if config.output_file.exists() {
-        let mut input_file = read_input_file(&config)?;
-        let mut buffer = String::new();
-        input_file.read_to_string(&mut buffer)?;
-        buffer.lines().flat_map(deserialize).collect()
-    } else {
-        Vec::new()
-    };
-
-    let mut recorded_file_info: Vec<FileInfo> = [file_info_from_hash_file, file_info_from_xattrs]
-        .into_iter()
-        .flatten()
-        .collect();
-
-    recorded_file_info.sort_by_key(|file_info| file_info.path.clone());
-    recorded_file_info.dedup_by_key(|file_info| file_info.path.clone());
+    let recorded_file_info = get_recorded_file_info(&config)?;
 
     if recorded_file_info.is_empty() && !matches!(config.exec_mode, ExecMode::Write(_)) {
         return Err(DanoError::new(
@@ -392,4 +366,40 @@ fn exec() -> DanoResult<()> {
             Ok(())
         }
     }
+}
+
+fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
+    // hashes from xattrs
+    let file_info_from_xattrs = {
+        config
+            .paths
+            .iter()
+            .flat_map(|path| xattr::get(path, XATTR_NAME))
+            .flatten()
+            .flat_map(|s| std::str::from_utf8(&s).map(|i| i.to_owned()))
+            .flat_map(|s| deserialize(&s))
+            .collect()
+    };
+
+    // get hashes from hash file, if it exists
+    let file_info_from_hash_file: Vec<FileInfo> = if config.output_file.exists() {
+        let mut input_file = read_input_file(config)?;
+        let mut buffer = String::new();
+        input_file.read_to_string(&mut buffer)?;
+        buffer.lines().flat_map(deserialize).collect()
+    } else {
+        Vec::new()
+    };
+
+    // combine both sources
+    let mut recorded_file_info: Vec<FileInfo> = [file_info_from_hash_file, file_info_from_xattrs]
+        .into_iter()
+        .flatten()
+        .collect();
+
+    // sort and dedup in case we have paths in hash file and xattrs
+    recorded_file_info.sort_by_key(|file_info| file_info.path.clone());
+    recorded_file_info.dedup_by_key(|file_info| file_info.path.clone());
+
+    Ok(recorded_file_info)
 }
