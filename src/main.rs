@@ -33,7 +33,7 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("input files to be hashed.  INPUT_FILE can also be read from stdin for NULL or NEWLINE delimited inputs.")
+                .help("input files to be hashed or checked.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.")
                 .takes_value(true)
                 .multiple_values(true)
                 .value_parser(clap::builder::ValueParser::os_string())
@@ -41,7 +41,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("OUTPUT_FILE")
-                .help("output file which will hold the hashes. If not specified, the 'dano_hashes.txt' will be used in the PWD.")
+                .help("output file which will hold the hashes. If not specified, 'dano_hashes.txt' in the PWD will be used.")
                 .long("output-file")
                 .takes_value(true)
                 .min_values(1)
@@ -62,7 +62,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE")
-                .help("write the input files' hashes to a hash file.")
+                .help("write the input files' hashes.")
                 .short('w')
                 .long("write")
                 .display_order(4))
@@ -74,20 +74,20 @@ fn parse_args() -> ArgMatches {
                 .display_order(5))
         .arg(
             Arg::new("COMPARE")
-                .help("compare the input files to the hashes in the hash file.")
+                .help("compare the input files to the hashes.")
                 .short('c')
                 .long("compare")
                 .display_order(6),
         )
         .arg(
             Arg::new("PRINT")
-            .help("pretty print the hashes in the hash file.")
+            .help("pretty print hashes.")
             .short('p')
             .long("print")
             .display_order(7))
         .arg(
             Arg::new("NUM_THREADS")
-                .help("requested number of threads to use for file processing.  Default is twice the number of CPUs.")
+                .help("requested number of threads to use for file processing.  Default is twice the number of logical cores.")
                 .short('j')
                 .long("threads")
                 .takes_value(true)
@@ -97,35 +97,35 @@ fn parse_args() -> ArgMatches {
                 .display_order(7))
         .arg(
             Arg::new("SILENT")
-                .help("quiet many informational messages.")
+                .help("quiet many informational messages (like \"OK\").")
                 .short('s')
                 .long("silent")
                 .requires("WRITE")
                 .display_order(8),
         )
         .arg(
-            Arg::new("OVERWRITE_OLD")
-                .help("if one file's hash matches another's, but they have different file name's, overwrite the old file info with the most current file info.")
-                .long("overwrite")
-                .conflicts_with_all(&["TEST", "PRINT"])
+            Arg::new("WRITE_NEW")
+                .help("if new files are present in COMPARE mode, append such file info.")
+                .long("write-new")
+                .requires("COMPARE")
                 .display_order(9),
         )
         .arg(
-            Arg::new("WRITE_NEW")
-                .help("if new files are present in COMPARE mode, append such file info to the hash file.")
-                .long("write-new")
-                .requires("COMPARE")
+            Arg::new("OVERWRITE_OLD")
+                .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
+                .long("overwrite")
+                .conflicts_with_all(&["TEST", "PRINT"])
                 .display_order(10),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
-                .help("by default, dano filters file extensions not recognized by ffmpeg.  Disable such filtering here.")
+                .help("by default, dano filters file extensions not recognized by ffmpeg.  Here, you may disable such filtering.")
                 .long("disable-filter")
                 .display_order(11),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
-                .help("use canonical paths instead of potentially relative paths.")
+                .help("use canonical paths (instead of potentially relative paths).")
                 .long("canonical-paths")
                 .display_order(12),
         )

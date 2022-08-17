@@ -63,7 +63,7 @@ pub fn write_all_new_paths(
 
             // why not a closure?! long story!
             // it seems with a closure we can't capture this &mut output_file
-            // as an env var, and therefore we can't open the file once in the iter 
+            // as an env var, and therefore we can't open the file once in the iter
             for file_info in new_files {
                 write_file(file_info, &mut output_file)?
             }
