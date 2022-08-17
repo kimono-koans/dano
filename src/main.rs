@@ -131,7 +131,8 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("XATTR")
-                .help("try to write (dano will always try to read) hash to/from file's extended attributes.")
+                .help("try to write (dano will always try to read) hash to/from file's extended attributes.  \
+                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.")
                 .short('x')
                 .long("xattr")
                 .display_order(12),
@@ -220,7 +221,8 @@ impl Config {
             .value_of_lossy("NUM_THREADS")
             .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
 
-        let opt_xattr = matches.is_present("XATTR");
+        let opt_xattr =
+            matches.is_present("XATTR") || std::env::var_os("DANO_XATTR_WRITES").is_some();
         let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
         let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
