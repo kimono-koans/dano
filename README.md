@@ -1,29 +1,25 @@
 # `dano`
 
-dano is a wrapper for `ffmpeg` that checksums the internal file streams of certain media files, and stores them in a format which can be used to verify such checksums later.  This is handy, because, should you choose to change metadata tags, or change file names, the media checksums *should* remain the same.
+[dano](https://github.com/kimono-koans/dano) is a wrapper for `ffmpeg` that checksums the internal file streams of `ffmpeg` compatible media files, and stores them in a format which can be used to verify such checksums later.  This is handy, because, should you choose to change metadata tags, or change file names, the media checksums *should* remain the same.
 
-## Why `dano`?
+## Why dano?
 
 As a ZFS fan, I realize ZFS probably appeals to certain kind of person (like me!).  It really shouldn't be so extraordinary to expect the files we read back to be the same files we wrote to disk.  But we live in a mad, mad world.
 
-And because checksums are so cheap, we should expect them everywhere.  
+## Because FLAC is really clever
 
-### Because `flac` is really clever
-
-To me, this is what makes FLAC so great, and most other media format 2nd rate.  FLAC has first class support for writing and checking checksums of the streams held within a container.
-
-So when I ask whether the FLAC audio stream has the same checksum as when I originally wrote it to disk, the `flac` command tells me whether the checksum matches:
+To me, first class checksums are one thing that makes the FLAC music format so great.  FLAC supports the writing and checking checksums of the streams held within a container, so, when I ask whether the FLAC audio stream is the same checksum as the  stream I originally wrote it to disk, the `flac` command tells me whether the checksum matches:
 
 ```bash
 % flac -t 'Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac'
 Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 ```
 
-### Why can't I do that everywhere?
+## Why can't I do that everywhere?
 
-The question is why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what ffmpeg provides easy to use:
+The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what ffmpeg provides easy to use.
 
-So when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
+So, when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
 
 ```bash
 % dano -w 'Sample.mkv'
