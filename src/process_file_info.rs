@@ -192,6 +192,7 @@ fn verify_file_info(
 
     // must check whether metadata is none first
     let opt_file_info = if file_info.metadata.is_none() {
+        // always print, even in silent
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
                 eprintln!("{:?}: WARNING, path does not exist", &file_info.path)
