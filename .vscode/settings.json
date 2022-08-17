@@ -5,12 +5,15 @@
         "checksummed",
         "cpus",
         "Dano",
+        "FLAC",
+        "hashdeep",
         "itertools",
         "openpgp",
         "Rdlr",
         "serde",
         "Swinford",
         "threadpool",
+        "Wray",
         "xattr",
         "XATTRS"
     ]
