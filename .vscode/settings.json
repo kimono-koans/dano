@@ -9,6 +9,8 @@
         "Rdlr",
         "serde",
         "Swinford",
-        "threadpool"
+        "threadpool",
+        "xattr",
+        "XATTRS"
     ]
 }

@@ -189,9 +189,21 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
     stdin.read_to_end(&mut buffer)?;
 
     let broken_string: Vec<String> = std::str::from_utf8(&buffer)?
+        // always split on newline or null char
         .split(&['\n', '\0'])
-        .filter(|i| !i.is_empty())
-        .into_iter()
+        .into_iter().flat_map(|s| {
+            // hacky quote parsing is better than nothing?
+            if s.contains('\"') {
+                s.split('\"')
+                    // unquoted paths should have excess whitespace trimmed
+                    .map(|s| s.trim())
+                    // remove any empty strings
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<&str>>()
+            } else {
+                s.split_ascii_whitespace().collect::<Vec<&str>>()
+            }
+        })
         .map(|i| i.to_owned())
         .collect();
 

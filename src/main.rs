@@ -129,6 +129,13 @@ fn parse_args() -> ArgMatches {
                 .display_order(12),
         )
         .arg(
+            Arg::new("XATTR")
+                .help("try to write (dano will always try to read) hash to/from file's extended attributes.")
+                .short('x')
+                .long("xattr")
+                .display_order(12),
+        )
+        .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
@@ -155,6 +162,7 @@ enum ExecMode {
 pub struct Config {
     exec_mode: ExecMode,
     opt_num_threads: Option<usize>,
+    opt_xattr: bool,
     opt_write_new: bool,
     opt_silent: bool,
     opt_overwrite_old: bool,
@@ -211,6 +219,7 @@ impl Config {
             .value_of_lossy("NUM_THREADS")
             .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
 
+        let opt_xattr = matches.is_present("XATTR");
         let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
         let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
@@ -253,6 +262,7 @@ impl Config {
         Ok(Config {
             exec_mode,
             opt_num_threads,
+            opt_xattr,
             opt_silent,
             opt_write_new,
             opt_overwrite_old,
