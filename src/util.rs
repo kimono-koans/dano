@@ -41,49 +41,50 @@ impl Error for DanoError {
     }
 }
 
-pub fn overwrite_all_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = overwrite_output_file(config)?;
-
-    new_files
-        .iter()
-        .try_for_each(|file_info| write_path(config, file_info, &mut output_file))
+pub enum WriteType {
+    Append,
+    OverwriteAll,
 }
 
-pub fn write_new_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()> {
-    let mut output_file = append_output_file(config)?;
-
+pub fn write_all_new_paths(
+    config: &Config,
+    new_files: &[FileInfo],
+    write_type: WriteType,
+) -> DanoResult<()> {
     new_files
         .iter()
-        .try_for_each(|file_info| write_path(config, file_info, &mut output_file))
+        .try_for_each(|file_info| write_single_path(config, file_info, &write_type))
 }
 
-fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
-    match &file_info.metadata {
-        Some(_metadata) => {
-            let serialized = if config.opt_xattr {
-                // write empty path for path, because we have the actual path
-                let rewrite = FileInfo {
-                    version: file_info.version,
-                    path: PathBuf::new(),
-                    metadata: file_info.metadata.to_owned(),
-                };
-                serialize(&rewrite)?
-            } else {
-                serialize(file_info)?
+fn write_single_path(config: &Config, file_info: &FileInfo, write_type: &WriteType) -> DanoResult<()> {
+    match &config.exec_mode {
+        ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
+            let serialized = serialize(file_info)?;
+            let out_string = serialized + "\n";
+            print_out_buf(&out_string)
+        }
+        ExecMode::Write(_) if config.opt_xattr => {
+            // write empty path for path, because we have the actual path
+            let rewrite = FileInfo {
+                version: file_info.version,
+                path: PathBuf::new(),
+                metadata: file_info.metadata.to_owned(),
             };
 
+            let serialized = serialize(&rewrite)?;
             let out_string = serialized + "\n";
-
-            match &config.exec_mode {
-                ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
-                    print_out_buf(&out_string)?
-                }
-                ExecMode::Write(_) if config.opt_xattr => write_out_xattr(&out_string, file_info)?,
-                _ => write_out(&out_string, output_file)?,
-            }
-            Ok(())
+            write_out_xattr(&out_string, file_info)
         }
-        None => Ok(()),
+        _ => {
+            let mut output_file = match write_type {
+                WriteType::Append => append_output_file(config)?,
+                WriteType::OverwriteAll => overwrite_output_file(config)?,
+            };
+
+            let serialized = serialize(file_info)?;
+            let out_string = serialized + "\n";
+            write_out(&out_string, &mut output_file)
+        }
     }
 }
 

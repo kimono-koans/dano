@@ -12,9 +12,7 @@ use rayon::prelude::*;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::util::{
-    deserialize, overwrite_all_paths, print_file_info, read_input_file, write_new_paths,
-};
+use crate::util::{deserialize, print_file_info, read_input_file, write_all_new_paths, WriteType};
 
 pub struct CompareHashesBundle {
     hash_matches: Vec<FileInfo>,
@@ -79,7 +77,11 @@ pub fn write_to_file(
         && matches!(config.exec_mode, ExecMode::Write(_))
         || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
     {
-        write_new_paths(config, &compare_hashes_bundle.hash_non_matches)?
+        write_all_new_paths(
+            config,
+            &compare_hashes_bundle.hash_non_matches,
+            WriteType::Append,
+        )?
     } else if !config.opt_silent && matches!(config.exec_mode, ExecMode::Write(_)) {
         eprintln!("No new paths to write.");
     }
@@ -91,7 +93,11 @@ pub fn write_to_file(
                 && config.opt_write_new))
     {
         // append new paths
-        write_new_paths(config, &compare_hashes_bundle.hash_matches)?;
+        write_all_new_paths(
+            config,
+            &compare_hashes_bundle.hash_matches,
+            WriteType::Append,
+        )?;
 
         if !config.opt_xattr {
             // read back
@@ -129,7 +135,7 @@ pub fn write_to_file(
                 .collect();
 
             // and overwrite
-            overwrite_all_paths(config, &unique_paths)
+            write_all_new_paths(config, &unique_paths, WriteType::OverwriteAll)
         } else {
             Ok(())
         }
