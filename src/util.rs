@@ -62,8 +62,10 @@ pub fn write_all_new_paths(
             };
 
             // why not a closure?! long story!
+            // it seems with a closure we can't capture this &mut output_file
+            // as an env var, and therefore we can't open the file once in the iter 
             for file_info in new_files {
-                write_to_file(file_info, &mut output_file)?
+                write_file(file_info, &mut output_file)?
             }
 
             Ok(())
@@ -71,7 +73,7 @@ pub fn write_all_new_paths(
     }
 }
 
-fn write_to_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
+fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
     let serialized = serialize(file_info)? + "\n";
     write_out(&serialized, output_file)
 }
@@ -91,13 +93,13 @@ fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
             };
 
             let serialized = serialize(&rewrite)? + "\n";
-            write_out_xattr(&serialized, file_info)
+            write_xattr(&serialized, file_info)
         }
         _ => unreachable!(),
     }
 }
 
-fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
+fn write_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
     // this is a relatively large xattr(?), may need to change later
     xattr::set(&file_info.path, DANO_XATTR_KEY_NAME, out_string.as_bytes())
         .map_err(|err| err.into())
