@@ -57,12 +57,11 @@ pub fn write_all_new_paths(
             let opt_output_file: Option<File> = match &config.exec_mode {
                 ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => None,
                 ExecMode::Write(_) if config.opt_xattr => None,
-                _ => Some({
+                _ => 
                     match write_type {
-                        WriteType::Append => append_output_file(config).unwrap(),
-                        WriteType::OverwriteAll => overwrite_output_file(config).unwrap(),
-                    }
-                }),
+                        WriteType::Append => append_output_file(config).ok(),
+                        WriteType::OverwriteAll => overwrite_output_file(config).ok(),
+                    },
             };
             (file_info, opt_output_file)
         })
