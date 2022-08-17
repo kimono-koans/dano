@@ -22,8 +22,8 @@ use process_file_info::{exec_process_file_info, write_to_file};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-const FILE_INFO_VERSION: usize = 1;
-const XATTR_NAME: &str = "user.dano.checksum";
+const DANO_FILE_INFO_VERSION: usize = 1;
+const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
@@ -370,11 +370,11 @@ fn exec() -> DanoResult<()> {
 
 fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     // hashes from xattrs
-    let file_info_from_xattrs = {
+    let mut file_info_from_xattrs: Vec<FileInfo> = {
         config
             .paths
             .iter()
-            .flat_map(|path| xattr::get(path, XATTR_NAME))
+            .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME))
             .flatten()
             .flat_map(|s| std::str::from_utf8(&s).map(|i| i.to_owned()))
             .flat_map(|s| deserialize(&s))
@@ -392,10 +392,8 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     };
 
     // combine both sources
-    let mut recorded_file_info: Vec<FileInfo> = [file_info_from_hash_file, file_info_from_xattrs]
-        .into_iter()
-        .flatten()
-        .collect();
+    file_info_from_xattrs.extend(file_info_from_hash_file);
+    let mut recorded_file_info: Vec<FileInfo> = file_info_from_xattrs;
 
     // sort and dedup in case we have paths in hash file and xattrs
     recorded_file_info.sort_by_key(|file_info| file_info.path.clone());

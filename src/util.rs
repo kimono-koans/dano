@@ -10,7 +10,9 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{lookup_file_info::FileInfo, DryRun, ExecMode, FILE_INFO_VERSION, XATTR_NAME};
+use crate::{
+    lookup_file_info::FileInfo, DryRun, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME,
+};
 use crate::{Config, DanoResult};
 
 #[derive(Debug, Clone)]
@@ -74,7 +76,8 @@ fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> 
 
 fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
     // this is a relatively large xattr(?), may need to change later
-    xattr::set(&file_info.path, XATTR_NAME, out_string.as_bytes()).map_err(|err| err.into())
+    xattr::set(&file_info.path, DANO_XATTR_KEY_NAME, out_string.as_bytes())
+        .map_err(|err| err.into())
 }
 
 pub fn print_err_buf(err_buf: &str) -> DanoResult<()> {
@@ -128,7 +131,7 @@ fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> 
     write_out(
         format!(
             "// DANO, FILE FORMAT VERSION:{}\n// Invoked from: {:?}\n",
-            FILE_INFO_VERSION, config.pwd
+            DANO_FILE_INFO_VERSION, config.pwd
         )
         .as_str(),
         output_file,
