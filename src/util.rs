@@ -53,15 +53,33 @@ pub fn write_all_new_paths(
 ) -> DanoResult<()> {
     new_files
         .iter()
-        .try_for_each(|file_info| write_single_path(config, file_info, &write_type))
+        .map(|file_info| {
+            let opt_output_file: Option<File> = match &config.exec_mode {
+                ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => None,
+                ExecMode::Write(_) if config.opt_xattr => None,
+                _ => Some({
+                    match write_type {
+                        WriteType::Append => append_output_file(config).unwrap(),
+                        WriteType::OverwriteAll => overwrite_output_file(config).unwrap(),
+                    }
+                }),
+            };
+            (file_info, opt_output_file)
+        })
+        .try_for_each(|(file_info, opt_output_file)| match opt_output_file {
+            Some(mut output_file) => {
+                let serialized = serialize(file_info)? + "\n";
+                write_out(&serialized, &mut output_file)
+            }
+            None => write_non_output_file(config, file_info),
+        })
 }
 
-fn write_single_path(config: &Config, file_info: &FileInfo, write_type: &WriteType) -> DanoResult<()> {
+fn write_non_output_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
-            let serialized = serialize(file_info)?;
-            let out_string = serialized + "\n";
-            print_out_buf(&out_string)
+            let serialized = serialize(file_info)? + "\n";
+            print_out_buf(&serialized)
         }
         ExecMode::Write(_) if config.opt_xattr => {
             // write empty path for path, because we have the actual path
@@ -71,20 +89,10 @@ fn write_single_path(config: &Config, file_info: &FileInfo, write_type: &WriteTy
                 metadata: file_info.metadata.to_owned(),
             };
 
-            let serialized = serialize(&rewrite)?;
-            let out_string = serialized + "\n";
-            write_out_xattr(&out_string, file_info)
+            let serialized = serialize(&rewrite)? + "\n";
+            write_out_xattr(&serialized, file_info)
         }
-        _ => {
-            let mut output_file = match write_type {
-                WriteType::Append => append_output_file(config)?,
-                WriteType::OverwriteAll => overwrite_output_file(config)?,
-            };
-
-            let serialized = serialize(file_info)?;
-            let out_string = serialized + "\n";
-            write_out(&out_string, &mut output_file)
-        }
+        _ => unreachable!(),
     }
 }
 
