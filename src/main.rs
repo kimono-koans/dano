@@ -10,7 +10,7 @@ use std::{
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
-use rayon::prelude::*;
+use rayon::{prelude::*, ThreadPool};
 
 mod lookup_file_info;
 mod process_file_info;
@@ -330,6 +330,8 @@ fn exec() -> DanoResult<()> {
 
     let recorded_file_info = get_recorded_file_info(&config)?;
 
+    let thread_pool = get_thread_pool(&config)?;
+
     if recorded_file_info.is_empty() && !matches!(config.exec_mode, ExecMode::Write(_)) {
         return Err(DanoError::new(
             "Nothing to check or print.  No record of file checksums present.",
@@ -339,7 +341,7 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(_) | ExecMode::Compare => {
-            let rx_item = exec_lookup_file_info(&config, &config.paths)?;
+            let rx_item = exec_lookup_file_info(&config.paths, thread_pool)?;
 
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &config.paths, &recorded_file_info, rx_item)?;
@@ -353,7 +355,7 @@ fn exec() -> DanoResult<()> {
                 .map(|file_info| file_info.path.clone())
                 .collect();
 
-            let rx_item = exec_lookup_file_info(&config, &paths_to_test)?;
+            let rx_item = exec_lookup_file_info(&paths_to_test, thread_pool)?;
 
             let _ = exec_process_file_info(&config, &paths_to_test, &recorded_file_info, rx_item)?;
 
@@ -368,21 +370,46 @@ fn exec() -> DanoResult<()> {
     }
 }
 
+fn get_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
+    let num_threads = if let Some(num_threads) = config.opt_num_threads {
+        num_threads
+    } else {
+        num_cpus::get() * 2usize
+    };
+
+    let thread_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .expect("Could not initialize rayon thread pool");
+
+    Ok(thread_pool)
+}
+
 fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
-    // hashes from xattrs
     let mut file_info_from_xattrs: Vec<FileInfo> = {
         config
             .paths
             .iter()
-            .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME))
-            .flatten()
-            .flat_map(|s| std::str::from_utf8(&s).map(|i| i.to_owned()))
-            .flat_map(|s| deserialize(&s))
+            .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
+            .flat_map(|(path, opt)| opt.map(|s| (path, s)))
+            .flat_map(|(path, s)| std::str::from_utf8(&s).map(|i| (path, i.to_owned())))
+            .flat_map(|(path, s)| deserialize(&s).map(|i| (path, i)))
+            .map(|(path, file_info)| {
+                // use the actual path name always
+                if path != &file_info.path {
+                    FileInfo {
+                        version: file_info.version,
+                        path: path.to_owned(),
+                        metadata: file_info.metadata,
+                    }
+                } else {
+                    file_info
+                }
+            })
             .collect()
     };
 
-    // get hashes from hash file, if it exists
-    let file_info_from_hash_file: Vec<FileInfo> = if config.output_file.exists() {
+    let file_info_from_file = if config.output_file.exists() {
         let mut input_file = read_input_file(config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
@@ -391,8 +418,8 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         Vec::new()
     };
 
-    // combine both sources
-    file_info_from_xattrs.extend(file_info_from_hash_file);
+    // combine
+    file_info_from_xattrs.extend(file_info_from_file);
     let mut recorded_file_info: Vec<FileInfo> = file_info_from_xattrs;
 
     // sort and dedup in case we have paths in hash file and xattrs

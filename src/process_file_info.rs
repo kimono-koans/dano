@@ -49,7 +49,7 @@ pub fn exec_process_file_info(
             ExecMode::Test => {
                 let (_, test_exit_code) = verify_file_info(config, &file_info, file_map.clone());
                 if test_exit_code != 0 {
-                    exit_code = test_exit_code
+                    exit_code += test_exit_code
                 }
             }
             ExecMode::Print => unreachable!(),
@@ -75,9 +75,9 @@ pub fn write_to_file(
     config: &Config,
     compare_hashes_bundle: &CompareHashesBundle,
 ) -> DanoResult<()> {
-    if matches!(config.exec_mode, ExecMode::Write(_))
+    if !compare_hashes_bundle.hash_non_matches.is_empty()
+        && matches!(config.exec_mode, ExecMode::Write(_))
         || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
-            && !compare_hashes_bundle.hash_non_matches.is_empty()
     {
         write_new_paths(config, &compare_hashes_bundle.hash_non_matches)?
     } else if !config.opt_silent && matches!(config.exec_mode, ExecMode::Write(_)) {
@@ -93,42 +93,46 @@ pub fn write_to_file(
         // append new paths
         write_new_paths(config, &compare_hashes_bundle.hash_matches)?;
 
-        // read back
-        let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
-            let mut input_file = read_input_file(config)?;
-            let mut buffer = String::new();
-            input_file.read_to_string(&mut buffer)?;
-            // important this blows up because if you change the struct it can't deserialize
-            buffer
-                .lines()
-                .filter(|line| !line.starts_with("//"))
-                .map(deserialize)
-                .collect::<DanoResult<Vec<FileInfo>>>()?
+        if !config.opt_xattr {
+            // read back
+            let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
+                let mut input_file = read_input_file(config)?;
+                let mut buffer = String::new();
+                input_file.read_to_string(&mut buffer)?;
+                // important this blows up because if you change the struct it can't deserialize
+                buffer
+                    .lines()
+                    .filter(|line| !line.starts_with("//"))
+                    .map(deserialize)
+                    .collect::<DanoResult<Vec<FileInfo>>>()?
+            } else {
+                Vec::new()
+            };
+
+            // then dedup
+            let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
+                .iter()
+                .into_group_map_by(|file_info| match &file_info.metadata {
+                    Some(metadata) => metadata.hash_value,
+                    None => u128::MIN,
+                })
+                .into_iter()
+                .flat_map(|(_hash, group_file_info)| {
+                    group_file_info
+                        .into_iter()
+                        .max_by_key(|file_info| match &file_info.metadata {
+                            Some(metadata) => metadata.last_written,
+                            None => SystemTime::UNIX_EPOCH,
+                        })
+                })
+                .cloned()
+                .collect();
+
+            // and overwrite
+            overwrite_all_paths(config, &unique_paths)
         } else {
-            Vec::new()
-        };
-
-        // then dedup
-        let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
-            .iter()
-            .into_group_map_by(|file_info| match &file_info.metadata {
-                Some(metadata) => metadata.hash_value,
-                None => u128::MIN,
-            })
-            .into_iter()
-            .flat_map(|(_hash, group_file_info)| {
-                group_file_info
-                    .into_iter()
-                    .max_by_key(|file_info| match &file_info.metadata {
-                        Some(metadata) => metadata.last_written,
-                        None => SystemTime::UNIX_EPOCH,
-                    })
-            })
-            .cloned()
-            .collect();
-
-        // and overwrite
-        overwrite_all_paths(config, &unique_paths)
+            Ok(())
+        }
     } else {
         Ok(())
     }

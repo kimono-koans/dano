@@ -8,6 +8,7 @@ use std::{
     fmt,
     fs::{File, OpenOptions},
     io::{Read, Write},
+    path::PathBuf,
 };
 
 use crate::{
@@ -59,8 +60,20 @@ pub fn write_new_paths(config: &Config, new_files: &[FileInfo]) -> DanoResult<()
 fn write_path(config: &Config, file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
     match &file_info.metadata {
         Some(_metadata) => {
-            let serialized = serialize(file_info)?;
+            let serialized = if config.opt_xattr {
+                // write empty path for path, because we have the actual path
+                let rewrite = FileInfo {
+                    version: file_info.version,
+                    path: PathBuf::new(),
+                    metadata: file_info.metadata.to_owned(),
+                };
+                serialize(&rewrite)?
+            } else {
+                serialize(file_info)?
+            };
+
             let out_string = serialized + "\n";
+
             match &config.exec_mode {
                 ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
                     print_out_buf(&out_string)?

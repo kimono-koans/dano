@@ -11,10 +11,11 @@ use std::{
 };
 
 use crossbeam::channel::{Receiver, Sender};
+use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::{util::DanoError, Config};
+use crate::util::DanoError;
 use crate::{DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -101,22 +102,11 @@ fn exec_ffmpeg(path: &Path, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) ->
 }
 
 pub fn exec_lookup_file_info(
-    config: &Config,
     requested_paths: &[PathBuf],
+    thread_pool: ThreadPool,
 ) -> DanoResult<Receiver<FileInfo>> {
     let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
         crossbeam::channel::unbounded();
-
-    let num_threads = if let Some(num_threads) = config.opt_num_threads {
-        num_threads
-    } else {
-        num_cpus::get() * 2usize
-    };
-
-    let thread_pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .build()
-        .expect("Could not initialize rayon thread pool");
 
     let requested_paths_clone = requested_paths.to_owned();
 
