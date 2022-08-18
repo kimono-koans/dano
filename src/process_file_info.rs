@@ -156,19 +156,14 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
 }
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
-    let file_map_by_hash = file_map
-        .par_iter()
-        .filter_map(|(path, metadata)| {
-            metadata
-                .as_ref()
-                .map(|metadata| (metadata.hash_value, path))
+    file_map
+        .clone()
+        .into_par_iter()
+        .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata)
+        .any(|file_map_metadata| match &path.metadata {
+            Some(path_metadata) => path_metadata.hash_value == file_map_metadata.hash_value,
+            None => false,
         })
-        .collect::<BTreeMap<u128, &PathBuf>>();
-
-    match &path.metadata {
-        Some(metadata) => file_map_by_hash.contains_key(&metadata.hash_value),
-        None => false,
-    }
 }
 
 fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
