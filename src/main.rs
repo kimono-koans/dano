@@ -16,10 +16,11 @@
 // that was distributed with this source code.
 
 use std::{
+    collections::BTreeMap,
     ffi::OsStr,
-    fs::{read_dir},
+    fs::read_dir,
     io::Read,
-    path::{Path, PathBuf}, collections::BTreeMap,
+    path::{Path, PathBuf},
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
@@ -305,15 +306,19 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Test | ExecMode::Write(_) => {
-                        read_stdin()?.par_iter().map(PathBuf::from).collect()
-                    }
+                    ExecMode::Write(_) => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                     ExecMode::Compare => read_dir(&pwd)?
                         .par_bridge()
                         .flatten()
                         .map(|dir_entry| dir_entry.path())
                         .collect(),
-                    ExecMode::Print => Vec::new(),
+                    ExecMode::Print | ExecMode::Test => {
+                        if hash_file.exists() {
+                            Vec::new()
+                        } else {
+                            read_stdin()?.par_iter().map(PathBuf::from).collect()
+                        }
+                    }
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
@@ -404,8 +409,9 @@ fn exec() -> DanoResult<()> {
         ExecMode::Write(_) | ExecMode::Compare => {
             // include requested paths as they may differ from the paths obtained from recorded file info (maybe fewer or more)
             let opt_only_requested_paths = Some(&config.paths);
-            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
-            let rx_item = exec_lookup_file_info(&config,&file_info_requests, thread_pool)?;
+            let file_info_requests =
+                get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
+            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
@@ -414,9 +420,11 @@ fn exec() -> DanoResult<()> {
         ExecMode::Test => {
             // don't need to include requested paths in test mode as only paths re care about are the paths we read from disk
             let opt_only_requested_paths = None;
-            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
+            let file_info_requests =
+                get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let _ = exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
+            let _ =
+                exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
             // test will exit on file DNE with special exit code so we don't return here
             unreachable!()
@@ -468,7 +476,7 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
             .collect()
     };
 
-    let file_info_from_file = if config.output_file.exists() {
+    let file_info_from_file = if config.hash_file.exists() {
         let mut input_file = read_input_file(config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
@@ -489,32 +497,46 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
 }
 
 fn get_file_info_requests(
-    recorded_file_info: &Vec<FileInfo>,
+    recorded_file_info: &[FileInfo],
     opt_requested_paths: Option<&Vec<PathBuf>>,
 ) -> DanoResult<Vec<FileInfoRequest>> {
     let recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
         .par_iter()
-        .map(|file_info| {
-            match &file_info.metadata {
-                Some(metadata) => (file_info.path.clone(), FileInfoRequest { path: file_info.path.clone(), hash_algo: Some(metadata.hash_algo.clone()) }),
-                None => (file_info.path.clone(), FileInfoRequest { path: file_info.path.clone(), hash_algo: None })
-            }
-        }).collect();
- 
+        .map(|file_info| match &file_info.metadata {
+            Some(metadata) => (
+                file_info.path.clone(),
+                FileInfoRequest {
+                    path: file_info.path.clone(),
+                    hash_algo: Some(metadata.hash_algo.clone()),
+                },
+            ),
+            None => (
+                file_info.path.clone(),
+                FileInfoRequest {
+                    path: file_info.path.clone(),
+                    hash_algo: None,
+                },
+            ),
+        })
+        .collect();
+
     let selected = if let Some(requested_paths) = opt_requested_paths {
         requested_paths
             .par_iter()
-            .map(|path| FileInfoRequest { path: path.clone(), hash_algo: None })
-            .map(|request|  {
-                match recorded_file_info_requests.get(&request.path) {
+            .map(|path| FileInfoRequest {
+                path: path.clone(),
+                hash_algo: None,
+            })
+            .map(
+                |request| match recorded_file_info_requests.get(&request.path) {
                     Some(value) => value.to_owned(),
                     None => request,
-                }
-            })
+                },
+            )
             .collect()
     } else {
         recorded_file_info_requests.into_values().collect()
     };
-    
+
     Ok(selected)
 }

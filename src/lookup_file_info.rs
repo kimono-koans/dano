@@ -18,9 +18,9 @@
 use std::{
     path::{Path, PathBuf},
     process::Command as ExecProcess,
+    sync::Arc,
     thread,
     time::SystemTime,
-    sync::Arc,
 };
 
 use crossbeam::channel::{Receiver, Sender};
@@ -47,7 +47,11 @@ pub struct FileMetadata {
 }
 
 impl FileInfo {
-    pub fn send_file_info(config: Arc<Config>, request: &FileInfoRequest, tx_item: Sender<FileInfo>) -> DanoResult<()> {
+    pub fn send_file_info(
+        config: Arc<Config>,
+        request: &FileInfoRequest,
+        tx_item: Sender<FileInfo>,
+    ) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
             exec_ffmpeg(&config, request, &ffmpeg_command, tx_item)
         } else {
@@ -59,27 +63,31 @@ impl FileInfo {
     }
 }
 
-fn exec_ffmpeg(config: &Config, request: &FileInfoRequest, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) -> DanoResult<()> {
+fn exec_ffmpeg(
+    config: &Config,
+    request: &FileInfoRequest,
+    ffmpeg_command: &Path,
+    tx_item: Sender<FileInfo>,
+) -> DanoResult<()> {
     // all snapshots should have the same timestamp
     let timestamp = &SystemTime::now();
     let path_string = request.path.to_string_lossy();
-    let hash_algo =  match &request.hash_algo {
+    let hash_algo = match &request.hash_algo {
         Some(hash_algo) => hash_algo,
         None => &config.hash_algo,
     };
-    
-    let process_args = 
-        vec![
-            "-i",
-            path_string.as_ref(),
-            "-codec",
-            "copy",
-            "-f",
-            "hash",
-            "-hash",
-            &hash_algo,
-            "-",
-        ];
+
+    let process_args = vec![
+        "-i",
+        path_string.as_ref(),
+        "-codec",
+        "copy",
+        "-f",
+        "hash",
+        "-hash",
+        hash_algo,
+        "-",
+    ];
 
     let process_output = ExecProcess::new(ffmpeg_command)
         .args(&process_args)
@@ -88,9 +96,12 @@ fn exec_ffmpeg(config: &Config, request: &FileInfoRequest, ffmpeg_command: &Path
     let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
     if stderr_string.contains("incorrect codec parameters") {
-        eprintln!("Error: Invalid hash algorithm specified.  \
+        eprintln!(
+            "Error: Invalid hash algorithm specified.  \
         This version of ffmpeg does not support: {} .  \
-        Upgrade or specify another hash algorithm.", config.hash_algo);
+        Upgrade or specify another hash algorithm.",
+            config.hash_algo
+        );
         std::process::exit(1)
     }
 

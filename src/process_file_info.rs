@@ -21,7 +21,7 @@ use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 
-use crate::{Config, DanoResult, ExecMode, XattrMode, FileInfoRequest};
+use crate::{Config, DanoResult, ExecMode, FileInfoRequest, XattrMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{deserialize, print_file_info, read_input_file, write_all_new_paths, WriteType};
@@ -191,10 +191,12 @@ fn get_file_map(
         // dummy versions of the rest
         ExecMode::Test => requested_paths
             .iter()
-            .map(|request| match recorded_file_info_map.get(request.path.as_path()) {
-                Some(metadata) => (request.path.to_owned(), metadata.to_owned()),
-                None => (request.path.to_owned(), None),
-            })
+            .map(
+                |request| match recorded_file_info_map.get(request.path.as_path()) {
+                    Some(metadata) => (request.path.to_owned(), metadata.to_owned()),
+                    None => (request.path.to_owned(), None),
+                },
+            )
             .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>(),
         ExecMode::Write(_) | ExecMode::Compare => recorded_file_info_map,
         ExecMode::Print => BTreeMap::new(),
