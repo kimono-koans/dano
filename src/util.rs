@@ -86,14 +86,14 @@ pub fn write_all_new_paths(
 }
 
 fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
-    let serialized = serialize(file_info)? + "\n";
+    let serialized = serialize(file_info)?;
     write_out(&serialized, output_file)
 }
 
 fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
-            let serialized = serialize(file_info)? + "\n";
+            let serialized = serialize(file_info)?;
             print_out_buf(&serialized)
         }
         ExecMode::Write(_) if config.opt_xattr => {
@@ -104,7 +104,7 @@ fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
                 metadata: file_info.metadata.to_owned(),
             };
 
-            let serialized = serialize(&rewrite)? + "\n";
+            let serialized = serialize(&rewrite)?;
             write_xattr(&serialized, file_info)
         }
         _ => unreachable!(),
@@ -221,7 +221,10 @@ fn write_out(out_string: &str, open_file: &mut File) -> DanoResult<()> {
 }
 
 pub fn serialize(file_info: &FileInfo) -> DanoResult<String> {
-    serde_json::to_string(&file_info).map_err(|err| err.into())
+    match serde_json::to_string(&file_info) {
+        Ok(s) => Ok(s + "\n"),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
