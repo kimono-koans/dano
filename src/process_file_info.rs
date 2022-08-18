@@ -106,45 +106,49 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         // append new paths
         write_all_new_paths(config, &new_files_bundle.hash_matches, WriteType::Append)?;
 
-        if matches!(config.opt_xattr, XattrMode::Disabled) {
-            // read back
-            let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
-                let mut input_file = read_input_file(config)?;
-                let mut buffer = String::new();
-                input_file.read_to_string(&mut buffer)?;
-                // important this blows up because if you change the struct it can't deserialize
-                buffer
-                    .lines()
-                    .filter(|line| !line.starts_with("//"))
-                    .map(deserialize)
-                    .collect::<DanoResult<Vec<FileInfo>>>()?
-            } else {
-                Vec::new()
-            };
+        match &config.exec_mode {
+            ExecMode::Write(write_config)
+                if matches!(write_config.opt_xattr, XattrMode::Disabled) =>
+            {
+                // read back
+                let recorded_file_info_with_duplicates: Vec<FileInfo> =
+                    if config.output_file.exists() {
+                        let mut input_file = read_input_file(config)?;
+                        let mut buffer = String::new();
+                        input_file.read_to_string(&mut buffer)?;
+                        // important this blows up because if you change the struct it can't deserialize
+                        buffer
+                            .lines()
+                            .filter(|line| !line.starts_with("//"))
+                            .map(deserialize)
+                            .collect::<DanoResult<Vec<FileInfo>>>()?
+                    } else {
+                        Vec::new()
+                    };
 
-            // then dedup
-            let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
-                .iter()
-                .into_group_map_by(|file_info| match &file_info.metadata {
-                    Some(metadata) => metadata.hash_value,
-                    None => u128::MIN,
-                })
-                .into_iter()
-                .flat_map(|(_hash, group_file_info)| {
-                    group_file_info
-                        .into_iter()
-                        .max_by_key(|file_info| match &file_info.metadata {
-                            Some(metadata) => metadata.last_written,
-                            None => SystemTime::UNIX_EPOCH,
+                // then dedup
+                let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
+                    .iter()
+                    .into_group_map_by(|file_info| match &file_info.metadata {
+                        Some(metadata) => metadata.hash_value,
+                        None => u128::MIN,
+                    })
+                    .into_iter()
+                    .flat_map(|(_hash, group_file_info)| {
+                        group_file_info.into_iter().max_by_key(|file_info| {
+                            match &file_info.metadata {
+                                Some(metadata) => metadata.last_written,
+                                None => SystemTime::UNIX_EPOCH,
+                            }
                         })
-                })
-                .cloned()
-                .collect();
+                    })
+                    .cloned()
+                    .collect();
 
-            // and overwrite
-            write_all_new_paths(config, &unique_paths, WriteType::OverwriteAll)
-        } else {
-            Ok(())
+                // and overwrite
+                write_all_new_paths(config, &unique_paths, WriteType::OverwriteAll)
+            }
+            _ => Ok(()),
         }
     } else {
         Ok(())

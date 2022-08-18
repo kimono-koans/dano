@@ -65,9 +65,9 @@ pub fn write_all_new_paths(
     write_type: WriteType,
 ) -> DanoResult<()> {
     match &config.exec_mode {
-        ExecMode::Write(opt_dry_run)
-            if matches!(opt_dry_run, &DryRunMode::Enabled)
-                || matches!(config.opt_xattr, XattrMode::Enabled) =>
+        ExecMode::Write(write_config)
+            if matches!(write_config.opt_dry_run, DryRunMode::Enabled)
+                || matches!(write_config.opt_xattr, XattrMode::Enabled) =>
         {
             new_files
                 .iter()
@@ -98,11 +98,13 @@ fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
 
 fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
-        ExecMode::Write(opt_dry_run) if matches!(opt_dry_run, &DryRunMode::Enabled) => {
+        ExecMode::Write(write_config)
+            if matches!(write_config.opt_dry_run, DryRunMode::Enabled) =>
+        {
             let serialized = serialize(file_info)?;
             print_out_buf(&serialized)
         }
-        ExecMode::Write(_) if matches!(config.opt_xattr, XattrMode::Enabled) => {
+        ExecMode::Write(write_config) if matches!(write_config.opt_xattr, XattrMode::Enabled) => {
             // write empty path for path, because we have the actual path
             let rewrite = FileInfo {
                 version: file_info.version,
