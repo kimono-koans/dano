@@ -237,26 +237,24 @@ fn verify_file_info(
     } else if is_same_hash {
         // know we are in Compare mode, so require write_new and overwrite_old
         // to specify things will be overwritten
-        if !config.opt_silent {
-            match config.exec_mode {
-                ExecMode::Compare | ExecMode::Test => {
-                    if config.opt_write_new && config.opt_overwrite_old {
-                        eprintln!(
+        match config.exec_mode {
+            ExecMode::Compare | ExecMode::Test => {
+                if config.opt_write_new && config.opt_overwrite_old {
+                    eprintln!(
                             "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.",
                             file_info.path
                         );
-                    } else {
-                        eprintln!(
-                            "{:?}: OK, but path has same hash for new filename",
-                            file_info.path
-                        );
-                    }
+                } else {
+                    eprintln!(
+                        "{:?}: OK, but path has same hash for new filename",
+                        file_info.path
+                    );
                 }
-                ExecMode::Write(_) => {
-                    let _ = print_file_info(file_info);
-                }
-                _ => unreachable!(),
             }
+            ExecMode::Write(_) => {
+                let _ = print_file_info(file_info);
+            }
+            _ => unreachable!(),
         }
         Some(Either::Left(file_info.clone()))
     } else if is_same_filename {
