@@ -4,11 +4,13 @@
 
 ## Why dano?
 
-As a ZFS fan, I realize ZFS probably appeals to certain kind of person (like me!).  It really shouldn't be so extraordinary to expect the files we read back to be the same files we wrote to disk.  But we live in a mad, mad world.
+As a ZFS fan, I realize ZFS probably appeals to certain kind of person (like me!).  It really shouldn't be so extraordinary to expect the files we read back to be the same files we wrote to disk.
+
+*We live in a mad, mad world.  But the answer is -- because FLAC is really cleaver.*
 
 ## Because FLAC is really clever
 
-To me, first class checksums are one thing that makes the FLAC music format so great.  FLAC supports the writing and checking checksums of the streams held within a container, so, when I ask whether the FLAC audio stream is the same checksum as the  stream I originally wrote it to disk, the `flac` command tells me whether the checksum matches:
+To me, first class checksums are one thing that sets the FLAC music format apart.  FLAC supports the writing and checking checksums of the streams held within its container.  When I ask whether the FLAC audio stream is the same checksum as the stream I originally wrote it to disk, the `flac` command tells me whether the checksum matches:
 
 ```bash
 % flac -t 'Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac'
@@ -17,9 +19,9 @@ Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 
 ## Why can't I do that everywhere?
 
-The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what ffmpeg provides easy to use.
+The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what ffmpeg provides easier to use.
 
-So, when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
+So -- when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
 
 ```bash
 % dano -w 'Sample.mkv'
