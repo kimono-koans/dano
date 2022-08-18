@@ -100,7 +100,6 @@ fn exec_ffmpeg(config: &Config, request: &FileInfoRequest, ffmpeg_command: &Path
         metadata: None,
     };
 
-    // stderr_string is a string not an error, so here we build an err or output
     if stdout_string.is_empty() {
         // ffmpeg won't work with a non-media file so it solely
         // prints to stderr here, we want to still print our request
