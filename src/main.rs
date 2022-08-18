@@ -16,10 +16,8 @@
 // that was distributed with this source code.
 
 use std::{
-    collections::BTreeMap,
     ffi::OsStr,
     fs::read_dir,
-    io::Read,
     path::{Path, PathBuf},
 };
 
@@ -27,12 +25,16 @@ use clap::{crate_name, crate_version, Arg, ArgMatches};
 use rayon::{prelude::*, ThreadPool};
 
 mod lookup_file_info;
+mod prepare_recorded;
+mod prepare_requests;
 mod process_file_info;
 mod util;
 
-use crate::lookup_file_info::{exec_lookup_file_info, FileInfo};
-use crate::util::{deserialize, print_file_info, read_input_file, read_stdin, DanoError};
+use lookup_file_info::exec_lookup_file_info;
+use prepare_recorded::get_recorded_file_info;
+use prepare_requests::get_file_info_requests;
 use process_file_info::{exec_process_file_info, write_new_file_info};
+use util::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -403,7 +405,7 @@ fn exec() -> DanoResult<()> {
         .into());
     }
 
-    let thread_pool = get_thread_pool(&config)?;
+    let thread_pool = prepare_thread_pool(&config)?;
 
     match &config.exec_mode {
         ExecMode::Write(_) | ExecMode::Compare => {
@@ -437,7 +439,7 @@ fn exec() -> DanoResult<()> {
     }
 }
 
-fn get_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
+fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
     let num_threads = if let Some(num_threads) = config.opt_num_threads {
         num_threads
     } else {
@@ -450,93 +452,4 @@ fn get_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
         .expect("Could not initialize rayon thread pool");
 
     Ok(thread_pool)
-}
-
-fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
-    let mut file_info_from_xattrs: Vec<FileInfo> = {
-        config
-            .paths
-            .par_iter()
-            .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
-            .flat_map(|(path, opt)| opt.map(|s| (path, s)))
-            .flat_map(|(path, s)| std::str::from_utf8(&s).map(|i| (path, i.to_owned())))
-            .flat_map(|(path, s)| deserialize(&s).map(|i| (path, i)))
-            .map(|(path, file_info)| {
-                // use the actual path name always
-                if path != &file_info.path {
-                    FileInfo {
-                        version: file_info.version,
-                        path: path.to_owned(),
-                        metadata: file_info.metadata,
-                    }
-                } else {
-                    file_info
-                }
-            })
-            .collect()
-    };
-
-    let file_info_from_file = if config.hash_file.exists() {
-        let mut input_file = read_input_file(config)?;
-        let mut buffer = String::new();
-        input_file.read_to_string(&mut buffer)?;
-        buffer.par_lines().flat_map(deserialize).collect()
-    } else {
-        Vec::new()
-    };
-
-    // combine
-    file_info_from_xattrs.extend(file_info_from_file);
-    let mut recorded_file_info: Vec<FileInfo> = file_info_from_xattrs;
-
-    // sort and dedup in case we have paths in hash file and xattrs
-    recorded_file_info.sort_by_key(|file_info| file_info.path.clone());
-    recorded_file_info.dedup_by_key(|file_info| file_info.path.clone());
-
-    Ok(recorded_file_info)
-}
-
-fn get_file_info_requests(
-    recorded_file_info: &[FileInfo],
-    opt_requested_paths: Option<&Vec<PathBuf>>,
-) -> DanoResult<Vec<FileInfoRequest>> {
-    let recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
-        .par_iter()
-        .map(|file_info| match &file_info.metadata {
-            Some(metadata) => (
-                file_info.path.clone(),
-                FileInfoRequest {
-                    path: file_info.path.clone(),
-                    hash_algo: Some(metadata.hash_algo.clone()),
-                },
-            ),
-            None => (
-                file_info.path.clone(),
-                FileInfoRequest {
-                    path: file_info.path.clone(),
-                    hash_algo: None,
-                },
-            ),
-        })
-        .collect();
-
-    let selected = if let Some(requested_paths) = opt_requested_paths {
-        requested_paths
-            .par_iter()
-            .map(|path| FileInfoRequest {
-                path: path.clone(),
-                hash_algo: None,
-            })
-            .map(
-                |request| match recorded_file_info_requests.get(&request.path) {
-                    Some(value) => value.to_owned(),
-                    None => request,
-                },
-            )
-            .collect()
-    } else {
-        recorded_file_info_requests.into_values().collect()
-    };
-
-    Ok(selected)
 }
