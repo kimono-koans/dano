@@ -56,6 +56,7 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("OUTPUT_FILE")
                 .help("output file which will hold the hashes. If not specified, 'dano_hashes.txt' in the PWD will be used.")
+                .short('o')
                 .long("output-file")
                 .takes_value(true)
                 .min_values(1)

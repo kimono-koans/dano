@@ -7,6 +7,7 @@
 * Non-media path filtering (which can be disabled)
 * Highly concurrent hashing (select # of threads)
 * Several useful modes: WRITE, TEST, COMPARE, PRINT
+* Select from multiple checksum algorithms(default: murmur3, MD5, adler32, CRC32)
 * Write to xattrs or to hash file (and always read back and operate on both)
 
 ## Why dano? Because FLAC is really clever
