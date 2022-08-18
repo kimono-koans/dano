@@ -187,8 +187,9 @@ fn get_file_map(
         .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
 
     let res = match config.exec_mode {
-        // for write and test, we take the paths /available/ from file and make
-        // dummy versions of the rest
+        // for test, we take the paths /available/ from files and xattrs and make
+        // dummy versions of the rest, because we must test even those for which we
+        // don't have a hash available
         ExecMode::Test => requested_paths
             .iter()
             .map(
