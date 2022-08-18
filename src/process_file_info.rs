@@ -157,7 +157,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
     let file_map_by_hash = file_map
-        .iter()
+        .par_iter()
         .filter_map(|(path, metadata)| {
             metadata
                 .as_ref()
@@ -191,7 +191,7 @@ fn get_file_map(
         // dummy versions of the rest, because we must test even those for which we
         // don't have a hash available
         ExecMode::Test => requested_paths
-            .iter()
+            .par_iter()
             .map(
                 |request| match recorded_file_info_map.get(request.path.as_path()) {
                     Some(metadata) => (request.path.to_owned(), metadata.to_owned()),
