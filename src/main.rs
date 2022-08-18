@@ -402,8 +402,9 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(_) | ExecMode::Compare => {
-            let opt_requested_paths = Some(&config.paths);
-            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_requested_paths)?;
+            // include requested paths as they may differ from the paths obtained from recorded file info (maybe fewer or more)
+            let opt_only_requested_paths = Some(&config.paths);
+            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config,&file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
@@ -411,8 +412,9 @@ fn exec() -> DanoResult<()> {
             write_new_file_info(&config, &compare_hashes_bundle)
         }
         ExecMode::Test => {
-            let opt_requested_paths = None;
-            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_requested_paths)?;
+            // don't need to include requested paths in test mode as only paths re care about are the paths we read from disk
+            let opt_only_requested_paths = None;
+            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let _ = exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
