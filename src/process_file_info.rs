@@ -26,7 +26,7 @@ use crate::{Config, DanoResult, ExecMode};
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{deserialize, print_file_info, read_input_file, write_all_new_paths, WriteType};
 
-pub struct CompareHashesBundle {
+pub struct NewFilesBundle {
     hash_matches: Vec<FileInfo>,
     hash_non_matches: Vec<FileInfo>,
 }
@@ -36,7 +36,7 @@ pub fn exec_process_file_info(
     requested_paths: &[PathBuf],
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
-) -> DanoResult<CompareHashesBundle> {
+) -> DanoResult<NewFilesBundle> {
     // prepare for loop
     let file_map = Arc::new(get_file_map(config, recorded_file_info, requested_paths)?);
     let mut exit_code = 0;
@@ -75,41 +75,36 @@ pub fn exec_process_file_info(
     hash_matches.sort_unstable_by_key(|file_info| file_info.clone().path);
     hash_non_matches.sort_unstable_by_key(|file_info| file_info.clone().path);
 
-    Ok(CompareHashesBundle {
+    Ok(NewFilesBundle {
         hash_matches,
         hash_non_matches,
     })
 }
 
-pub fn write_to_file(
-    config: &Config,
-    compare_hashes_bundle: &CompareHashesBundle,
-) -> DanoResult<()> {
-    if !compare_hashes_bundle.hash_non_matches.is_empty()
+pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
+    // write new files - no hash match in record
+    if !new_files_bundle.hash_non_matches.is_empty()
         && matches!(config.exec_mode, ExecMode::Write(_))
         || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
     {
         write_all_new_paths(
             config,
-            &compare_hashes_bundle.hash_non_matches,
+            &new_files_bundle.hash_non_matches,
             WriteType::Append,
         )?
     } else if !config.opt_silent && matches!(config.exec_mode, ExecMode::Write(_)) {
         eprintln!("No new paths to write.");
     }
 
-    if !compare_hashes_bundle.hash_matches.is_empty()
+    // write old files with new names - hash matches
+    if !new_files_bundle.hash_matches.is_empty()
         && ((matches!(config.exec_mode, ExecMode::Write(_)) && config.opt_overwrite_old)
             || (config.exec_mode == ExecMode::Compare
                 && config.opt_overwrite_old
                 && config.opt_write_new))
     {
         // append new paths
-        write_all_new_paths(
-            config,
-            &compare_hashes_bundle.hash_matches,
-            WriteType::Append,
-        )?;
+        write_all_new_paths(config, &new_files_bundle.hash_matches, WriteType::Append)?;
 
         if !config.opt_xattr {
             // read back

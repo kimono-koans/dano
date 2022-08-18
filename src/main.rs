@@ -31,7 +31,7 @@ mod util;
 
 use crate::lookup_file_info::{exec_lookup_file_info, FileInfo};
 use crate::util::{deserialize, print_file_info, read_input_file, read_stdin, DanoError};
-use process_file_info::{exec_process_file_info, write_to_file};
+use process_file_info::{exec_process_file_info, write_new_file_info};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -362,7 +362,7 @@ fn exec() -> DanoResult<()> {
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &config.paths, &recorded_file_info, rx_item)?;
 
-            write_to_file(&config, &compare_hashes_bundle)
+            write_new_file_info(&config, &compare_hashes_bundle)
         }
         ExecMode::Test => {
             // recreate the FileInfo struct for the structs retrieved from file to compare
