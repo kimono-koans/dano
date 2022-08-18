@@ -2,13 +2,14 @@
 
 [dano](https://github.com/kimono-koans/dano) is a wrapper for `ffmpeg` that checksums the internal file streams of `ffmpeg` compatible media files, and stores them in a format which can be used to verify such checksums later.  This is handy, because, should you choose to change metadata tags, or change file names, the media checksums *should* remain the same.
 
-## Why dano?
+## Features
 
-As a ZFS fan, I realize ZFS probably appeals to certain kind of person (like me!).  It really shouldn't be so extraordinary to expect the files we read back to be the same files we wrote to disk.  We live in a mad, mad world.  
+* Non-media path filtering (which can be disabled)
+* Highly concurrent hashing (select # of threads)
+* Several useful modes: WRITE, TEST, COMPARE, PRINT
+* Write to xattrs or to hash file (and always read back and operate on both)
 
-*But the true answer is -- because FLAC is really clever.*
-
-## Because FLAC is really clever
+## Why dano? Because FLAC is really clever
 
 To me, first class checksums are one thing that sets the FLAC music format apart.  FLAC supports the writing and checking checksums of the streams held within its container.  When I ask whether the FLAC audio stream is the same checksum as the stream I originally wrote it to disk, the `flac` command tells me whether the checksum matches:
 
