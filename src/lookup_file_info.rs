@@ -62,12 +62,16 @@ impl FileInfo {
 fn exec_ffmpeg(config: &Config, request: &FileInfoRequest, ffmpeg_command: &Path, tx_item: Sender<FileInfo>) -> DanoResult<()> {
     // all snapshots should have the same timestamp
     let timestamp = &SystemTime::now();
-    let path_clone = request.path.to_string_lossy();
+    let path_string = request.path.to_string_lossy();
+    let hash_algo =  match &request.hash_algo {
+        Some(hash_algo) => hash_algo,
+        None => &config.hash_algo,
+    };
     
-    let process_args = match &request.hash_algo {
-        Some(hash_algo) => vec![
+    let process_args = 
+        vec![
             "-i",
-            path_clone.as_ref(),
+            path_string.as_ref(),
             "-codec",
             "copy",
             "-f",
@@ -75,19 +79,7 @@ fn exec_ffmpeg(config: &Config, request: &FileInfoRequest, ffmpeg_command: &Path
             "-hash",
             &hash_algo,
             "-",
-        ],
-        None => vec![
-            "-i",
-            path_clone.as_ref(),
-            "-codec",
-            "copy",
-            "-f",
-            "hash",
-            "-hash",
-            &config.hash_algo,
-            "-",
-        ],
-    };
+        ];
 
     let process_output = ExecProcess::new(ffmpeg_command)
         .args(&process_args)
