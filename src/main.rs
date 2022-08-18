@@ -17,9 +17,9 @@
 
 use std::{
     ffi::OsStr,
-    fs::read_dir,
+    fs::{read_dir},
     io::Read,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, collections::BTreeMap,
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
@@ -152,12 +152,28 @@ fn parse_args() -> ArgMatches {
                 .display_order(12),
         )
         .arg(
+            Arg::new("HASH_ALGO")
+                .help("specify the algorithm to use for hashing.  Default is 'murmur3'.")
+                .long("hash-algo")
+                .takes_value(true)
+                .min_values(1)
+                .require_equals(true)
+                .possible_values(&["murmur3", "MD5", "CRC32", "adler32"])
+                .value_parser(clap::builder::ValueParser::os_string())
+                .display_order(13))
+        .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .requires("WRITE")
-            .display_order(13))
+            .display_order(14))
         .get_matches()
+}
+
+#[derive(Debug, Clone)]
+pub struct FileInfoRequest {
+    pub path: PathBuf,
+    pub hash_algo: Option<Box<str>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,6 +209,7 @@ pub struct Config {
     opt_write_new: bool,
     opt_silent: bool,
     opt_overwrite_old: bool,
+    hash_algo: Box<str>,
     pwd: PathBuf,
     output_file: PathBuf,
     hash_file: PathBuf,
@@ -271,6 +288,12 @@ impl Config {
             pwd.join(DANO_DEFAULT_HASH_FILE)
         };
 
+        let hash_algo = if let Some(hash_algo) = matches.value_of_os("HASH_ALGO") {
+            hash_algo.to_string_lossy().into()
+        } else {
+            "murmur3".into()
+        };
+
         let hash_file = if let Some(hash_file) = matches.value_of_os("HASH_FILE") {
             PathBuf::from(hash_file)
         } else {
@@ -306,6 +329,7 @@ impl Config {
             opt_silent,
             opt_write_new,
             opt_overwrite_old,
+            hash_algo,
             pwd,
             output_file,
             hash_file,
@@ -367,8 +391,6 @@ fn exec() -> DanoResult<()> {
 
     let recorded_file_info = get_recorded_file_info(&config)?;
 
-    let thread_pool = get_thread_pool(&config)?;
-
     if recorded_file_info.is_empty() && !matches!(config.exec_mode, ExecMode::Write(_)) {
         return Err(DanoError::new(
             "Nothing to check or print.  No record of file checksums present.",
@@ -376,25 +398,26 @@ fn exec() -> DanoResult<()> {
         .into());
     }
 
+    let thread_pool = get_thread_pool(&config)?;
+
     match &config.exec_mode {
         ExecMode::Write(_) | ExecMode::Compare => {
-            let rx_item = exec_lookup_file_info(&config.paths, thread_pool)?;
+            let file_info_requests = get_file_info_requests(&recorded_file_info, Some(&config.paths))?;
+
+            let rx_item = exec_lookup_file_info(&config,&file_info_requests, thread_pool)?;
 
             let compare_hashes_bundle =
-                exec_process_file_info(&config, &config.paths, &recorded_file_info, rx_item)?;
+                exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
             write_new_file_info(&config, &compare_hashes_bundle)
         }
         ExecMode::Test => {
             // recreate the FileInfo struct for the structs retrieved from file to compare
-            let paths_to_test: Vec<PathBuf> = recorded_file_info
-                .iter()
-                .map(|file_info| file_info.path.clone())
-                .collect();
+            let file_info_requests = get_file_info_requests(&recorded_file_info, None)?;
 
-            let rx_item = exec_lookup_file_info(&paths_to_test, thread_pool)?;
+            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
 
-            let _ = exec_process_file_info(&config, &paths_to_test, &recorded_file_info, rx_item)?;
+            let _ = exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
             // test will exit on file dne with special exit code so we don't return here
             unreachable!()
@@ -464,4 +487,33 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     recorded_file_info.dedup_by_key(|file_info| file_info.path.clone());
 
     Ok(recorded_file_info)
+}
+
+fn get_file_info_requests(
+    recorded_file_info: &Vec<FileInfo>,
+    opt_requested_paths: Option<&Vec<PathBuf>>,
+) -> DanoResult<Vec<FileInfoRequest>> {
+    let mut recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
+        .iter()
+        .map(|file_info| {
+            match &file_info.metadata {
+                Some(metadata) => (file_info.path.clone(), FileInfoRequest { path: file_info.path.clone(), hash_algo: Some(metadata.hash_algo.clone()) }),
+                None => (file_info.path.clone(), FileInfoRequest { path: file_info.path.clone(), hash_algo: None })
+            }
+        }).collect();
+ 
+    if let Some(requested_paths) = opt_requested_paths {
+        requested_paths
+            .iter()
+            .map(|path| FileInfoRequest { path: path.clone(), hash_algo: None })
+            .for_each(|request|  {
+                if !recorded_file_info_requests.contains_key(request.path.as_path()) {
+                    let _ = recorded_file_info_requests.insert(request.path.clone(), request);
+                }   
+            });
+    }
+
+    let combined = recorded_file_info_requests.into_values().collect();
+    
+    Ok(combined)
 }

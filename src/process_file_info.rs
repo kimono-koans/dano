@@ -21,7 +21,7 @@ use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 
-use crate::{Config, DanoResult, ExecMode, XattrMode};
+use crate::{Config, DanoResult, ExecMode, XattrMode, FileInfoRequest};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{deserialize, print_file_info, read_input_file, write_all_new_paths, WriteType};
@@ -33,7 +33,7 @@ pub struct NewFilesBundle {
 
 pub fn exec_process_file_info(
     config: &Config,
-    requested_paths: &[PathBuf],
+    requested_paths: &[FileInfoRequest],
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
 ) -> DanoResult<NewFilesBundle> {
@@ -178,7 +178,7 @@ fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &F
 fn get_file_map(
     config: &Config,
     recorded_file_info: &[FileInfo],
-    requested_paths: &[PathBuf],
+    requested_paths: &[FileInfoRequest],
 ) -> DanoResult<BTreeMap<PathBuf, Option<FileMetadata>>> {
     let recorded_file_info_map = recorded_file_info
         .par_iter()
@@ -191,9 +191,9 @@ fn get_file_map(
         // dummy versions of the rest
         ExecMode::Test => requested_paths
             .iter()
-            .map(|path| match recorded_file_info_map.get(path) {
-                Some(metadata) => (path.to_owned(), metadata.to_owned()),
-                None => (path.to_owned(), None),
+            .map(|request| match recorded_file_info_map.get(request.path.as_path()) {
+                Some(metadata) => (request.path.to_owned(), metadata.to_owned()),
+                None => (request.path.to_owned(), None),
             })
             .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>(),
         ExecMode::Write(_) | ExecMode::Compare => recorded_file_info_map,
