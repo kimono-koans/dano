@@ -221,7 +221,6 @@ art
 asc
 diz
 ice
-nfo
 vt
 ty
 ty+
