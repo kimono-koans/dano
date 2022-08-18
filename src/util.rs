@@ -24,7 +24,8 @@ use std::{
 };
 
 use crate::{
-    lookup_file_info::FileInfo, DryRun, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME,
+    lookup_file_info::FileInfo, DryRunMode, ExecMode, XattrMode, DANO_FILE_INFO_VERSION,
+    DANO_XATTR_KEY_NAME,
 };
 use crate::{Config, DanoResult};
 
@@ -64,9 +65,14 @@ pub fn write_all_new_paths(
     write_type: WriteType,
 ) -> DanoResult<()> {
     match &config.exec_mode {
-        ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled || config.opt_xattr => new_files
-            .iter()
-            .try_for_each(|file_info| write_non_file(config, file_info)),
+        ExecMode::Write(opt_dry_run)
+            if matches!(opt_dry_run, &DryRunMode::Enabled)
+                || matches!(config.opt_xattr, XattrMode::Enabled) =>
+        {
+            new_files
+                .iter()
+                .try_for_each(|file_info| write_non_file(config, file_info))
+        }
         _ => {
             let mut output_file = match write_type {
                 WriteType::Append => append_output_file(config)?,
@@ -92,11 +98,11 @@ fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
 
 fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
-        ExecMode::Write(dry_run) if dry_run == &DryRun::Enabled => {
+        ExecMode::Write(opt_dry_run) if matches!(opt_dry_run, &DryRunMode::Enabled) => {
             let serialized = serialize(file_info)?;
             print_out_buf(&serialized)
         }
-        ExecMode::Write(_) if config.opt_xattr => {
+        ExecMode::Write(_) if matches!(config.opt_xattr, XattrMode::Enabled) => {
             // write empty path for path, because we have the actual path
             let rewrite = FileInfo {
                 version: file_info.version,

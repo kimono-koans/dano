@@ -161,7 +161,13 @@ fn parse_args() -> ArgMatches {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum DryRun {
+enum DryRunMode {
+    Enabled,
+    Disabled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum XattrMode {
     Enabled,
     Disabled,
 }
@@ -170,7 +176,7 @@ enum DryRun {
 enum ExecMode {
     Test,
     Compare,
-    Write(DryRun),
+    Write(DryRunMode),
     Print,
 }
 
@@ -178,7 +184,7 @@ enum ExecMode {
 pub struct Config {
     exec_mode: ExecMode,
     opt_num_threads: Option<usize>,
-    opt_xattr: bool,
+    opt_xattr: XattrMode,
     opt_write_new: bool,
     opt_silent: bool,
     opt_overwrite_old: bool,
@@ -221,9 +227,9 @@ impl Config {
         } else if matches.is_present("DRY_RUN")
             || (matches.is_present("PRINT") && matches.is_present("WRITE"))
         {
-            ExecMode::Write(DryRun::Enabled)
+            ExecMode::Write(DryRunMode::Enabled)
         } else if matches.is_present("WRITE") {
-            ExecMode::Write(DryRun::Disabled)
+            ExecMode::Write(DryRunMode::Disabled)
         } else {
             return Err(DanoError::new(
                 "You must specify an execution mode: COMPARE, TEST, WRITE, or PRINT",
@@ -236,7 +242,11 @@ impl Config {
             .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
 
         let opt_xattr =
-            matches.is_present("XATTR") || std::env::var_os("DANO_XATTR_WRITES").is_some();
+            if matches.is_present("XATTR") || std::env::var_os("DANO_XATTR_WRITES").is_some() {
+                XattrMode::Enabled
+            } else {
+                XattrMode::Disabled
+            };
         let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
         let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");

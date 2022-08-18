@@ -21,7 +21,7 @@ use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 
-use crate::{Config, DanoResult, ExecMode};
+use crate::{Config, DanoResult, ExecMode, XattrMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{deserialize, print_file_info, read_input_file, write_all_new_paths, WriteType};
@@ -106,7 +106,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         // append new paths
         write_all_new_paths(config, &new_files_bundle.hash_matches, WriteType::Append)?;
 
-        if !config.opt_xattr {
+        if matches!(config.opt_xattr, XattrMode::Disabled) {
             // read back
             let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
                 let mut input_file = read_input_file(config)?;
