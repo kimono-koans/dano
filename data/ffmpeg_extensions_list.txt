@@ -161,7 +161,6 @@ mpa
 mpc
 mjpg
 mpl2
-sub
 msf
 mtaf
 ul
@@ -232,7 +231,6 @@ vag
 vc1
 rcv
 viv
-idx
 vpk
 vqf
 vql
