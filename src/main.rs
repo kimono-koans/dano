@@ -501,11 +501,11 @@ fn get_file_info_requests(
  
     let selected = if let Some(requested_paths) = opt_requested_paths {
         requested_paths
-            .iter()
+            .par_iter()
             .map(|path| FileInfoRequest { path: path.clone(), hash_algo: None })
             .map(|request|  {
-                match recorded_file_info_requests.get_key_value(&request.path) {
-                    Some((_key, value)) => value.to_owned(),
+                match recorded_file_info_requests.get(&request.path) {
+                    Some(value) => value.to_owned(),
                     None => request,
                 }
             })
