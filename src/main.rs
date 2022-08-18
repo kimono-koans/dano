@@ -402,24 +402,21 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(_) | ExecMode::Compare => {
-            let file_info_requests = get_file_info_requests(&recorded_file_info, Some(&config.paths))?;
-
+            let opt_requested_paths = Some(&config.paths);
+            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config,&file_info_requests, thread_pool)?;
-
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
             write_new_file_info(&config, &compare_hashes_bundle)
         }
         ExecMode::Test => {
-            // recreate the FileInfo struct for the structs retrieved from file to compare
-            let file_info_requests = get_file_info_requests(&recorded_file_info, None)?;
-
+            let opt_requested_paths = None;
+            let file_info_requests = get_file_info_requests(&recorded_file_info, opt_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-
             let _ = exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
 
-            // test will exit on file dne with special exit code so we don't return here
+            // test will exit on file DNE with special exit code so we don't return here
             unreachable!()
         }
         ExecMode::Print => {
@@ -449,7 +446,7 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let mut file_info_from_xattrs: Vec<FileInfo> = {
         config
             .paths
-            .iter()
+            .par_iter()
             .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
             .flat_map(|(path, opt)| opt.map(|s| (path, s)))
             .flat_map(|(path, s)| std::str::from_utf8(&s).map(|i| (path, i.to_owned())))
@@ -473,7 +470,7 @@ fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         let mut input_file = read_input_file(config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
-        buffer.lines().flat_map(deserialize).collect()
+        buffer.par_lines().flat_map(deserialize).collect()
     } else {
         Vec::new()
     };
@@ -493,8 +490,8 @@ fn get_file_info_requests(
     recorded_file_info: &Vec<FileInfo>,
     opt_requested_paths: Option<&Vec<PathBuf>>,
 ) -> DanoResult<Vec<FileInfoRequest>> {
-    let mut recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
-        .iter()
+    let recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
+        .par_iter()
         .map(|file_info| {
             match &file_info.metadata {
                 Some(metadata) => (file_info.path.clone(), FileInfoRequest { path: file_info.path.clone(), hash_algo: Some(metadata.hash_algo.clone()) }),
@@ -502,18 +499,20 @@ fn get_file_info_requests(
             }
         }).collect();
  
-    if let Some(requested_paths) = opt_requested_paths {
+    let selected = if let Some(requested_paths) = opt_requested_paths {
         requested_paths
             .iter()
             .map(|path| FileInfoRequest { path: path.clone(), hash_algo: None })
-            .for_each(|request|  {
-                if !recorded_file_info_requests.contains_key(request.path.as_path()) {
-                    let _ = recorded_file_info_requests.insert(request.path.clone(), request);
-                }   
-            });
-    }
-
-    let combined = recorded_file_info_requests.into_values().collect();
+            .map(|request|  {
+                match recorded_file_info_requests.get_key_value(&request.path) {
+                    Some((_key, value)) => value.to_owned(),
+                    None => request,
+                }
+            })
+            .collect()
+    } else {
+        recorded_file_info_requests.into_values().collect()
+    };
     
-    Ok(combined)
+    Ok(selected)
 }
