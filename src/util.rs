@@ -87,7 +87,7 @@ pub fn write_all_new_paths(
 
 fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
     let serialized = serialize(file_info)?;
-    write_out(&serialized, output_file)
+    write_out_file(&serialized, output_file)
 }
 
 fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
@@ -105,13 +105,13 @@ fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
             };
 
             let serialized = serialize(&rewrite)?;
-            write_xattr(&serialized, file_info)
+            write_out_xattr(&serialized, file_info)
         }
         _ => unreachable!(),
     }
 }
 
-fn write_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
+fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
     // this is a relatively large xattr(?), may need to change later
     xattr::set(&file_info.path, DANO_XATTR_KEY_NAME, out_string.as_bytes())
         .map_err(|err| err.into())
@@ -165,7 +165,7 @@ pub fn read_input_file(config: &Config) -> DanoResult<File> {
 }
 
 fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> {
-    write_out(
+    write_out_file(
         format!(
             "// DANO, FILE FORMAT VERSION:{}\n// Invoked from: {:?}\n",
             DANO_FILE_INFO_VERSION, config.pwd
@@ -214,7 +214,7 @@ fn append_output_file(config: &Config) -> DanoResult<File> {
     }
 }
 
-fn write_out(out_string: &str, open_file: &mut File) -> DanoResult<()> {
+fn write_out_file(out_string: &str, open_file: &mut File) -> DanoResult<()> {
     open_file
         .write_all(out_string.as_bytes())
         .map_err(|err| err.into())
