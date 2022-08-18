@@ -96,13 +96,13 @@ fn parse_args() -> ArgMatches {
                 .short('c')
                 .long("compare")
                 .display_order(6),
-        )
+            )
         .arg(
             Arg::new("PRINT")
-            .help("pretty print hashes.")
-            .short('p')
-            .long("print")
-            .display_order(7))
+                .help("pretty print hashes.")
+                .short('p')
+                .long("print")
+                .display_order(7))
         .arg(
             Arg::new("NUM_THREADS")
                 .help("requested number of threads to use for file processing.  Default is twice the number of logical cores.")
@@ -408,7 +408,25 @@ fn exec() -> DanoResult<()> {
     let thread_pool = prepare_thread_pool(&config)?;
 
     match &config.exec_mode {
-        ExecMode::Write(_) | ExecMode::Compare => {
+        ExecMode::Write(_) => {
+            // include requested paths as they may differ from the paths obtained from recorded file info (maybe fewer or more)
+            let opt_only_requested_paths = Some(&config.paths);
+            let raw_file_info_requests =
+                get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
+
+            // filter out files for which we already have a hash, only do requests on new files
+            let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
+                .into_iter()
+                .filter(|request| request.hash_algo.is_none())
+                .collect();
+
+            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
+            let compare_hashes_bundle =
+                exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
+
+            write_new_file_info(&config, &compare_hashes_bundle)
+        }
+        ExecMode::Compare => {
             // include requested paths as they may differ from the paths obtained from recorded file info (maybe fewer or more)
             let opt_only_requested_paths = Some(&config.paths);
             let file_info_requests =
