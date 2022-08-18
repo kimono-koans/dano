@@ -19,7 +19,7 @@ Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 
 ## Why can't I do that everywhere?
 
-The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what ffmpeg provides easier to use.
+The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  My new CLI app, `dano`, aims to make what `ffmpeg` provides easier to use.
 
 So -- when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
 
