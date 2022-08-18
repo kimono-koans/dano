@@ -6,7 +6,7 @@
 
 As a ZFS fan, I realize ZFS probably appeals to certain kind of person (like me!).  It really shouldn't be so extraordinary to expect the files we read back to be the same files we wrote to disk.  We live in a mad, mad world.  
 
-*But the true answer is -- because FLAC is really cleaver.*
+*But the true answer is -- because FLAC is really clever.*
 
 ## Because FLAC is really clever
 
