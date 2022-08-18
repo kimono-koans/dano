@@ -115,7 +115,6 @@ fn parse_args() -> ArgMatches {
                 .help("quiet many informational messages (like \"OK\").")
                 .short('s')
                 .long("silent")
-                .requires("WRITE")
                 .display_order(8),
         )
         .arg(
