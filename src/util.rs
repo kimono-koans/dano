@@ -148,9 +148,15 @@ pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
 pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     let buffer = match &file_info.metadata {
         Some(metadata) => {
+            let hex_hash_value = format!("{:x}", metadata.hash_value);
+            let hash_value_min_width = format!("{:x}", u128::MAX).len();
+
             format!(
-                "{}={:x} : {:?}\n",
-                metadata.hash_algo, metadata.hash_value, file_info.path
+                "{}={:<width$} : {:?}\n",
+                metadata.hash_algo,
+                hex_hash_value,
+                file_info.path,
+                width = hash_value_min_width
             )
         }
         None => {
