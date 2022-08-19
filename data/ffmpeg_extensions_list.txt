@@ -98,6 +98,8 @@ it
 ivr
 j2b
 j2k
+jpeg
+jpg
 kux
 lvf
 m15
