@@ -450,7 +450,9 @@ fn exec() -> DanoResult<()> {
             unreachable!()
         }
         ExecMode::Print => {
-            recorded_file_info.iter().try_for_each(print_file_info)?;
+            recorded_file_info
+                .iter()
+                .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
             Ok(())
         }

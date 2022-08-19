@@ -145,8 +145,8 @@ pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
     Ok(())
 }
 
-pub fn print_file_info(file_info: &FileInfo) -> DanoResult<()> {
-    let err_buf = match &file_info.metadata {
+pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
+    let buffer = match &file_info.metadata {
         Some(metadata) => {
             format!(
                 "{}={:x} : {:?}\n",
@@ -161,7 +161,10 @@ pub fn print_file_info(file_info: &FileInfo) -> DanoResult<()> {
         }
     };
 
-    print_err_buf(&err_buf)
+    match config.exec_mode {
+        ExecMode::Print => print_out_buf(&buffer),
+        _ => print_err_buf(&buffer),
+    }
 }
 
 pub fn read_input_file(config: &Config) -> DanoResult<File> {
