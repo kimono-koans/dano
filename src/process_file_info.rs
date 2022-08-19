@@ -232,7 +232,7 @@ fn verify_file_info(
         if !config.opt_silent {
             match config.exec_mode {
                 ExecMode::Compare | ExecMode::Test => {
-                    print_out_buf(&format!("{:?}: OK", &file_info.path))?;
+                    print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                 }
                 ExecMode::Write(_) => {
                     print_file_info(config, file_info)?;
