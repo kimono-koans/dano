@@ -39,7 +39,7 @@ This is handy, because, should you choose to change metadata tags, or change fil
 the media checksums should remain the same.
 """
 license-file = ["LICENSE", "4"]
-depends = "$auto"
+depends = "ffmpeg, libc6"
 section = "utility"
 priority = "optional"
 assets = [
