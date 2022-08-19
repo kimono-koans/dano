@@ -1,6 +1,6 @@
 # `dano`
 
-[dano](https://github.com/kimono-koans/dano) is a wrapper for `ffmpeg` that checksums the internal file streams of `ffmpeg` compatible media files, and stores them in a format which can be used to verify such checksums later.  This is handy, because, should you choose to change metadata tags, or change file names, the media checksums *should* remain the same.
+[dano](https://github.com/kimono-koans/dano) is a wrapper for `ffmpeg` that checksums the internal file streams of `ffmpeg` compatible media files, and stores them in a format which can be used to verify such checksums later.  This is handy, because, should you choose to change metadata tags, or change file names, the media checksums should remain the same.
 
 ## Features
 
@@ -12,7 +12,7 @@
 
 ## Why dano? Because FLAC is really clever
 
-To me, first class checksums are one thing that sets the FLAC music format apart.  FLAC supports the writing and checking checksums of the streams held within its container.  When I ask whether the FLAC audio stream is the same checksum as the stream I originally wrote it to disk, the `flac` command tells me whether the checksum matches:
+To me, first class checksums are one thing that sets the FLAC music format apart.  FLAC supports the writing and checking of the streams held within its container.  When I ask whether the FLAC audio stream has the same checksum as the stream I originally wrote to disk, the `flac` command tells me whether the checksum matches:
 
 ```bash
 % flac -t 'Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac'
