@@ -23,11 +23,11 @@ use std::{
     path::PathBuf,
 };
 
+use crate::lookup_file_info::FileInfo;
 use crate::{
-    lookup_file_info::FileInfo, DryRunMode, ExecMode, XattrMode, DANO_FILE_INFO_VERSION,
+    Config, DanoResult, DryRunMode, ExecMode, XattrMode, DANO_FILE_INFO_VERSION,
     DANO_XATTR_KEY_NAME,
 };
-use crate::{Config, DanoResult};
 
 // u128::MAX to LowerHex to String is 32usize
 // this is one of those things one can't make a const function

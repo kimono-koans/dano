@@ -217,7 +217,7 @@ fn verify_file_info(
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
                 print_out_buf(&format!(
-                    "{:?}: WARNING, path does not exist",
+                    "{:?}: WARNING, path does not exist.\n",
                     &file_info.path
                 ))?;
             }
@@ -248,12 +248,12 @@ fn verify_file_info(
             ExecMode::Compare | ExecMode::Test => {
                 let err_buf = if config.opt_write_new && config.opt_overwrite_old {
                     format!(
-                            "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.",
+                            "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
                             file_info.path
                         )
                 } else {
                     format!(
-                        "{:?}: OK, but path has same hash for new filename",
+                        "{:?}: OK, but path has same hash for new filename.\n",
                         file_info.path
                     )
                 };
@@ -270,7 +270,7 @@ fn verify_file_info(
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
                 print_out_buf(&format!(
-                    "{:?}: WARNING, path has new hash for same filename",
+                    "{:?}: WARNING, path has new hash for same filename.\n",
                     file_info.path
                 ))?;
             }
@@ -284,7 +284,7 @@ fn verify_file_info(
         if !config.opt_silent {
             match config.exec_mode {
                 ExecMode::Compare | ExecMode::Test => {
-                    print_out_buf(&format!("{:?}: Path is a new file", file_info.path))?;
+                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
                     print_file_info(config, file_info)?;
