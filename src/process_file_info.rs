@@ -24,7 +24,9 @@ use rayon::prelude::*;
 use crate::{Config, DanoResult, ExecMode, FileInfoRequest, XattrMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::util::{deserialize, print_file_info, read_input_file, write_all_new_paths, WriteType};
+use crate::util::{
+    deserialize, print_err_buf, print_file_info, read_input_file, write_all_new_paths, WriteType,
+};
 
 pub struct NewFilesBundle {
     hash_matches: Vec<FileInfo>,
@@ -49,7 +51,7 @@ pub fn exec_process_file_info(
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare => {
-                if let (Some(either), _) = verify_file_info(config, &file_info, file_map.clone()) {
+                if let (Some(either), _) = verify_file_info(config, &file_info, file_map.clone())? {
                     match either {
                         Either::Left(file_info) => hash_matches.push(file_info),
                         Either::Right(file_info) => hash_non_matches.push(file_info),
@@ -57,7 +59,7 @@ pub fn exec_process_file_info(
                 }
             }
             ExecMode::Test => {
-                let (_, test_exit_code) = verify_file_info(config, &file_info, file_map.clone());
+                let (_, test_exit_code) = verify_file_info(config, &file_info, file_map.clone())?;
                 if test_exit_code != 0 {
                     exit_code += test_exit_code
                 }
@@ -204,7 +206,7 @@ fn verify_file_info(
     config: &Config,
     file_info: &FileInfo,
     file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
-) -> (Option<Either<FileInfo, FileInfo>>, i32) {
+) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
     let is_same_hash = is_same_hash(&file_map, file_info);
     let is_same_filename = is_same_filename(&file_map, file_info);
     let mut test_exit_code = 0;
@@ -214,10 +216,13 @@ fn verify_file_info(
         // always print, even in silent
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
-                eprintln!("{:?}: WARNING, path does not exist", &file_info.path)
+                print_err_buf(&format!(
+                    "{:?}: WARNING, path does not exist",
+                    &file_info.path
+                ))?;
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(config, file_info);
+                print_file_info(config, file_info)?;
             }
             _ => unreachable!(),
         }
@@ -226,9 +231,11 @@ fn verify_file_info(
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
-                ExecMode::Compare | ExecMode::Test => eprintln!("{:?}: OK", &file_info.path),
+                ExecMode::Compare | ExecMode::Test => {
+                    print_err_buf(&format!("{:?}: OK", &file_info.path))?;
+                }
                 ExecMode::Write(_) => {
-                    let _ = print_file_info(config, file_info);
+                    print_file_info(config, file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -239,20 +246,21 @@ fn verify_file_info(
         // to specify things will be overwritten
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
-                if config.opt_write_new && config.opt_overwrite_old {
-                    eprintln!(
+                let err_buf = if config.opt_write_new && config.opt_overwrite_old {
+                    format!(
                             "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.",
                             file_info.path
-                        );
+                        )
                 } else {
-                    eprintln!(
+                    format!(
                         "{:?}: OK, but path has same hash for new filename",
                         file_info.path
-                    );
-                }
+                    )
+                };
+                print_err_buf(&err_buf)?;
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(config, file_info);
+                print_file_info(config, file_info)?;
             }
             _ => unreachable!(),
         }
@@ -261,13 +269,13 @@ fn verify_file_info(
         // always print, even in silent
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
-                eprintln!(
+                print_err_buf(&format!(
                     "{:?}: WARNING, path has new hash for same filename",
                     file_info.path
-                );
+                ))?;
             }
             ExecMode::Write(_) => {
-                let _ = print_file_info(config, file_info);
+                print_file_info(config, file_info)?;
             }
             _ => unreachable!(),
         }
@@ -276,10 +284,10 @@ fn verify_file_info(
         if !config.opt_silent {
             match config.exec_mode {
                 ExecMode::Compare | ExecMode::Test => {
-                    eprintln!("{:?}: Path is a new file", file_info.path);
+                    print_err_buf(&format!("{:?}: Path is a new file", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
-                    let _ = print_file_info(config, file_info);
+                    print_file_info(config, file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -287,5 +295,5 @@ fn verify_file_info(
         Some(Either::Right(file_info.clone()))
     };
 
-    (opt_file_info, test_exit_code)
+    Ok((opt_file_info, test_exit_code))
 }
