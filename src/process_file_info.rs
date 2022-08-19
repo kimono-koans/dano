@@ -25,7 +25,7 @@ use crate::{Config, DanoResult, ExecMode, FileInfoRequest, XattrMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
-    deserialize, print_err_buf, print_file_info, read_input_file, write_all_new_paths, WriteType,
+    deserialize, print_file_info, print_out_buf, read_input_file, write_all_new_paths, WriteType,
 };
 
 pub struct NewFilesBundle {
@@ -216,7 +216,7 @@ fn verify_file_info(
         // always print, even in silent
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
-                print_err_buf(&format!(
+                print_out_buf(&format!(
                     "{:?}: WARNING, path does not exist",
                     &file_info.path
                 ))?;
@@ -232,7 +232,7 @@ fn verify_file_info(
         if !config.opt_silent {
             match config.exec_mode {
                 ExecMode::Compare | ExecMode::Test => {
-                    print_err_buf(&format!("{:?}: OK", &file_info.path))?;
+                    print_out_buf(&format!("{:?}: OK", &file_info.path))?;
                 }
                 ExecMode::Write(_) => {
                     print_file_info(config, file_info)?;
@@ -257,7 +257,7 @@ fn verify_file_info(
                         file_info.path
                     )
                 };
-                print_err_buf(&err_buf)?;
+                print_out_buf(&err_buf)?;
             }
             ExecMode::Write(_) => {
                 print_file_info(config, file_info)?;
@@ -269,7 +269,7 @@ fn verify_file_info(
         // always print, even in silent
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
-                print_err_buf(&format!(
+                print_out_buf(&format!(
                     "{:?}: WARNING, path has new hash for same filename",
                     file_info.path
                 ))?;
@@ -284,7 +284,7 @@ fn verify_file_info(
         if !config.opt_silent {
             match config.exec_mode {
                 ExecMode::Compare | ExecMode::Test => {
-                    print_err_buf(&format!("{:?}: Path is a new file", file_info.path))?;
+                    print_out_buf(&format!("{:?}: Path is a new file", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
                     print_file_info(config, file_info)?;
