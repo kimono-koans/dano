@@ -50,7 +50,7 @@ Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`.
 
 For now, `dano` depends on `ffmpeg`.  
 
-Note: In addition to what your package manager or OS may provide, there are several [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the Rust compiler besides the method described below.
+Note: In addition to what your package manager or OS may provide, there are several [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the Rust compiler (`rustc`) and `cargo` besides the method described below.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
