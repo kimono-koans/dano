@@ -7,7 +7,7 @@
 * Non-media path filtering (which can be disabled)
 * Highly concurrent hashing (select # of threads)
 * Several useful modes: WRITE, TEST, COMPARE, PRINT
-* Select from multiple checksum algorithms(default: murmur3, MD5, adler32, CRC32)
+* Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32)
 * Write to xattrs or to hash file (and always read back and operate on both)
 
 ## Why dano? Because FLAC is really clever
@@ -44,7 +44,7 @@ murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 
 ## Shout outs! Yo, yo, yo!
 
-Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`
+Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`.
 
 ## Installation
 
