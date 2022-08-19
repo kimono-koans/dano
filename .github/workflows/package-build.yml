@@ -1,0 +1,31 @@
+name: Build Debian/Redhat packages
+
+on:
+  push:
+    paths:
+      - Cargo.toml
+      
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v3
+    - name: Install cargo-deb
+      run: cargo install cargo-deb
+    - name: Build package with cargo-deb
+      run: cargo deb
+    - name: Install alien
+      run: sudo apt-get install -y alien
+    - name: Convert deb to rpm with alien
+      working-directory: target/debian
+      run: sudo alien --to-rpm httm_*.deb
+    - name: Upload both build artifacts
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: cargo-deb-upload
+        path: target/debian/httm*.*
