@@ -10,7 +10,7 @@
 * Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32)
 * Write to xattrs or to hash file (and always read back and operate on both)
 
-## Why dano? Because FLAC is really clever
+## Why `dano`? Because FLAC is really clever
 
 To me, first class checksums are one thing that sets the FLAC music format apart.  FLAC supports the writing and checking of the streams held within its container.  When I ask whether the FLAC audio stream has the same checksum as the stream I originally wrote to disk, the `flac` command tells me whether the checksum matches:
 
@@ -46,9 +46,11 @@ murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 
 Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`.
 
-## Installation
+## Installation from Source
 
-For now, `dano` depends on `ffmpeg`.
+For now, `dano` depends on `ffmpeg`.  
+
+Note: In addition to what your package manager or OS may provide, there are several [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the Rust compiler besides the method described below.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
