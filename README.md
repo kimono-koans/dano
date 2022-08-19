@@ -30,11 +30,13 @@ So -- when I ask whether a media stream has the same checksum as when I original
 murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "Sample.mkv"
 % dano -t 'Sample.mkv'
 "Sample": OK
-# Now change our file's name and our checksum still verifies
+# Now change our file's name and our checksum still verifies,
+# because the checksum is stored in a xattr
 % mv 'Sample.mkv' 'test1.mkv'
 % dano -t 'test2.mkv'
 "test1.mkv": OK
-# Now change our file's metadata and *write a new file in a new container* and our checksum is the *same*
+# Now change our file's metadata and *write a new file in a 
+# new container* and our checksum is the *same*
 % ffmpeg -i 'test1.mkv' -metadata author="Kimono" 'test2.mp4'
 % dano -w 'test2.mp4'
 murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
