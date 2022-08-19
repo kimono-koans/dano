@@ -11,7 +11,7 @@
 //      ~~            \/__/         \/__/         \/__/
 //
 // (c) Robert Swinford <robert.swinford<...at...>gmail.com>
-//
+//2
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
@@ -28,6 +28,10 @@ use crate::{
     DANO_XATTR_KEY_NAME,
 };
 use crate::{Config, DanoResult};
+
+// u128::MAX to LowerHex to String is 32usize
+// this is one of those things one can't make a const function
+const HASH_VALUE_MIN_WIDTH: usize = 32;
 
 #[derive(Debug, Clone)]
 pub struct DanoError {
@@ -148,15 +152,14 @@ pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
 pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     let buffer = match &file_info.metadata {
         Some(metadata) => {
-            let hex_hash_value = format!("{:x}", metadata.hash_value);
-            let hash_value_min_width = format!("{:x}", u128::MAX).len();
+            let hash_value_as_hex = format!("{:x}", metadata.hash_value);
 
             format!(
                 "{}={:<width$} : {:?}\n",
                 metadata.hash_algo,
-                hex_hash_value,
+                hash_value_as_hex,
                 file_info.path,
-                width = hash_value_min_width
+                width = HASH_VALUE_MIN_WIDTH
             )
         }
         None => {
