@@ -84,21 +84,22 @@ fn parse_args() -> ArgMatches {
                 .long("write")
                 .display_order(4))
         .arg(
-            Arg::new("TEST")
-                .help("compare the hashes in a hash file to the files currently on disk.")
-                .short('t')
-                .long("test")
-                .display_order(5))
-        .arg(
             Arg::new("COMPARE")
-                .help("compare the input files to the hashes.")
+                .help("compare the input files to the hashes in a hash file (or in a xattr).")
                 .short('c')
                 .long("compare")
                 .display_order(6),
             )
         .arg(
+            Arg::new("TEST")
+                .help("compare the hashes in a hash file to the files currently on disk.")
+                .short('t')
+                .long("test")
+                .conflicts_with("INPUT_FILES")
+                .display_order(5))
+        .arg(
             Arg::new("PRINT")
-                .help("pretty print hashes.")
+                .help("pretty print the file hashes.")
                 .short('p')
                 .long("print")
                 .display_order(7))
@@ -197,9 +198,15 @@ struct WriteModeConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct CompareModeConfig {
+    opt_test_mode: bool,
+    opt_write_new: bool,
+    opt_overwrite_old: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ExecMode {
-    Test,
-    Compare,
+    Compare(CompareModeConfig),
     Write(WriteModeConfig),
     Print,
 }
@@ -207,11 +214,9 @@ enum ExecMode {
 #[derive(Debug, Clone)]
 pub struct Config {
     exec_mode: ExecMode,
-    opt_num_threads: Option<usize>,
-    opt_write_new: bool,
     opt_silent: bool,
-    opt_overwrite_old: bool,
-    hash_algo: Box<str>,
+    opt_num_threads: Option<usize>,
+    selected_hash_algo: Box<str>,
     pwd: PathBuf,
     output_file: PathBuf,
     hash_file: PathBuf,
@@ -257,10 +262,22 @@ impl Config {
             DryRunMode::Disabled
         };
 
-        let exec_mode = if matches.is_present("COMPARE") {
-            ExecMode::Compare
-        } else if matches.is_present("TEST") {
-            ExecMode::Test
+        let opt_num_threads = matches
+            .value_of_lossy("NUM_THREADS")
+            .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
+        let opt_write_new = matches.is_present("WRITE_NEW");
+        let opt_silent = matches.is_present("SILENT");
+        let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
+        let opt_disable_filter = matches.is_present("DISABLE_FILTER");
+        let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
+        let opt_test_mode = matches.is_present("TEST");
+
+        let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
+            ExecMode::Compare(CompareModeConfig {
+                opt_test_mode,
+                opt_overwrite_old,
+                opt_write_new,
+            })
         } else if matches.is_present("PRINT") && !matches.is_present("WRITE") {
             ExecMode::Print
         } else if matches.is_present("WRITE") {
@@ -275,22 +292,13 @@ impl Config {
             .into());
         };
 
-        let opt_num_threads = matches
-            .value_of_lossy("NUM_THREADS")
-            .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
-        let opt_write_new = matches.is_present("WRITE_NEW");
-        let opt_silent = matches.is_present("SILENT");
-        let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
-        let opt_disable_filter = matches.is_present("DISABLE_FILTER");
-        let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
-
         let output_file = if let Some(output_file) = matches.value_of_os("OUTPUT_FILE") {
             PathBuf::from(output_file)
         } else {
             pwd.join(DANO_DEFAULT_HASH_FILE_NAME)
         };
 
-        let hash_algo = if let Some(hash_algo) = matches.value_of_os("HASH_ALGO") {
+        let selected_hash_algo = if let Some(hash_algo) = matches.value_of_os("HASH_ALGO") {
             hash_algo.to_string_lossy().into()
         } else {
             "murmur3".into()
@@ -302,31 +310,34 @@ impl Config {
             output_file.clone()
         };
 
+        if !hash_file.exists() && opt_test_mode {
+            return Err(DanoError::new("Test mode requires the use specify a hash file.").into());
+        }
+
         let paths: Vec<PathBuf> = {
             let res: Vec<PathBuf> = if let Some(input_files) = matches.values_of_os("INPUT_FILES") {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Compare | ExecMode::Write(_) => {
+                    ExecMode::Print => Vec::new(),
+                    ExecMode::Compare(compare_config) if compare_config.opt_test_mode => Vec::new(),
+                    ExecMode::Compare(_) | ExecMode::Write(_) => {
                         read_stdin()?.par_iter().map(PathBuf::from).collect()
                     }
-                    ExecMode::Print | ExecMode::Test => Vec::new(),
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
-        if paths.is_empty() && matches!(exec_mode, ExecMode::Write(_) | ExecMode::Compare) {
+        if paths.is_empty() && !opt_test_mode || matches!(exec_mode, ExecMode::Write(_)) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
 
         Ok(Config {
             exec_mode,
-            opt_num_threads,
             opt_silent,
-            opt_write_new,
-            opt_overwrite_old,
-            hash_algo,
+            opt_num_threads,
+            selected_hash_algo,
             pwd,
             output_file,
             hash_file,
@@ -413,21 +424,13 @@ fn exec() -> DanoResult<()> {
 
             write_new_file_info(&config, &compare_hashes_bundle)
         }
-        ExecMode::Compare => {
+        ExecMode::Compare(_) => {
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
                 exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
             write_new_file_info(&config, &compare_hashes_bundle)
-        }
-        ExecMode::Test => {
-            let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
-            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let _ = exec_process_file_info(&config, &recorded_file_info, rx_item)?;
-
-            // test will exit on file DNE with special exit code so we don't return here
-            unreachable!()
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {

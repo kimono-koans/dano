@@ -21,7 +21,7 @@ use rayon::prelude::*;
 
 use crate::lookup_file_info::FileInfo;
 use crate::util::{deserialize, read_input_file};
-use crate::{Config, DanoResult, DANO_XATTR_KEY_NAME};
+use crate::{Config, DanoError, DanoResult, ExecMode, DANO_XATTR_KEY_NAME};
 
 pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let mut file_info_from_xattrs: Vec<FileInfo> = {
@@ -55,6 +55,12 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     } else {
         Vec::new()
     };
+
+    if let ExecMode::Compare(compare_config) = &config.exec_mode {
+        if compare_config.opt_test_mode && file_info_from_file.is_empty() {
+            return Err(DanoError::new("No valid hashes could be read from the specified hash file (required in Test mode).").into());
+        }
+    }
 
     // include test paths and combine
     file_info_from_xattrs.extend(file_info_from_file);

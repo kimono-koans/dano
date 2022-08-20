@@ -51,18 +51,17 @@ pub fn exec_process_file_info(
     // loop while recv from channel
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
-            ExecMode::Write(_) | ExecMode::Compare => {
-                if let (Some(either), _) = verify_file_info(config, &file_info, file_map.clone())? {
+            ExecMode::Write(_) | ExecMode::Compare(_) => {
+                if let (Some(either), test_exit_code) =
+                    verify_file_info(config, &file_info, file_map.clone())?
+                {
                     match either {
                         Either::Left(file_info) => new_filenames.push(file_info),
                         Either::Right(file_info) => new_files.push(file_info),
                     }
-                }
-            }
-            ExecMode::Test => {
-                let (_, test_exit_code) = verify_file_info(config, &file_info, file_map.clone())?;
-                if test_exit_code != 0 {
-                    exit_code += test_exit_code
+                    if test_exit_code != 0 {
+                        exit_code += test_exit_code
+                    }
                 }
             }
             ExecMode::Print => unreachable!(),
@@ -70,8 +69,10 @@ pub fn exec_process_file_info(
     }
 
     // exit with non-zero status is test is not "OK"
-    if matches!(config.exec_mode, ExecMode::Test) {
-        std::process::exit(exit_code)
+    if let ExecMode::Compare(compare_config) = &config.exec_mode {
+        if compare_config.opt_test_mode {
+            std::process::exit(exit_code)
+        }
     }
 
     // sort new paths before writing to file, threads may complete in non-sorted order
@@ -96,28 +97,37 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                 })?;
             write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
         };
-        match config.exec_mode {
+        match &config.exec_mode {
             ExecMode::Write(_) => write_new()?,
-            ExecMode::Compare if config.opt_write_new => write_new()?,
-            ExecMode::Compare => new_files_bundle
-                .new_files
-                .iter()
-                .try_for_each(|file_info| {
-                    print_err_buf(&format!(
-                        "Not writing dano hash for: {:?}, --write-new was not specified.\n",
-                        file_info.path
-                    ))
-                })?,
+            ExecMode::Compare(compare_config) => {
+                if compare_config.opt_write_new {
+                    write_new()?
+                } else {
+                    new_files_bundle
+                        .new_files
+                        .iter()
+                        .try_for_each(|file_info| {
+                            print_err_buf(&format!(
+                                "Not writing dano hash for: {:?}, --write-new was not specified.\n",
+                                file_info.path
+                            ))
+                        })?
+                }
+            }
             _ => unreachable!(),
         }
-    } else if matches!(config.exec_mode, ExecMode::Compare) && !config.opt_write_new {
-        eprintln!("No new file paths to write, and --write-new was not specified");
+    } else if let ExecMode::Compare(compare_config) = &config.exec_mode {
+        if compare_config.opt_write_new {
+            eprintln!("No new file paths to write, and --write-new was not specified");
+        } else {
+            eprintln!("No new file paths to write.");
+        }
     } else {
         eprintln!("No new file paths to write.");
     }
 
     // write old files with new names - hash matches
-    if !new_files_bundle.new_filenames.is_empty() && config.opt_overwrite_old {
+    if !new_files_bundle.new_filenames.is_empty() {
         let overwrite_old = || -> DanoResult<()> {
             new_files_bundle
                 .new_filenames
@@ -130,26 +140,34 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                 })?;
             overwrite_old_file_info(config, new_files_bundle)
         };
-        match config.exec_mode {
+
+        match &config.exec_mode {
             ExecMode::Write(_) => overwrite_old()?,
-            ExecMode::Compare if config.opt_overwrite_old && config.opt_write_new => overwrite_old()?,
-            ExecMode::Compare => {
-                new_files_bundle
-                    .new_filenames
-                    .iter()
-                    .try_for_each(|file_info| {
-                        print_err_buf(&format!(
-                            "Not overwriting dano hash for: {:?}, and --write-new and --overwrite were not specified.\n",
-                            file_info.path
-                        ))
-                    })?
+            ExecMode::Compare(compare_config) => {
+                if compare_config.opt_overwrite_old {
+                    overwrite_old()?
+                } else {
+                    new_files_bundle
+                        .new_filenames
+                        .iter()
+                        .try_for_each(|file_info| {
+                            print_err_buf(&format!(
+                                "Not overwriting dano hash for: {:?}, --overwrite was not specified.\n",
+                                file_info.path
+                            ))
+                        })?
+                }
             }
             _ => unreachable!(),
         }
-    } else if config.opt_overwrite_old {
-        eprintln!("No old file paths to overwrite.");
+    } else if let ExecMode::Compare(compare_config) = &config.exec_mode {
+        if compare_config.opt_overwrite_old {
+            eprintln!("No old file hashes to overwrite.");
+        } else {
+            eprintln!("No old file hash to overwrite and --overwrite was not specified.");
+        }
     } else {
-        eprintln!("File overwrite was not specified.");
+        eprintln!("No old file hashes to overwrite.");
     }
 
     Ok(())
@@ -243,7 +261,7 @@ fn verify_file_info(
     let opt_file_info = if file_info.metadata.is_none() {
         // always print, even in silent
         match config.exec_mode {
-            ExecMode::Compare | ExecMode::Test => {
+            ExecMode::Compare(_) => {
                 print_out_buf(&format!(
                     "{:?}: WARNING, path does not exist.\n",
                     &file_info.path
@@ -259,7 +277,7 @@ fn verify_file_info(
     } else if !is_same_filename && !is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
-                ExecMode::Compare | ExecMode::Test => {
+                ExecMode::Compare(_) => {
                     print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
@@ -272,7 +290,7 @@ fn verify_file_info(
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
-                ExecMode::Compare | ExecMode::Test => {
+                ExecMode::Compare(_) => {
                     print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                 }
                 ExecMode::Write(_) => {
@@ -283,21 +301,22 @@ fn verify_file_info(
         }
         None
     } else if is_same_hash {
-        match config.exec_mode {
-            ExecMode::Compare if config.opt_write_new && config.opt_overwrite_old => {
-                print_out_buf(format!(
-                    "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
-                    file_info.path
-                ).as_ref())?;
-            }
-            ExecMode::Compare | ExecMode::Test => {
-                print_out_buf(
-                    format!(
-                        "{:?}: OK, but path has same hash for new filename.\n",
+        match &config.exec_mode {
+            ExecMode::Compare(compare_config) => {
+                if compare_config.opt_write_new && compare_config.opt_overwrite_old {
+                    print_out_buf(format!(
+                        "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
                         file_info.path
-                    )
-                    .as_ref(),
-                )?;
+                    ).as_ref())?;
+                } else {
+                    print_out_buf(
+                        format!(
+                            "{:?}: OK, but path has same hash for new filename.\n",
+                            file_info.path
+                        )
+                        .as_ref(),
+                    )?;
+                }
             }
             ExecMode::Write(_) => {
                 print_file_info(config, file_info)?;
@@ -308,7 +327,7 @@ fn verify_file_info(
     } else if is_same_filename {
         // always print, even in silent
         match config.exec_mode {
-            ExecMode::Compare | ExecMode::Test => {
+            ExecMode::Compare(_) => {
                 print_out_buf(&format!(
                     "{:?}: WARNING, path has new hash for same filename.\n",
                     file_info.path

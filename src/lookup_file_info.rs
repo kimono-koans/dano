@@ -89,7 +89,7 @@ fn exec_ffmpeg(
     let path_string = request.path.to_string_lossy();
     let hash_algo = match &request.hash_algo {
         Some(hash_algo) => hash_algo,
-        None => &config.hash_algo,
+        None => &config.selected_hash_algo,
     };
 
     let process_args = vec![
@@ -115,7 +115,7 @@ fn exec_ffmpeg(
             "Error: Invalid hash algorithm specified.  \
         This version of ffmpeg does not support: {} .  \
         Upgrade or specify another hash algorithm.",
-            config.hash_algo
+            config.selected_hash_algo
         );
         std::process::exit(1)
     }
