@@ -52,7 +52,7 @@ pub fn get_file_info_requests(
         .collect();
 
     // next, we consider the new paths/not recorded paths.  map will allow us to
-    // dedup the against the recorded file info an only include None values for
+    // dedup the against the recorded file info and only include None values for
     // hash selection where needed
     let selected = if let Some(requested_paths) = opt_requested_paths {
         requested_paths

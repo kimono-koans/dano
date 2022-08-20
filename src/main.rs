@@ -442,6 +442,7 @@ fn exec() -> DanoResult<()> {
             let opt_only_requested_paths = None;
             let file_info_requests =
                 get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
+
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let _ = exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
