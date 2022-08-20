@@ -17,7 +17,6 @@
 
 use std::{
     ffi::OsStr,
-    fs::read_dir,
     path::{Path, PathBuf},
 };
 
@@ -308,26 +307,10 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Write(_) => read_stdin()?.par_iter().map(PathBuf::from).collect(),
-                    ExecMode::Compare => read_dir(&pwd)?
-                        .par_bridge()
-                        .flatten()
-                        .map(|dir_entry| {
-                            let path = dir_entry.path();
-
-                            match path.strip_prefix(&pwd) {
-                                Ok(stripped_path) => stripped_path.to_path_buf(),
-                                Err(_) => path,
-                            }
-                        })
-                        .collect(),
-                    ExecMode::Print | ExecMode::Test => {
-                        if hash_file.exists() {
-                            Vec::new()
-                        } else {
-                            read_stdin()?.par_iter().map(PathBuf::from).collect()
-                        }
+                    ExecMode::Compare | ExecMode::Write(_) => {
+                        read_stdin()?.par_iter().map(PathBuf::from).collect()
                     }
+                    ExecMode::Print | ExecMode::Test => Vec::new(),
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
@@ -440,7 +423,6 @@ fn exec() -> DanoResult<()> {
         }
         ExecMode::Test => {
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
-
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let _ = exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
@@ -448,9 +430,13 @@ fn exec() -> DanoResult<()> {
             unreachable!()
         }
         ExecMode::Print => {
-            recorded_file_info
-                .iter()
-                .try_for_each(|file_info| print_file_info(&config, file_info))?;
+            if recorded_file_info.is_empty() {
+                return Err(DanoError::new("No recorded file info is available to print.").into());
+            } else {
+                recorded_file_info
+                    .iter()
+                    .try_for_each(|file_info| print_file_info(&config, file_info))?;
+            }
 
             Ok(())
         }
