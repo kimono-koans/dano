@@ -228,11 +228,26 @@ fn get_file_map(
     Ok(recorded_file_info_map)
 }
 
+fn recorded_md_is_none(
+    file_map: &BTreeMap<PathBuf, Option<FileMetadata>>,
+    file_info: &FileInfo,
+) -> bool {
+    file_map
+        .get(file_info.path.as_path()).unwrap_or(&None)
+        .is_none()
+}
+
 fn verify_file_info(
     config: &Config,
     file_info: &FileInfo,
     file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
 ) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
+    let recorded_md_is_none = if matches!(config.exec_mode, ExecMode::Test) {
+        recorded_md_is_none(&file_map, file_info)
+    } else {
+        false
+    };
+
     let is_same_hash = is_same_hash(&file_map, file_info);
     let is_same_filename = is_same_filename(&file_map, file_info);
     let mut test_exit_code = 0;
@@ -254,6 +269,19 @@ fn verify_file_info(
         }
         test_exit_code = 2;
         None
+    } else if (!is_same_filename && !is_same_hash) || recorded_md_is_none {
+        if !config.opt_silent {
+            match config.exec_mode {
+                ExecMode::Compare | ExecMode::Test => {
+                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
+                }
+                ExecMode::Write(_) => {
+                    print_file_info(config, file_info)?;
+                }
+                _ => unreachable!(),
+            }
+        }
+        Some(Either::Right(file_info.clone()))
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
@@ -267,19 +295,6 @@ fn verify_file_info(
             }
         }
         None
-    } else if !is_same_filename && !is_same_hash {
-        if !config.opt_silent {
-            match config.exec_mode {
-                ExecMode::Compare | ExecMode::Test => {
-                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
-                }
-                ExecMode::Write(_) => {
-                    print_file_info(config, file_info)?;
-                }
-                _ => unreachable!(),
-            }
-        }
-        Some(Either::Right(file_info.clone()))
     } else if is_same_hash {
         match config.exec_mode {
             ExecMode::Compare if config.opt_write_new && config.opt_overwrite_old => {

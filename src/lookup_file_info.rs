@@ -16,6 +16,7 @@
 // that was distributed with this source code.
 
 use std::{
+    cmp::{Ord, Ordering, PartialOrd},
     path::{Path, PathBuf},
     process::Command as ExecProcess,
     sync::Arc,
@@ -31,14 +32,28 @@ use which::which;
 use crate::{util::DanoError, Config, FileInfoRequest};
 use crate::{DanoResult, DANO_FILE_INFO_VERSION};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileInfo {
     pub version: usize,
     pub path: PathBuf,
     pub metadata: Option<FileMetadata>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+impl PartialOrd for FileInfo {
+    #[inline]
+    fn partial_cmp(&self, other: &FileInfo) -> Option<Ordering> {
+        Some(self.path.cmp(&other.path))
+    }
+}
+
+impl Ord for FileInfo {
+    #[inline]
+    fn cmp(&self, other: &FileInfo) -> Ordering {
+        self.path.cmp(&other.path)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileMetadata {
     pub hash_algo: Box<str>,
     pub hash_value: u128,
