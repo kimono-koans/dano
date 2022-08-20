@@ -40,7 +40,7 @@ pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 const DANO_FILE_INFO_VERSION: usize = 1;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
-const DANO_DEFAULT_HASH_FILE: &str = "dano_hashes.txt";
+const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";
 
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
@@ -288,7 +288,7 @@ impl Config {
         let output_file = if let Some(output_file) = matches.value_of_os("OUTPUT_FILE") {
             PathBuf::from(output_file)
         } else {
-            pwd.join(DANO_DEFAULT_HASH_FILE)
+            pwd.join(DANO_DEFAULT_HASH_FILE_NAME)
         };
 
         let hash_algo = if let Some(hash_algo) = matches.value_of_os("HASH_ALGO") {
