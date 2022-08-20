@@ -29,8 +29,8 @@ use crate::util::{
 };
 
 pub struct NewFilesBundle {
-    hash_matches: Vec<FileInfo>,
-    hash_non_matches: Vec<FileInfo>,
+    new_filenames: Vec<FileInfo>,
+    new_files: Vec<FileInfo>,
 }
 
 pub fn exec_process_file_info(
@@ -42,9 +42,9 @@ pub fn exec_process_file_info(
     let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
     // L
-    let mut hash_matches = Vec::new();
+    let mut new_filenames = Vec::new();
     // R
-    let mut hash_non_matches = Vec::new();
+    let mut new_files = Vec::new();
 
     // loop while recv from channel
     while let Ok(file_info) = rx_item.recv() {
@@ -52,8 +52,8 @@ pub fn exec_process_file_info(
             ExecMode::Write(_) | ExecMode::Compare => {
                 if let (Some(either), _) = verify_file_info(config, &file_info, file_map.clone())? {
                     match either {
-                        Either::Left(file_info) => hash_matches.push(file_info),
-                        Either::Right(file_info) => hash_non_matches.push(file_info),
+                        Either::Left(file_info) => new_filenames.push(file_info),
+                        Either::Right(file_info) => new_files.push(file_info),
                     }
                 }
             }
@@ -73,39 +73,34 @@ pub fn exec_process_file_info(
     }
 
     // sort new paths before writing to file, threads may complete in non-sorted order
-    hash_matches.par_sort_unstable_by_key(|file_info| file_info.clone().path);
-    hash_non_matches.par_sort_unstable_by_key(|file_info| file_info.clone().path);
+    new_filenames.par_sort_unstable_by_key(|file_info| file_info.clone().path);
+    new_files.par_sort_unstable_by_key(|file_info| file_info.clone().path);
 
     Ok(NewFilesBundle {
-        hash_matches,
-        hash_non_matches,
+        new_filenames,
+        new_files,
     })
 }
 
 pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write new files - no hash match in record
-    if !new_files_bundle.hash_non_matches.is_empty()
-        && matches!(config.exec_mode, ExecMode::Write(_))
+    if !new_files_bundle.new_files.is_empty() && matches!(config.exec_mode, ExecMode::Write(_))
         || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
     {
-        write_all_new_paths(
-            config,
-            &new_files_bundle.hash_non_matches,
-            WriteType::Append,
-        )?
+        write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)?
     } else if !config.opt_silent && matches!(config.exec_mode, ExecMode::Write(_)) {
         eprintln!("No new paths to write.");
     }
 
     // write old files with new names - hash matches
-    if !new_files_bundle.hash_matches.is_empty()
+    if !new_files_bundle.new_filenames.is_empty()
         && ((matches!(config.exec_mode, ExecMode::Write(_)) && config.opt_overwrite_old)
             || (config.exec_mode == ExecMode::Compare
                 && config.opt_overwrite_old
                 && config.opt_write_new))
     {
         // append new paths
-        write_all_new_paths(config, &new_files_bundle.hash_matches, WriteType::Append)?;
+        write_all_new_paths(config, &new_files_bundle.new_filenames, WriteType::Append)?;
 
         // overwrite all paths if in non-xattr/file write mode
         match &config.exec_mode {
@@ -222,23 +217,19 @@ fn verify_file_info(
                 _ => unreachable!(),
             }
         }
-        Some(Either::Left(file_info.clone()))
+        None
     } else if is_same_hash {
         match config.exec_mode {
+            ExecMode::Compare if config.opt_write_new && config.opt_overwrite_old => {
+                print_out_buf(format!(
+                    "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
+                    file_info.path
+                ).as_ref())?;
+            }
             ExecMode::Compare | ExecMode::Test => {
-                let err_buf = if config.opt_write_new && config.opt_overwrite_old {
-                    // Compare mode only condition
-                    format!(
-                            "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
-                            file_info.path
-                        )
-                } else {
-                    format!(
-                        "{:?}: OK, but path has same hash for new filename.\n",
-                        file_info.path
-                    )
-                };
-                print_out_buf(&err_buf)?;
+                print_out_buf(format!(
+                    "{:?}: OK, but path has same hash for new filename.\n",
+                    file_info.path).as_ref())?;
             }
             ExecMode::Write(_) => {
                 print_file_info(config, file_info)?;
