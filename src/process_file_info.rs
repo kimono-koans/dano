@@ -118,9 +118,9 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         }
     } else if let ExecMode::Compare(compare_config) = &config.exec_mode {
         if compare_config.opt_write_new {
-            eprintln!("No new file paths to write, and --write-new was not specified");
-        } else {
             eprintln!("No new file paths to write.");
+        } else {
+            eprintln!("No new file paths to write, and --write-new was not specified");
         }
     } else {
         eprintln!("No new file paths to write.");

@@ -1,6 +1,6 @@
 [package]
 name = "dano"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2021"
 keywords = ["checksum", "verify", "media", "cli-utility", "storage"]
 description = "A CLI tool for generating checksums of media bitstreams"
