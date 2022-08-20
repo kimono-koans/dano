@@ -30,7 +30,7 @@ use crate::{
     DANO_XATTR_KEY_NAME,
 };
 
-// u128::MAX to LowerHex to String is 32usize
+// u128::MAX to LowerHex to String len is 32usize
 // this is one of those things one can't make a const function
 const HASH_VALUE_MIN_WIDTH: usize = 32;
 
@@ -110,7 +110,8 @@ fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
             print_out_buf(&serialized)
         }
         ExecMode::Write(write_config) if matches!(write_config.opt_xattr, XattrMode::Enabled) => {
-            // write empty path for path, because we have the actual path
+            // write empty path for path, because we a re writing to an actual path
+            // that may change if the file name is changed
             let rewrite = FileInfo {
                 version: file_info.version,
                 path: PathBuf::new(),

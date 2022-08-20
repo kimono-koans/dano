@@ -26,6 +26,11 @@ pub fn get_file_info_requests(
     recorded_file_info: &[FileInfo],
     opt_requested_paths: Option<&Vec<PathBuf>>,
 ) -> DanoResult<Vec<FileInfoRequest>> {
+    // here we generate a file info request because we need more than
+    // the path name when the user has specified a different hash algo
+
+    // first, we generate a map of the recorded file info to test against
+    // map will allow
     let recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
         .par_iter()
         .map(|file_info| match &file_info.metadata {
@@ -46,6 +51,9 @@ pub fn get_file_info_requests(
         })
         .collect();
 
+    // next, we consider the new paths/not recorded paths.  map will allow us to
+    // dedup the against the recorded file info an only include None values for
+    // hash selection where needed
     let selected = if let Some(requested_paths) = opt_requested_paths {
         requested_paths
             .par_iter()

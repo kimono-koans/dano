@@ -74,8 +74,8 @@ pub fn exec_process_file_info(
     }
 
     // sort new paths before writing to file, threads may complete in non-sorted order
-    hash_matches.sort_unstable_by_key(|file_info| file_info.clone().path);
-    hash_non_matches.sort_unstable_by_key(|file_info| file_info.clone().path);
+    hash_matches.par_sort_unstable_by_key(|file_info| file_info.clone().path);
+    hash_non_matches.par_sort_unstable_by_key(|file_info| file_info.clone().path);
 
     Ok(NewFilesBundle {
         hash_matches,
