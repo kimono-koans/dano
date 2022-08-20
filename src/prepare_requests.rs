@@ -20,7 +20,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 use rayon::prelude::*;
 
 use crate::lookup_file_info::FileInfo;
-use crate::{Config, DanoResult, ExecMode, FileInfoRequest};
+use crate::{Config, DanoResult, FileInfoRequest};
 
 pub fn get_file_info_requests(
     config: &Config,
@@ -67,17 +67,12 @@ pub fn get_file_info_requests(
         .collect();
 
     // include all config.paths in requests, but only if record_file_info does not contain the hash algo
-    let selected = match config.exec_mode {
-        ExecMode::Test | ExecMode::Compare => {
-            paths_requests.into_iter().for_each(|request| {
-                // don't care about the Option returned
-                let _ = recorded_file_info_requests.insert(request.path.clone(), request);
-            });
+    paths_requests.into_iter().for_each(|request| {
+            // don't care about the Option returned
+            let _ = recorded_file_info_requests.insert(request.path.clone(), request);
+        });
 
-            recorded_file_info_requests.into_values().collect()
-        }
-        _ => recorded_file_info_requests.into_values().collect(),
-    };
+    let combined = recorded_file_info_requests.into_values().collect();
 
-    Ok(selected)
+    Ok(combined)
 }
