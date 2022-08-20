@@ -124,7 +124,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                     .try_for_each(|file_info| {
                         print_err_buf(&format!("Overwriting dano hash for: {:?}\n", file_info.path))
                     })?;
-                overwrite_old(config, new_files_bundle)?
+                    overwrite_old_file_info(config, new_files_bundle)?
             }
             ExecMode::Compare => {
                 new_files_bundle
@@ -132,7 +132,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                     .iter()
                     .try_for_each(|file_info| {
                         print_err_buf(&format!(
-                            "Not overwriting dano hash for: {:?}, --overwrite is not specified.\n",
+                            "Not overwriting dano hash for: {:?}, and --write-new and --overwrite were not specified.\n",
                             file_info.path
                         ))
                     })?
@@ -150,7 +150,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
     Ok(())
 }
 
-fn overwrite_old(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
+fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // append new paths
     write_all_new_paths(config, &new_files_bundle.new_filenames, WriteType::Append)?;
 
