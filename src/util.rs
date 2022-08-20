@@ -16,6 +16,7 @@
 // that was distributed with this source code.
 
 use std::{
+    cell::RefCell,
     error::Error,
     fmt,
     fs::{File, OpenOptions},
@@ -78,17 +79,19 @@ pub fn write_all_new_paths(
                 .try_for_each(|file_info| write_non_file(config, file_info))
         }
         _ => {
-            let mut output_file = match write_type {
+            let mut output_file = RefCell::new(match write_type {
                 WriteType::Append => append_output_file(config)?,
                 WriteType::OverwriteAll => overwrite_output_file(config)?,
-            };
+            });
 
-            // why not a closure?! long story!
-            // it seems with a closure we can't capture this &mut output_file
-            // as an env var, and therefore we can't open the file once in the iter
-            for file_info in new_files {
-                write_file(file_info, &mut output_file)?
-            }
+            // able to use a closure here *only* because of the ref cell, 
+            // which means this iterator and function *must be* single threaded
+            // and that isn't an issue here
+            new_files
+                .iter()
+                .try_for_each(|file_info| {
+                    write_file(file_info, &mut output_file.get_mut())
+                })?;
 
             Ok(())
         }
