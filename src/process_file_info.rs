@@ -21,7 +21,7 @@ use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 
-use crate::{Config, DanoResult, ExecMode, XattrMode};
+use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
@@ -179,7 +179,7 @@ fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
 
     // overwrite all paths if in non-xattr/file write mode
     match &config.exec_mode {
-        ExecMode::Write(write_config) if matches!(write_config.opt_xattr, XattrMode::Disabled) => {
+        ExecMode::Write(write_config) if !write_config.opt_xattr => {
             // read back
             let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
                 let mut input_file = read_input_file(config)?;

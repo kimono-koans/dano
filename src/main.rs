@@ -180,21 +180,9 @@ pub struct FileInfoRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum DryRunMode {
-    Enabled,
-    Disabled,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum XattrMode {
-    Enabled,
-    Disabled,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 struct WriteModeConfig {
-    opt_xattr: XattrMode,
-    opt_dry_run: DryRunMode,
+    opt_xattr: bool,
+    opt_dry_run: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -248,20 +236,9 @@ impl Config {
         };
 
         let opt_xattr =
-            if matches.is_present("XATTR") || std::env::var_os("DANO_XATTR_WRITES").is_some() {
-                XattrMode::Enabled
-            } else {
-                XattrMode::Disabled
-            };
-
-        let opt_dry_run = if matches.is_present("DRY_RUN")
-            || (matches.is_present("PRINT") && matches.is_present("WRITE"))
-        {
-            DryRunMode::Enabled
-        } else {
-            DryRunMode::Disabled
-        };
-
+            matches.is_present("XATTR") || std::env::var_os("DANO_XATTR_WRITES").is_some();
+        let opt_dry_run = matches.is_present("DRY_RUN")
+            || (matches.is_present("PRINT") && matches.is_present("WRITE"));
         let opt_num_threads = matches
             .value_of_lossy("NUM_THREADS")
             .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
@@ -329,7 +306,7 @@ impl Config {
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
-        if paths.is_empty() && (matches!(exec_mode, ExecMode::Write(_)) || !opt_test_mode)  {
+        if paths.is_empty() && (matches!(exec_mode, ExecMode::Write(_)) || !opt_test_mode) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
 

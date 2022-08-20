@@ -25,10 +25,7 @@ use std::{
 };
 
 use crate::lookup_file_info::FileInfo;
-use crate::{
-    Config, DanoResult, DryRunMode, ExecMode, XattrMode, DANO_FILE_INFO_VERSION,
-    DANO_XATTR_KEY_NAME,
-};
+use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
 
 // u128::MAX to LowerHex to String len is 32usize
 // this is one of those things one can't make a const function
@@ -70,10 +67,7 @@ pub fn write_all_new_paths(
     write_type: WriteType,
 ) -> DanoResult<()> {
     match &config.exec_mode {
-        ExecMode::Write(write_config)
-            if matches!(write_config.opt_dry_run, DryRunMode::Enabled)
-                || matches!(write_config.opt_xattr, XattrMode::Enabled) =>
-        {
+        ExecMode::Write(write_config) if write_config.opt_dry_run || write_config.opt_xattr => {
             new_files
                 .iter()
                 .try_for_each(|file_info| write_non_file(config, file_info))
@@ -103,13 +97,11 @@ fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
 
 fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
-        ExecMode::Write(write_config)
-            if matches!(write_config.opt_dry_run, DryRunMode::Enabled) =>
-        {
+        ExecMode::Write(write_config) if write_config.opt_dry_run => {
             let serialized = serialize(file_info)?;
             print_out_buf(&serialized)
         }
-        ExecMode::Write(write_config) if matches!(write_config.opt_xattr, XattrMode::Enabled) => {
+        ExecMode::Write(write_config) if write_config.opt_xattr => {
             // write empty path for path, because we a re writing to an actual path
             // that may change if the file name is changed
             let rewrite = FileInfo {
