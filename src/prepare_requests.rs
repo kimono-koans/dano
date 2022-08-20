@@ -20,18 +20,18 @@ use std::{collections::BTreeMap, path::PathBuf};
 use rayon::prelude::*;
 
 use crate::lookup_file_info::FileInfo;
-use crate::{DanoResult, FileInfoRequest};
+use crate::{Config, DanoResult, ExecMode, FileInfoRequest};
 
 pub fn get_file_info_requests(
+    config: &Config,
     recorded_file_info: &[FileInfo],
-    opt_requested_paths: Option<&Vec<PathBuf>>,
 ) -> DanoResult<Vec<FileInfoRequest>> {
     // here we generate a file info request because we need more than
     // the path name when the user has specified a different hash algo
 
     // first, we generate a map of the recorded file info to test against
     // map will allow
-    let recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
+    let mut recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
         .par_iter()
         .map(|file_info| match &file_info.metadata {
             Some(metadata) => (
@@ -51,25 +51,32 @@ pub fn get_file_info_requests(
         })
         .collect();
 
-    // next, we consider the new paths/not recorded paths.  map will allow us to
-    // dedup the against the recorded file info and only include None values for
-    // hash selection where needed
-    let selected = if let Some(requested_paths) = opt_requested_paths {
-        requested_paths
-            .par_iter()
-            .map(|path| FileInfoRequest {
-                path: path.clone(),
-                hash_algo: None,
-            })
-            .map(
-                |request| match recorded_file_info_requests.get(&request.path) {
-                    Some(value) => value.to_owned(),
-                    None => request,
-                },
-            )
-            .collect()
-    } else {
-        recorded_file_info_requests.into_values().collect()
+    let paths_requests: Vec<FileInfoRequest> = config
+        .paths
+        .par_iter()
+        .map(|path| FileInfoRequest {
+            path: path.clone(),
+            hash_algo: None,
+        })
+        .map(
+            |request| match recorded_file_info_requests.get(&request.path) {
+                Some(value) => value.to_owned(),
+                None => request,
+            },
+        )
+        .collect();
+
+    // include all config.paths in requests, but only if record_file_info does not contain the hash algo
+    let selected = match config.exec_mode {
+        ExecMode::Test | ExecMode::Compare => {
+            paths_requests.into_iter().for_each(|request| {
+                // don't care about the Option returned
+                let _ = recorded_file_info_requests.insert(request.path.clone(), request);
+            });
+
+            recorded_file_info_requests.into_values().collect()
+        }
+        _ => recorded_file_info_requests.into_values().collect(),
     };
 
     Ok(selected)
