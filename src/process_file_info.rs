@@ -28,6 +28,7 @@ use crate::util::{
     deserialize, print_file_info, print_out_buf, read_input_file, write_all_new_paths, WriteType,
 };
 
+#[derive(Debug, Clone)]
 pub struct NewFilesBundle {
     new_filenames: Vec<FileInfo>,
     new_files: Vec<FileInfo>,
@@ -84,8 +85,9 @@ pub fn exec_process_file_info(
 
 pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write new files - no hash match in record
-    if !new_files_bundle.new_files.is_empty() && matches!(config.exec_mode, ExecMode::Write(_))
-        || (config.exec_mode == ExecMode::Compare && config.opt_write_new)
+    if !new_files_bundle.new_files.is_empty()
+        && (matches!(config.exec_mode, ExecMode::Write(_))
+            || (matches!(config.exec_mode, ExecMode::Compare) && config.opt_write_new))
     {
         write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)?
     } else if !config.opt_silent && matches!(config.exec_mode, ExecMode::Write(_)) {
@@ -218,6 +220,19 @@ fn verify_file_info(
             }
         }
         None
+    } else if !is_same_filename && !is_same_hash {
+        if !config.opt_silent {
+            match config.exec_mode {
+                ExecMode::Compare | ExecMode::Test => {
+                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
+                }
+                ExecMode::Write(_) => {
+                    print_file_info(config, file_info)?;
+                }
+                _ => unreachable!(),
+            }
+        }
+        Some(Either::Right(file_info.clone()))
     } else if is_same_hash {
         match config.exec_mode {
             ExecMode::Compare if config.opt_write_new && config.opt_overwrite_old => {
@@ -227,9 +242,13 @@ fn verify_file_info(
                 ).as_ref())?;
             }
             ExecMode::Compare | ExecMode::Test => {
-                print_out_buf(format!(
-                    "{:?}: OK, but path has same hash for new filename.\n",
-                    file_info.path).as_ref())?;
+                print_out_buf(
+                    format!(
+                        "{:?}: OK, but path has same hash for new filename.\n",
+                        file_info.path
+                    )
+                    .as_ref(),
+                )?;
             }
             ExecMode::Write(_) => {
                 print_file_info(config, file_info)?;
@@ -252,19 +271,6 @@ fn verify_file_info(
             _ => unreachable!(),
         }
         None
-    } else if !is_same_filename && !is_same_hash {
-        if !config.opt_silent {
-            match config.exec_mode {
-                ExecMode::Compare | ExecMode::Test => {
-                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
-                }
-                ExecMode::Write(_) => {
-                    print_file_info(config, file_info)?;
-                }
-                _ => unreachable!(),
-            }
-        }
-        Some(Either::Right(file_info.clone()))
     } else {
         unreachable!()
     };
