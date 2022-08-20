@@ -311,7 +311,7 @@ impl Config {
         };
 
         if !hash_file.exists() && opt_test_mode {
-            return Err(DanoError::new("Test mode requires the use specify a hash file.").into());
+            return Err(DanoError::new("Test mode requires the user specify a hash file.").into());
         }
 
         let paths: Vec<PathBuf> = {
