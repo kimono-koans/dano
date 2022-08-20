@@ -187,7 +187,7 @@ fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                 input_file.read_to_string(&mut buffer)?;
                 // important this blows up because if you change the struct it can't deserialize
                 buffer
-                    .lines()
+                    .par_lines()
                     .filter(|line| !line.starts_with("//"))
                     .map(deserialize)
                     .collect::<DanoResult<Vec<FileInfo>>>()?
