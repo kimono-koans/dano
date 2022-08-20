@@ -87,16 +87,18 @@ pub fn exec_process_file_info(
 pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write new files - no hash match in record
     if !new_files_bundle.new_files.is_empty() {
+        let write_new = || -> DanoResult<()> {
+            new_files_bundle
+                .new_files
+                .iter()
+                .try_for_each(|file_info| {
+                    print_err_buf(&format!("Writing dano hash for: {:?}\n", file_info.path))
+                })?;
+            write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
+        };
         match config.exec_mode {
-            ExecMode::Write(_) | ExecMode::Compare if config.opt_write_new => {
-                new_files_bundle
-                    .new_files
-                    .iter()
-                    .try_for_each(|file_info| {
-                        print_err_buf(&format!("Writing dano hash for: {:?}\n", file_info.path))
-                    })?;
-                write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)?
-            }
+            ExecMode::Write(_) => write_new()?,
+            ExecMode::Compare if config.opt_write_new => write_new()?,
             ExecMode::Compare => new_files_bundle
                 .new_files
                 .iter()
@@ -114,18 +116,21 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
 
     // write old files with new names - hash matches
     if !new_files_bundle.new_filenames.is_empty() && config.opt_overwrite_old {
+        let overwrite_old = || -> DanoResult<()> {
+            new_files_bundle
+                .new_filenames
+                .iter()
+                .try_for_each(|file_info| {
+                    print_err_buf(&format!(
+                        "Overwriting dano hash for: {:?}\n",
+                        file_info.path
+                    ))
+                })?;
+            overwrite_old_file_info(config, new_files_bundle)
+        };
         match config.exec_mode {
-            ExecMode::Write(_) | ExecMode::Compare
-                if config.opt_overwrite_old && config.opt_write_new =>
-            {
-                new_files_bundle
-                    .new_filenames
-                    .iter()
-                    .try_for_each(|file_info| {
-                        print_err_buf(&format!("Overwriting dano hash for: {:?}\n", file_info.path))
-                    })?;
-                    overwrite_old_file_info(config, new_files_bundle)?
-            }
+            ExecMode::Write(_) => overwrite_old()?,
+            ExecMode::Compare if config.opt_overwrite_old && config.opt_write_new => overwrite_old()?,
             ExecMode::Compare => {
                 new_files_bundle
                     .new_filenames
@@ -139,12 +144,10 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
             }
             _ => unreachable!(),
         }
+    } else if config.opt_overwrite_old {
+        eprintln!("No old file paths to overwrite.");
     } else {
-        if config.opt_overwrite_old {
-            eprintln!("No old file paths to overwrite.");
-        } else {
-            eprintln!("File overwrite was not specified.");
-        }
+        eprintln!("File overwrite was not specified.");
     }
 
     Ok(())
