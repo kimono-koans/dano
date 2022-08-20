@@ -84,14 +84,12 @@ pub fn write_all_new_paths(
                 WriteType::OverwriteAll => overwrite_output_file(config)?,
             });
 
-            // able to use a closure here *only* because of the ref cell, 
+            // able to use a closure here *only* because of the ref cell,
             // which means this iterator and function *must be* single threaded
-            // and that isn't an issue here
+            // (that is -- not Sync) but that isn't an issue here
             new_files
                 .iter()
-                .try_for_each(|file_info| {
-                    write_file(file_info, &mut output_file.get_mut())
-                })?;
+                .try_for_each(|file_info| write_file(file_info, output_file.get_mut()))?;
 
             Ok(())
         }
