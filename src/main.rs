@@ -242,7 +242,7 @@ impl Config {
             }
         } else {
             return Err(DanoError::new(
-                "Working directory does not exist or your do not have permissions to access it.",
+                "Working directory does not exist or you do not have permissions to access it.",
             )
             .into());
         };
