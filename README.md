@@ -46,6 +46,25 @@ murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 
 Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`.
 
+## Install via Native Packages
+
+For Debian-based and Redhat-based Linux distributions (like, Ubuntu or Fedora, etc.), check the [tagged releases](https://github.com/kimono-koans/dano/tags) for native packages for your distribution.  
+
+You may also create and install your own native package from the latest sources, like so:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install cargo-deb 
+git clone https://github.com/kimono-koans/dano.git
+cd ./dano/; cargo deb
+# to install on a Debian/Ubuntu-based system
+dpkg -i ./target/debian/dano_*.deb
+# or convert to RPM 
+alien -r ./target/debian/dano_*.deb
+# and install on a Redhat-based system
+rpm -i ./dano*.rpm
+```
+
 ## Installation from Source
 
 For now, `dano` depends on `ffmpeg`.  
