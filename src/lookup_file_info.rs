@@ -112,9 +112,9 @@ fn exec_ffmpeg(
     };
 
     if stdout_string.is_empty() {
-        // ffmpeg won't work with a non-media file so it solely
-        // prints to stderr here, we want to still print our request
-        // and keep moving so we don't return an error
+        // if stdout string is empty, then file DNE
+        // we want to print the request instead of an error
+        // or just continuing so we send the path + dummy value
         tx_item.send(phantom_file_info)?;
 
         Ok(())

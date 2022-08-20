@@ -422,7 +422,7 @@ fn exec() -> DanoResult<()> {
 
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
-                exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
+                exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
             write_new_file_info(&config, &compare_hashes_bundle)
         }
@@ -433,7 +433,7 @@ fn exec() -> DanoResult<()> {
                 get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
-                exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
+                exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
             write_new_file_info(&config, &compare_hashes_bundle)
         }
@@ -443,8 +443,7 @@ fn exec() -> DanoResult<()> {
             let file_info_requests =
                 get_file_info_requests(&recorded_file_info, opt_only_requested_paths)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let _ =
-                exec_process_file_info(&config, &file_info_requests, &recorded_file_info, rx_item)?;
+            let _ = exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
             // test will exit on file DNE with special exit code so we don't return here
             unreachable!()

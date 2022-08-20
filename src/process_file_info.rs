@@ -21,7 +21,7 @@ use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 
-use crate::{Config, DanoResult, ExecMode, FileInfoRequest, XattrMode};
+use crate::{Config, DanoResult, ExecMode, XattrMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
@@ -35,12 +35,11 @@ pub struct NewFilesBundle {
 
 pub fn exec_process_file_info(
     config: &Config,
-    requested_paths: &[FileInfoRequest],
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
 ) -> DanoResult<NewFilesBundle> {
     // prepare for loop
-    let file_map = Arc::new(get_file_map(config, recorded_file_info, requested_paths)?);
+    let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
     // L
     let mut hash_matches = Vec::new();
@@ -108,6 +107,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         // append new paths
         write_all_new_paths(config, &new_files_bundle.hash_matches, WriteType::Append)?;
 
+        // overwrite all paths if in non-xattr/file write mode
         match &config.exec_mode {
             ExecMode::Write(write_config)
                 if matches!(write_config.opt_xattr, XattrMode::Disabled) =>
@@ -173,9 +173,7 @@ fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &F
 }
 
 fn get_file_map(
-    config: &Config,
     recorded_file_info: &[FileInfo],
-    requested_paths: &[FileInfoRequest],
 ) -> DanoResult<BTreeMap<PathBuf, Option<FileMetadata>>> {
     let recorded_file_info_map = recorded_file_info
         .par_iter()
@@ -183,23 +181,7 @@ fn get_file_map(
         .map(|file_info| (file_info.path, file_info.metadata))
         .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
 
-    let res = match config.exec_mode {
-        // for test, we take the paths /available/ from files and xattrs and make
-        // dummy versions of the rest, because we must test even those for which we
-        // don't have a hash available
-        ExecMode::Test => requested_paths
-            .par_iter()
-            .map(
-                |request| match recorded_file_info_map.get(request.path.as_path()) {
-                    Some(metadata) => (request.path.to_owned(), metadata.to_owned()),
-                    None => (request.path.to_owned(), None),
-                },
-            )
-            .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>(),
-        ExecMode::Write(_) | ExecMode::Compare => recorded_file_info_map,
-        ExecMode::Print => BTreeMap::new(),
-    };
-    Ok(res)
+    Ok(recorded_file_info_map)
 }
 
 fn verify_file_info(
@@ -242,11 +224,10 @@ fn verify_file_info(
         }
         Some(Either::Left(file_info.clone()))
     } else if is_same_hash {
-        // know we are in Compare mode, so require write_new and overwrite_old
-        // to specify things will be overwritten
         match config.exec_mode {
             ExecMode::Compare | ExecMode::Test => {
                 let err_buf = if config.opt_write_new && config.opt_overwrite_old {
+                    // Compare mode only condition
                     format!(
                             "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
                             file_info.path
@@ -280,7 +261,7 @@ fn verify_file_info(
             _ => unreachable!(),
         }
         None
-    } else {
+    } else if !is_same_filename && !is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
                 ExecMode::Compare | ExecMode::Test => {
@@ -293,6 +274,8 @@ fn verify_file_info(
             }
         }
         Some(Either::Right(file_info.clone()))
+    } else {
+        unreachable!()
     };
 
     Ok((opt_file_info, test_exit_code))
