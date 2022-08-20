@@ -312,7 +312,14 @@ impl Config {
                     ExecMode::Compare => read_dir(&pwd)?
                         .par_bridge()
                         .flatten()
-                        .map(|dir_entry| dir_entry.path())
+                        .map(|dir_entry| {
+                            let path = dir_entry.path();
+
+                            match path.strip_prefix(&pwd) {
+                                Ok(stripped_path) => stripped_path.to_path_buf(),
+                                Err(_) => path,
+                            }
+                        })
                         .collect(),
                     ExecMode::Print | ExecMode::Test => {
                         if hash_file.exists() {
