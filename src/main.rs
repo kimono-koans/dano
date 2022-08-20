@@ -329,7 +329,7 @@ impl Config {
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
-        if paths.is_empty() && !opt_test_mode || matches!(exec_mode, ExecMode::Write(_)) {
+        if paths.is_empty() && (matches!(exec_mode, ExecMode::Write(_)) || !opt_test_mode)  {
             return Err(DanoError::new("No valid paths to search.").into());
         }
 
