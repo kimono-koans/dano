@@ -296,9 +296,8 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Print => Vec::new(),
                     ExecMode::Compare(compare_config) if compare_config.opt_test_mode => Vec::new(),
-                    ExecMode::Compare(_) | ExecMode::Write(_) => {
+                    ExecMode::Print | ExecMode::Compare(_) | ExecMode::Write(_) => {
                         read_stdin()?.par_iter().map(PathBuf::from).collect()
                     }
                 }
