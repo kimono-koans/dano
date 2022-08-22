@@ -31,18 +31,33 @@ pub fn convert_version(line: &str) -> DanoResult<FileInfo> {
         .to_owned();
 
     let version_number: usize = serde_json::from_value(value)?;
-    let file_info: FileInfo = rewrite_version(version_number, line)?.convert()?;
+    let legacy_version: LegacyVersion = LegacyVersion::number_to_version(version_number)?;
+    let file_info = legacy_version.prepare_rewrite(line)?.convert()?;
 
     Ok(file_info)
 }
 
-fn rewrite_version(version_number: usize, line: &str) -> DanoResult<Box<dyn ConvertVersion>> {
-    let res = match version_number {
-        1usize => FileInfoV1::rewrite(line)?,
-        _ => return Err(DanoError::new("No matching legacy version found.").into()),
-    };
+enum LegacyVersion {
+    Version1,
+}
 
-    Ok(res)
+impl LegacyVersion {
+    fn number_to_version(version_number: usize) -> DanoResult<LegacyVersion> {
+        let res = match version_number {
+            1 => LegacyVersion::Version1,
+            _ => return Err(DanoError::new("Legacy version number is invalid").into()),
+        };
+
+        Ok(res)
+    }
+
+    fn prepare_rewrite(&self, line: &str) -> DanoResult<Box<dyn ConvertVersion>> {
+        let res = match self {
+            LegacyVersion::Version1 => FileInfoV1::rewrite(line)?,
+        };
+
+        Ok(res)
+    }
 }
 
 pub trait ConvertVersion {
