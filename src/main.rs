@@ -405,8 +405,6 @@ fn exec() -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
             let file_bundle = if write_config.opt_rewrite {
-                
-
                 NewFilesBundle {
                     new_files: Vec::new(),
                     new_filenames: recorded_file_info,
