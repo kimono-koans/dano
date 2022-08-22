@@ -162,7 +162,7 @@ fn parse_args() -> ArgMatches {
                 .takes_value(true)
                 .min_values(1)
                 .require_equals(true)
-                .possible_values(&["murmur3", "MD5", "CRC32", "adler32"])
+                .possible_values(&["murmur3", "MD5", "CRC32", "adler32", "sha1", "sha160", "sha256", "SHA384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(13))
         .arg(
@@ -296,7 +296,11 @@ impl Config {
         };
 
         let selected_hash_algo = if let Some(hash_algo) = matches.value_of_os("HASH_ALGO") {
-            hash_algo.to_string_lossy().into()
+            if hash_algo == OsStr::new("sha1") {
+                "sha160".into()
+            } else {
+                hash_algo.to_string_lossy().into()
+            }
         } else {
             "murmur3".into()
         };
