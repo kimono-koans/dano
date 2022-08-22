@@ -165,7 +165,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         if compare_config.opt_overwrite_old {
             eprintln!("No old file hashes to overwrite.");
         } else {
-            eprintln!("No old file hash to overwrite and --overwrite was not specified.");
+            eprintln!("No old file hash to overwrite, and --overwrite was not specified.");
         }
     } else {
         eprintln!("No old file hashes to overwrite.");
