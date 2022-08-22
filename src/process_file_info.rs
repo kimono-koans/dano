@@ -65,7 +65,7 @@ pub fn exec_process_file_info(
                     }
                 }
             }
-            ExecMode::Print | ExecMode::RewriteAll => unreachable!(),
+            ExecMode::Print => unreachable!(),
         }
     }
 
@@ -99,7 +99,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
             write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
         };
         match &config.exec_mode {
-            ExecMode::Write(_) | ExecMode::RewriteAll => write_new()?,
+            ExecMode::Write(_) => write_new()?,
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_write_new {
                     write_new()?
@@ -143,7 +143,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         };
 
         match &config.exec_mode {
-            ExecMode::Write(_) | ExecMode::RewriteAll => overwrite_old()?,
+            ExecMode::Write(_) => overwrite_old()?,
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_overwrite_old {
                     overwrite_old()?

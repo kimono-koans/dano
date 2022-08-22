@@ -173,8 +173,9 @@ fn parse_args() -> ArgMatches {
                 .display_order(14))
         .arg(
             Arg::new("REWRITE_ALL")
-                .help("rewrite all hashes to the latest and greatest format version.")
+                .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
                 .long("rewrite")
+                .requires("WRITE")
                 .display_order(15))
         .arg(
             Arg::new("DRY_RUN")
@@ -197,6 +198,7 @@ struct WriteModeConfig {
     opt_xattr: bool,
     opt_dry_run: bool,
     opt_decode: bool,
+    opt_rewrite: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -211,7 +213,6 @@ enum ExecMode {
     Compare(CompareModeConfig),
     Write(WriteModeConfig),
     Print,
-    RewriteAll,
 }
 
 #[derive(Debug, Clone)]
@@ -264,10 +265,9 @@ impl Config {
         let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
         let opt_test_mode = matches.is_present("TEST");
         let opt_decode = matches.is_present("DECODE");
+        let opt_rewrite = matches.is_present("REWRITE_ALL");
 
-        let exec_mode = if matches.is_present("REWRITE_ALL") {
-            ExecMode::RewriteAll
-        } else if matches.is_present("COMPARE") || opt_test_mode {
+        let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
             ExecMode::Compare(CompareModeConfig {
                 opt_test_mode,
                 opt_overwrite_old,
@@ -280,6 +280,7 @@ impl Config {
                 opt_xattr,
                 opt_dry_run,
                 opt_decode,
+                opt_rewrite,
             })
         } else {
             return Err(DanoError::new(
@@ -402,20 +403,31 @@ fn exec() -> DanoResult<()> {
     let thread_pool = prepare_thread_pool(&config)?;
 
     match &config.exec_mode {
-        ExecMode::Write(_) => {
-            let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
+        ExecMode::Write(write_config) => {
+            let file_bundle = if write_config.opt_rewrite {
+                
 
-            // filter out files for which we already have a hash, only do requests on new files
-            let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
-                .into_iter()
-                .filter(|request| request.hash_algo.is_none())
-                .collect();
+                NewFilesBundle {
+                    new_files: Vec::new(),
+                    new_filenames: recorded_file_info,
+                }
+            } else {
+                let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
 
-            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let compare_hashes_bundle =
-                exec_process_file_info(&config, &recorded_file_info, rx_item)?;
+                // filter out files for which we already have a hash, only do requests on new files
+                let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
+                    .into_iter()
+                    .filter(|request| request.hash_algo.is_none())
+                    .collect();
 
-            write_new_file_info(&config, &compare_hashes_bundle)
+                let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
+                let compare_hashes_bundle =
+                    exec_process_file_info(&config, &recorded_file_info, rx_item)?;
+
+                compare_hashes_bundle
+            };
+
+            write_new_file_info(&config, &file_bundle)
         }
         ExecMode::Compare(_) => {
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
@@ -435,14 +447,6 @@ fn exec() -> DanoResult<()> {
             }
 
             Ok(())
-        }
-        ExecMode::RewriteAll => {
-            let overwrite_bundle = NewFilesBundle {
-                new_files: Vec::new(),
-                new_filenames: recorded_file_info,
-            };
-
-            write_new_file_info(&config, &overwrite_bundle)
         }
     }
 }
