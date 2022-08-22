@@ -175,7 +175,6 @@ fn parse_args() -> ArgMatches {
             Arg::new("REWRITE_ALL")
                 .help("rewrite all hashes to the latest and greatest format version.")
                 .long("rewrite")
-                .exclusive(true)
                 .display_order(15))
         .arg(
             Arg::new("DRY_RUN")

@@ -18,7 +18,7 @@
 use std::{path::PathBuf, time::SystemTime};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::{DanoError, DanoResult};
+use crate::{DanoError, DanoResult, DANO_FILE_INFO_VERSION};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -109,7 +109,7 @@ impl FileInfoV1 {
         });
 
         Ok(FileInfo {
-            version: self.version,
+            version: DANO_FILE_INFO_VERSION,
             path: self.path.to_owned(),
             metadata: new_metadata,
         })
