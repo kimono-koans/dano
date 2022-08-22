@@ -28,16 +28,17 @@ mod prepare_recorded;
 mod prepare_requests;
 mod process_file_info;
 mod util;
+mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{exec_process_file_info, write_new_file_info};
+use process_file_info::{exec_process_file_info, write_new_file_info, NewFilesBundle};
 use util::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-const DANO_FILE_INFO_VERSION: usize = 1;
+const DANO_FILE_INFO_VERSION: usize = 2;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";
 
@@ -161,15 +162,26 @@ fn parse_args() -> ArgMatches {
                 .takes_value(true)
                 .min_values(1)
                 .require_equals(true)
-                .possible_values(&["murmur3", "MD5", "CRC32", "adler32"])
+                .possible_values(&["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(13))
+        .arg(
+            Arg::new("DECODE")
+                .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
+                .long("decode")
+                .display_order(14))
+        .arg(
+            Arg::new("REWRITE_ALL")
+                .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
+                .long("rewrite")
+                .requires("WRITE")
+                .display_order(15))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .requires("WRITE")
-            .display_order(14))
+            .display_order(16))
         .get_matches()
 }
 
@@ -177,12 +189,14 @@ fn parse_args() -> ArgMatches {
 pub struct FileInfoRequest {
     pub path: PathBuf,
     pub hash_algo: Option<Box<str>>,
+    pub decoded: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WriteModeConfig {
     opt_xattr: bool,
     opt_dry_run: bool,
+    opt_rewrite: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,6 +217,7 @@ enum ExecMode {
 pub struct Config {
     exec_mode: ExecMode,
     opt_silent: bool,
+    opt_decode: bool,
     opt_num_threads: Option<usize>,
     selected_hash_algo: Box<str>,
     pwd: PathBuf,
@@ -248,6 +263,8 @@ impl Config {
         let opt_disable_filter = matches.is_present("DISABLE_FILTER");
         let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
         let opt_test_mode = matches.is_present("TEST");
+        let opt_decode = matches.is_present("DECODE");
+        let opt_rewrite = matches.is_present("REWRITE_ALL");
 
         let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
             ExecMode::Compare(CompareModeConfig {
@@ -261,6 +278,7 @@ impl Config {
             ExecMode::Write(WriteModeConfig {
                 opt_xattr,
                 opt_dry_run,
+                opt_rewrite,
             })
         } else {
             return Err(DanoError::new(
@@ -276,7 +294,11 @@ impl Config {
         };
 
         let selected_hash_algo = if let Some(hash_algo) = matches.value_of_os("HASH_ALGO") {
-            hash_algo.to_string_lossy().into()
+            if hash_algo == OsStr::new("sha1") {
+                "sha160".into()
+            } else {
+                hash_algo.to_string_lossy().into()
+            }
         } else {
             "murmur3".into()
         };
@@ -297,9 +319,7 @@ impl Config {
             } else {
                 match &exec_mode {
                     ExecMode::Compare(compare_config) if compare_config.opt_test_mode => Vec::new(),
-                    ExecMode::Print | ExecMode::Compare(_) | ExecMode::Write(_) => {
-                        read_stdin()?.par_iter().map(PathBuf::from).collect()
-                    }
+                    _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
@@ -313,6 +333,7 @@ impl Config {
             exec_mode,
             opt_silent,
             opt_num_threads,
+            opt_decode,
             selected_hash_algo,
             pwd,
             output_file,
@@ -385,20 +406,29 @@ fn exec() -> DanoResult<()> {
     let thread_pool = prepare_thread_pool(&config)?;
 
     match &config.exec_mode {
-        ExecMode::Write(_) => {
-            let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
+        ExecMode::Write(write_config) => {
+            let file_bundle = if write_config.opt_rewrite {
+                NewFilesBundle {
+                    new_files: Vec::new(),
+                    new_filenames: recorded_file_info,
+                }
+            } else {
+                let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
 
-            // filter out files for which we already have a hash, only do requests on new files
-            let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
-                .into_iter()
-                .filter(|request| request.hash_algo.is_none())
-                .collect();
+                // filter out files for which we already have a hash, only do requests on new files
+                let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
+                    .into_iter()
+                    .filter(|request| request.hash_algo.is_none())
+                    .collect();
 
-            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let compare_hashes_bundle =
-                exec_process_file_info(&config, &recorded_file_info, rx_item)?;
+                let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
+                let compare_hashes_bundle =
+                    exec_process_file_info(&config, &recorded_file_info, rx_item)?;
 
-            write_new_file_info(&config, &compare_hashes_bundle)
+                compare_hashes_bundle
+            };
+
+            write_new_file_info(&config, &file_bundle)
         }
         ExecMode::Compare(_) => {
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;

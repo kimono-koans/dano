@@ -16,20 +16,24 @@
 // that was distributed with this source code.
 
 use std::{
-    cell::RefCell,
     error::Error,
     fmt,
     fs::{File, OpenOptions},
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
+use serde_json::Value;
+
 use crate::lookup_file_info::FileInfo;
+use crate::versions::convert_version;
 use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
 
 // u128::MAX to LowerHex to String len is 32usize
 // this is one of those things one can't make a const function
 const HASH_VALUE_MIN_WIDTH: usize = 32;
+
+const TMP_SUFFIX: &str = ".tmp";
 
 #[derive(Debug, Clone)]
 pub struct DanoError {
@@ -72,22 +76,34 @@ pub fn write_all_new_paths(
                 .iter()
                 .try_for_each(|file_info| write_non_file(config, file_info))
         }
-        _ => {
-            let mut output_file = RefCell::new(match write_type {
-                WriteType::Append => append_output_file(config)?,
-                WriteType::OverwriteAll => overwrite_output_file(config)?,
-            });
+        _ => match write_type {
+            WriteType::Append => {
+                let mut output_file = get_output_file(config, WriteType::Append)?;
+                new_files
+                    .iter()
+                    .try_for_each(|file_info| write_file(file_info, &mut output_file))
+            }
+            WriteType::OverwriteAll => {
+                let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
 
-            // able to use a closure here *only* because of the ref cell,
-            // which means this iterator and function *must be* single threaded
-            // (that is -- not Sync) but that isn't an issue here
-            new_files
-                .iter()
-                .try_for_each(|file_info| write_file(file_info, output_file.get_mut()))?;
+                new_files
+                    .iter()
+                    .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
 
-            Ok(())
-        }
+                std::fs::rename(
+                    make_path_tmp(config.output_file.as_path()),
+                    config.output_file.clone(),
+                )
+                .map_err(|err| err.into())
+            }
+        },
     }
+}
+
+fn make_path_tmp(path: &Path) -> PathBuf {
+    let path_string = path.to_string_lossy().to_string();
+    let res = path_string + TMP_SUFFIX;
+    PathBuf::from(res)
 }
 
 fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
@@ -189,26 +205,13 @@ fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> 
     )
 }
 
-pub fn overwrite_output_file(config: &Config) -> DanoResult<File> {
-    if let Ok(mut output_file) = OpenOptions::new()
-        // should overwrite the file always
-        // FYI append() is for adding to the file
-        .write(true)
-        // create_new() will only create if DNE
-        // create on a file that exists just opens
-        .truncate(true)
-        .open(&config.output_file)
-    {
-        print_file_header(config, &mut output_file)?;
-        Ok(output_file)
-    } else {
-        Err(DanoError::new("dano could not open a file to overwrite.").into())
-    }
-}
+fn get_output_file(config: &Config, write_type: WriteType) -> DanoResult<File> {
+    let output_file = match write_type {
+        WriteType::Append => config.output_file.clone(),
+        WriteType::OverwriteAll => make_path_tmp(&config.output_file),
+    };
 
-fn append_output_file(config: &Config) -> DanoResult<File> {
-    // check if output file DNE/is first run
-    let is_first_run = !config.output_file.exists();
+    let is_first_run = !output_file.exists();
 
     if let Ok(mut output_file) = OpenOptions::new()
         // should overwrite the file always
@@ -217,7 +220,7 @@ fn append_output_file(config: &Config) -> DanoResult<File> {
         // create_new() will only create if DNE
         // create on a file that exists just opens
         .create(true)
-        .open(&config.output_file)
+        .open(&output_file)
     {
         if is_first_run {
             print_file_header(config, &mut output_file)?
@@ -242,7 +245,19 @@ pub fn serialize(file_info: &FileInfo) -> DanoResult<String> {
 }
 
 pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
-    serde_json::from_str(line).map_err(|err| err.into())
+    let root: Value = serde_json::from_str(line)?;
+    let value = root
+        .get("version")
+        .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
+        .to_owned();
+
+    let version: usize = serde_json::from_value(value)?;
+
+    if version == DANO_FILE_INFO_VERSION {
+        serde_json::from_str(line).map_err(|err| err.into())
+    } else {
+        convert_version(line)
+    }
 }
 
 pub fn read_stdin() -> DanoResult<Vec<String>> {

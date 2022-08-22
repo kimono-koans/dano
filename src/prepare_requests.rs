@@ -19,7 +19,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use rayon::prelude::*;
 
-use crate::lookup_file_info::FileInfo;
+use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::{Config, DanoResult, FileInfoRequest};
 
 pub fn get_file_info_requests(
@@ -31,39 +31,43 @@ pub fn get_file_info_requests(
 
     // first, we generate a map of the recorded file info to test against
     // map will allow
+
+    // on disk
+    let from_recorded_request = |path: &PathBuf, metadata: &FileMetadata| -> FileInfoRequest {
+        FileInfoRequest {
+            path: path.clone(),
+            hash_algo: Some(metadata.hash_algo.clone()),
+            decoded: Some(metadata.decoded),
+        }
+    };
+
+    // new requests
+    let new_request = |path: &PathBuf| -> FileInfoRequest {
+        FileInfoRequest {
+            path: path.clone(),
+            hash_algo: None,
+            decoded: None,
+        }
+    };
+
     let mut recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> = recorded_file_info
         .par_iter()
         .map(|file_info| match &file_info.metadata {
             Some(metadata) => (
                 file_info.path.clone(),
-                FileInfoRequest {
-                    path: file_info.path.clone(),
-                    hash_algo: Some(metadata.hash_algo.clone()),
-                },
+                from_recorded_request(&file_info.path, metadata),
             ),
-            None => (
-                file_info.path.clone(),
-                FileInfoRequest {
-                    path: file_info.path.clone(),
-                    hash_algo: None,
-                },
-            ),
+            None => (file_info.path.clone(), new_request(&file_info.path)),
         })
         .collect();
 
     let paths_requests: Vec<FileInfoRequest> = config
         .paths
         .par_iter()
-        .map(|path| FileInfoRequest {
-            path: path.clone(),
-            hash_algo: None,
+        .map(|path| match recorded_file_info_requests.get(path) {
+            Some(value) => value.to_owned(),
+            None => new_request(path),
         })
-        .map(
-            |request| match recorded_file_info_requests.get(&request.path) {
-                Some(value) => value.to_owned(),
-                None => request,
-            },
-        )
         .collect();
 
     // include all config.paths in requests, but only if record_file_info does not contain the hash algo

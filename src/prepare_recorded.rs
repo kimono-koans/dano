@@ -30,8 +30,8 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
             .par_iter()
             .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
             .flat_map(|(path, opt)| opt.map(|s| (path, s)))
-            .flat_map(|(path, s)| std::str::from_utf8(&s).map(|i| (path, i.to_owned())))
-            .flat_map(|(path, s)| deserialize(&s).map(|i| (path, i)))
+            .flat_map(|(path, bytes)| std::str::from_utf8(&bytes).map(|i| (path, i.to_owned())))
+            .flat_map(|(path, line)| deserialize(&line).map(|i| (path, i)))
             .map(|(path, file_info)| {
                 // use the actual path name always
                 if path != &file_info.path {

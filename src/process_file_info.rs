@@ -20,19 +20,20 @@ use std::{collections::BTreeMap, io::Read, path::PathBuf, sync::Arc, time::Syste
 use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
+use rug::Integer;
 
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
     deserialize, print_err_buf, print_file_info, print_out_buf, read_input_file,
-    write_all_new_paths, WriteType,
+    write_all_new_paths, DanoError, WriteType,
 };
 
 #[derive(Debug, Clone)]
 pub struct NewFilesBundle {
-    new_filenames: Vec<FileInfo>,
-    new_files: Vec<FileInfo>,
+    pub new_filenames: Vec<FileInfo>,
+    pub new_files: Vec<FileInfo>,
 }
 
 pub fn exec_process_file_info(
@@ -164,7 +165,7 @@ pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
         if compare_config.opt_overwrite_old {
             eprintln!("No old file hashes to overwrite.");
         } else {
-            eprintln!("No old file hash to overwrite and --overwrite was not specified.");
+            eprintln!("No old file hash to overwrite, and --overwrite was not specified.");
         }
     } else {
         eprintln!("No old file hashes to overwrite.");
@@ -186,21 +187,17 @@ fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                 let mut buffer = String::new();
                 input_file.read_to_string(&mut buffer)?;
                 // important this blows up because if you change the struct it can't deserialize
-                buffer
-                    .par_lines()
-                    .filter(|line| !line.starts_with("//"))
-                    .map(deserialize)
-                    .collect::<DanoResult<Vec<FileInfo>>>()?
+                buffer.par_lines().flat_map(deserialize).collect()
             } else {
-                Vec::new()
+                return Err(DanoError::new("No valid output file exists").into());
             };
 
             // then dedup
             let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
                 .iter()
                 .into_group_map_by(|file_info| match &file_info.metadata {
-                    Some(metadata) => metadata.hash_value,
-                    None => u128::MIN,
+                    Some(metadata) => metadata.hash_value.clone(),
+                    None => Integer::ZERO,
                 })
                 .into_iter()
                 .flat_map(|(_hash, group_file_info)| {
