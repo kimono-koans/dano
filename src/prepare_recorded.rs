@@ -51,10 +51,7 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         let mut input_file = read_input_file(config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
-        buffer
-            .par_lines()
-            .flat_map(deserialize)
-            .collect()
+        buffer.par_lines().flat_map(deserialize).collect()
     } else {
         Vec::new()
     };

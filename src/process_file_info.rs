@@ -187,10 +187,7 @@ fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                 let mut buffer = String::new();
                 input_file.read_to_string(&mut buffer)?;
                 // important this blows up because if you change the struct it can't deserialize
-                buffer
-                    .par_lines()
-                    .flat_map(deserialize)
-                    .collect()
+                buffer.par_lines().flat_map(deserialize).collect()
             } else {
                 return Err(DanoError::new("No valid output file exists").into());
             };
