@@ -26,10 +26,11 @@ use std::{
 
 use crossbeam::channel::{Receiver, Sender};
 use rayon::ThreadPool;
+use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::{util::DanoError, Config, FileInfoRequest};
+use crate::{util::DanoError, Config, ExecMode, FileInfoRequest};
 use crate::{DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -56,10 +57,10 @@ impl Ord for FileInfo {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileMetadata {
     pub hash_algo: Box<str>,
-    pub hash_value: u128,
+    pub hash_value: rug::Integer,
     pub last_written: SystemTime,
     pub modify_time: SystemTime,
-    pub decoded_stream: bool,
+    pub decoded: bool,
 }
 
 impl FileInfo {
@@ -92,18 +93,40 @@ fn exec_ffmpeg(
         Some(hash_algo) => hash_algo,
         None => &config.selected_hash_algo,
     };
+    let decoded = match request.decoded {
+        Some(decoded) => decoded,
+        None => {
+            if let ExecMode::Write(write_config) = &config.exec_mode {
+                write_config.opt_decode
+            } else {
+                false
+            }
+        }
+    };
 
-    let process_args = vec![
-        "-i",
-        path_string.as_ref(),
-        "-codec",
-        "copy",
-        "-f",
-        "hash",
-        "-hash",
-        hash_algo,
-        "-",
-    ];
+    let process_args = if decoded {
+        vec![
+            "-i",
+            path_string.as_ref(),
+            "-f",
+            "hash",
+            "-hash",
+            hash_algo,
+            "-",
+        ]
+    } else {
+        vec![
+            "-i",
+            path_string.as_ref(),
+            "-codec",
+            "copy",
+            "-f",
+            "hash",
+            "-hash",
+            hash_algo,
+            "-",
+        ]
+    };
 
     let process_output = ExecProcess::new(ffmpeg_command)
         .args(&process_args)
@@ -142,9 +165,9 @@ fn exec_ffmpeg(
                 metadata: Some(FileMetadata {
                     last_written: timestamp.to_owned(),
                     hash_algo: first.into(),
-                    hash_value: { u128::from_str_radix(last, 16)? },
+                    hash_value: { Integer::from_str_radix(last, 16)? },
                     modify_time: request.path.metadata()?.modified()?,
-                    decoded_stream: false,
+                    decoded: false,
                 }),
             },
             None => phantom_file_info,

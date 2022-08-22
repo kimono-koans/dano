@@ -166,11 +166,17 @@ fn parse_args() -> ArgMatches {
                 .value_parser(clap::builder::ValueParser::os_string())
                 .display_order(13))
         .arg(
+            Arg::new("DECODE")
+                .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
+                .long("decode")
+                .requires("WRITE")
+                .display_order(14))
+        .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .requires("WRITE")
-            .display_order(14))
+            .display_order(5))
         .get_matches()
 }
 
@@ -178,12 +184,14 @@ fn parse_args() -> ArgMatches {
 pub struct FileInfoRequest {
     pub path: PathBuf,
     pub hash_algo: Option<Box<str>>,
+    pub decoded: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WriteModeConfig {
     opt_xattr: bool,
     opt_dry_run: bool,
+    opt_decode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -249,6 +257,7 @@ impl Config {
         let opt_disable_filter = matches.is_present("DISABLE_FILTER");
         let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
         let opt_test_mode = matches.is_present("TEST");
+        let opt_decode = matches.is_present("DECODE");
 
         let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
             ExecMode::Compare(CompareModeConfig {
@@ -262,6 +271,7 @@ impl Config {
             ExecMode::Write(WriteModeConfig {
                 opt_xattr,
                 opt_dry_run,
+                opt_decode,
             })
         } else {
             return Err(DanoError::new(

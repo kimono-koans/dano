@@ -20,6 +20,7 @@ use std::{collections::BTreeMap, io::Read, path::PathBuf, sync::Arc, time::Syste
 use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
+use rug::Integer;
 
 use crate::{Config, DanoResult, ExecMode};
 
@@ -199,8 +200,8 @@ fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
             let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
                 .iter()
                 .into_group_map_by(|file_info| match &file_info.metadata {
-                    Some(metadata) => metadata.hash_value,
-                    None => u128::MIN,
+                    Some(metadata) => metadata.hash_value.clone(),
+                    None => Integer::ZERO,
                 })
                 .into_iter()
                 .flat_map(|(_hash, group_file_info)| {

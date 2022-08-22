@@ -28,6 +28,8 @@ itertools = { version = "0.10.3" } # use_std, use_alloc for into_group_map_by()
 crossbeam = { version = "0.8.2" } # default features includes channels
 num_cpus = { version = "1.0", default-features = false }
 xattr = { version = "0.2.3", default-features = false }
+rug = { version = "1.17.0", features = ["serde"]  }
+
 
 [package.metadata.deb]
 maintainer = "kimono koans <https://github.com/kimono-koans/>"

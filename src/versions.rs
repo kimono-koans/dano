@@ -102,10 +102,10 @@ impl FileInfoV1 {
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
             hash_algo: metadata.hash_algo.to_owned(),
-            hash_value: metadata.hash_value,
+            hash_value: rug::Integer::from(metadata.hash_value),
             last_written: metadata.last_written,
             modify_time: metadata.modify_time,
-            decoded_stream: false,
+            decoded: false,
         });
 
         Ok(FileInfo {
