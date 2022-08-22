@@ -33,7 +33,7 @@ mod versions;
 use lookup_file_info::exec_lookup_file_info;
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{exec_process_file_info, write_new_file_info};
+use process_file_info::{exec_process_file_info, write_new_file_info, NewFilesBundle};
 use util::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -172,11 +172,17 @@ fn parse_args() -> ArgMatches {
                 .requires("WRITE")
                 .display_order(14))
         .arg(
+            Arg::new("REWRITE_ALL")
+                .help("rewrite all hashes to the latest and greatest format version.")
+                .long("rewrite")
+                .exclusive(true)
+                .display_order(15))
+        .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .requires("WRITE")
-            .display_order(5))
+            .display_order(16))
         .get_matches()
 }
 
@@ -206,6 +212,7 @@ enum ExecMode {
     Compare(CompareModeConfig),
     Write(WriteModeConfig),
     Print,
+    RewriteAll,
 }
 
 #[derive(Debug, Clone)]
@@ -259,7 +266,9 @@ impl Config {
         let opt_test_mode = matches.is_present("TEST");
         let opt_decode = matches.is_present("DECODE");
 
-        let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
+        let exec_mode = if matches.is_present("REWRITE_ALL") {
+            ExecMode::RewriteAll
+        } else if matches.is_present("COMPARE") || opt_test_mode {
             ExecMode::Compare(CompareModeConfig {
                 opt_test_mode,
                 opt_overwrite_old,
@@ -308,9 +317,7 @@ impl Config {
             } else {
                 match &exec_mode {
                     ExecMode::Compare(compare_config) if compare_config.opt_test_mode => Vec::new(),
-                    ExecMode::Print | ExecMode::Compare(_) | ExecMode::Write(_) => {
-                        read_stdin()?.par_iter().map(PathBuf::from).collect()
-                    }
+                    _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
@@ -429,6 +436,14 @@ fn exec() -> DanoResult<()> {
             }
 
             Ok(())
+        }
+        ExecMode::RewriteAll => {
+            let overwrite_bundle = NewFilesBundle {
+                new_files: Vec::new(),
+                new_filenames: recorded_file_info,
+            };
+
+            write_new_file_info(&config, &overwrite_bundle)
         }
     }
 }
