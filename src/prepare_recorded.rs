@@ -18,6 +18,7 @@
 use std::io::Read;
 
 use rayon::prelude::*;
+use serde_json::Value;
 
 use crate::lookup_file_info::FileInfo;
 use crate::util::{deserialize, read_input_file};
@@ -33,9 +34,15 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
             .flat_map(|(path, opt)| opt.map(|s| (path, s)))
             .flat_map(|(path, bytes)| std::str::from_utf8(&bytes).map(|i| (path, i.to_owned())))
             .flat_map(|(path, line)| {
-                let formatted_version = format!("\"version\":{}", DANO_FILE_INFO_VERSION);
+                let root: Value = serde_json::from_str(&line)?;
+                let value = root
+                    .get("version")
+                    .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
+                    .to_owned();
 
-                if line.contains(&formatted_version) {
+                let version: usize = serde_json::from_value(value)?;
+
+                if version == DANO_FILE_INFO_VERSION {
                     deserialize(&line).map(|i| (path, i))
                 } else {
                     convert_version(&line).map(|i| (path, i))
@@ -63,9 +70,15 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         buffer
             .par_lines()
             .flat_map(|line| {
-                let formatted_version = format!("version:{}", DANO_FILE_INFO_VERSION);
+                let root: Value = serde_json::from_str(line)?;
+                let value = root
+                    .get("version")
+                    .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
+                    .to_owned();
 
-                if line.contains(&formatted_version) {
+                let version: usize = serde_json::from_value(value)?;
+
+                if version == DANO_FILE_INFO_VERSION {
                     deserialize(line)
                 } else {
                     convert_version(line)

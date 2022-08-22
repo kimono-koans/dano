@@ -27,32 +27,37 @@ pub fn convert_version(line: &str) -> DanoResult<FileInfo> {
     let root: Value = serde_json::from_str(line)?;
     let value = root
         .get("version")
-        .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?;
+        .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
+        .to_owned();
 
-    let version: usize = serde_json::from_value(value.to_owned())?;
+    let version_number: usize = serde_json::from_value(value)?;
+    let file_info: FileInfo = rewrite_version(version_number, line)?.convert()?;
 
-    let res = match version {
-        1usize => {
-            let legacy_file_info = FileInfoV1::rewrite(line)?;
-            legacy_file_info.convert()
-        }
+    Ok(file_info)
+}
+
+fn rewrite_version(version_number: usize, line: &str) -> DanoResult<Box<dyn ConvertVersion>> {
+    let res = match version_number {
+        1usize => FileInfoV1::rewrite(line)?,
         _ => return Err(DanoError::new("No matching legacy version found.").into()),
-    }?;
+    };
 
     Ok(res)
 }
 
-pub trait ConvertVersion: Sized {
-    fn rewrite(line: &str) -> DanoResult<Self>;
-    fn convert(legacy_file_info: &Self) -> DanoResult<FileInfo>;
+pub trait ConvertVersion {
+    fn rewrite(line: &str) -> DanoResult<Box<Self>>
+    where
+        Self: std::marker::Sized;
+    fn convert(&self) -> DanoResult<FileInfo>;
 }
 
 impl ConvertVersion for FileInfoV1 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
+    fn rewrite(line: &str) -> DanoResult<Box<Self>> {
         Self::rewrite(line)
     }
-    fn convert(legacy_file_info: &Self) -> DanoResult<FileInfo> {
-        legacy_file_info.convert()
+    fn convert(&self) -> DanoResult<FileInfo> {
+        self.convert()
     }
 }
 
@@ -72,11 +77,12 @@ pub struct FileMetadataV1 {
 }
 
 impl FileInfoV1 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
+    fn rewrite(line: &str) -> DanoResult<Box<Self>> {
         let rewrite = line.replace("FileInfo", "FileInfoV1");
         let legacy_file_info: FileInfoV1 = serde_json::from_str(&rewrite)?;
+        let boxed = Box::new(legacy_file_info);
 
-        Ok(legacy_file_info)
+        Ok(boxed)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
