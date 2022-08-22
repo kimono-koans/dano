@@ -23,7 +23,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use serde_json::Value;
+
 use crate::lookup_file_info::FileInfo;
+use crate::versions::convert_version;
 use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
 
 // u128::MAX to LowerHex to String len is 32usize
@@ -242,7 +245,19 @@ pub fn serialize(file_info: &FileInfo) -> DanoResult<String> {
 }
 
 pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
-    serde_json::from_str(line).map_err(|err| err.into())
+    let root: Value = serde_json::from_str(line)?;
+    let value = root
+        .get("version")
+        .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
+        .to_owned();
+
+    let version: usize = serde_json::from_value(value)?;
+
+    if version == DANO_FILE_INFO_VERSION {
+        serde_json::from_str(line).map_err(|err| err.into())
+    } else {
+        convert_version(line)
+    }
 }
 
 pub fn read_stdin() -> DanoResult<Vec<String>> {

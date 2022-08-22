@@ -18,12 +18,10 @@
 use std::io::Read;
 
 use rayon::prelude::*;
-use serde_json::Value;
 
 use crate::lookup_file_info::FileInfo;
 use crate::util::{deserialize, read_input_file};
-use crate::versions::convert_version;
-use crate::{Config, DanoError, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
+use crate::{Config, DanoError, DanoResult, ExecMode, DANO_XATTR_KEY_NAME};
 
 pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let mut file_info_from_xattrs: Vec<FileInfo> = {
@@ -33,21 +31,7 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
             .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
             .flat_map(|(path, opt)| opt.map(|s| (path, s)))
             .flat_map(|(path, bytes)| std::str::from_utf8(&bytes).map(|i| (path, i.to_owned())))
-            .flat_map(|(path, line)| {
-                let root: Value = serde_json::from_str(&line)?;
-                let value = root
-                    .get("version")
-                    .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
-                    .to_owned();
-
-                let version: usize = serde_json::from_value(value)?;
-
-                if version == DANO_FILE_INFO_VERSION {
-                    deserialize(&line).map(|i| (path, i))
-                } else {
-                    convert_version(&line).map(|i| (path, i))
-                }
-            })
+            .flat_map(|(path, line)| deserialize(&line).map(|i| (path, i)))
             .map(|(path, file_info)| {
                 // use the actual path name always
                 if path != &file_info.path {
@@ -69,21 +53,7 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         input_file.read_to_string(&mut buffer)?;
         buffer
             .par_lines()
-            .flat_map(|line| {
-                let root: Value = serde_json::from_str(line)?;
-                let value = root
-                    .get("version")
-                    .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
-                    .to_owned();
-
-                let version: usize = serde_json::from_value(value)?;
-
-                if version == DANO_FILE_INFO_VERSION {
-                    deserialize(line)
-                } else {
-                    convert_version(line)
-                }
-            })
+            .flat_map(deserialize)
             .collect()
     } else {
         Vec::new()

@@ -21,16 +21,14 @@ use crossbeam::channel::Receiver;
 use itertools::{Either, Itertools};
 use rayon::prelude::*;
 use rug::Integer;
-use serde_json::Value;
 
-use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION};
+use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::util::{
     deserialize, print_err_buf, print_file_info, print_out_buf, read_input_file,
     write_all_new_paths, DanoError, WriteType,
 };
-use crate::versions::convert_version;
 
 #[derive(Debug, Clone)]
 pub struct NewFilesBundle {
@@ -191,23 +189,7 @@ fn overwrite_old_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -
                 // important this blows up because if you change the struct it can't deserialize
                 buffer
                     .par_lines()
-                    .flat_map(|line| {
-                        let root: Value = serde_json::from_str(line)?;
-                        let value = root
-                            .get("version")
-                            .ok_or_else(|| {
-                                DanoError::new("Could not get version value from JSON.")
-                            })?
-                            .to_owned();
-
-                        let version: usize = serde_json::from_value(value)?;
-
-                        if version == DANO_FILE_INFO_VERSION {
-                            deserialize(line)
-                        } else {
-                            convert_version(line)
-                        }
-                    })
+                    .flat_map(deserialize)
                     .collect()
             } else {
                 return Err(DanoError::new("No valid output file exists").into());
