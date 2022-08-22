@@ -21,7 +21,8 @@ use rayon::prelude::*;
 
 use crate::lookup_file_info::FileInfo;
 use crate::util::{deserialize, read_input_file};
-use crate::{Config, DanoError, DanoResult, ExecMode, DANO_XATTR_KEY_NAME};
+use crate::versions::convert_version;
+use crate::{Config, DanoError, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
 
 pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let mut file_info_from_xattrs: Vec<FileInfo> = {
@@ -30,8 +31,16 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
             .par_iter()
             .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
             .flat_map(|(path, opt)| opt.map(|s| (path, s)))
-            .flat_map(|(path, s)| std::str::from_utf8(&s).map(|i| (path, i.to_owned())))
-            .flat_map(|(path, s)| deserialize(&s).map(|i| (path, i)))
+            .flat_map(|(path, bytes)| std::str::from_utf8(&bytes).map(|i| (path, i.to_owned())))
+            .flat_map(|(path, line)| {
+                let formatted_version = format!("\"version\":{}", DANO_FILE_INFO_VERSION);
+
+                if line.contains(&formatted_version) {
+                    deserialize(&line).map(|i| (path, i))
+                } else {
+                    convert_version(&line).map(|i| (path, i))
+                }
+            })
             .map(|(path, file_info)| {
                 // use the actual path name always
                 if path != &file_info.path {
@@ -51,7 +60,18 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         let mut input_file = read_input_file(config)?;
         let mut buffer = String::new();
         input_file.read_to_string(&mut buffer)?;
-        buffer.par_lines().flat_map(deserialize).collect()
+        buffer
+            .par_lines()
+            .flat_map(|line| {
+                let formatted_version = format!("version:{}", DANO_FILE_INFO_VERSION);
+
+                if line.contains(&formatted_version) {
+                    deserialize(line)
+                } else {
+                    convert_version(line)
+                }
+            })
+            .collect()
     } else {
         Vec::new()
     };

@@ -28,6 +28,7 @@ mod prepare_recorded;
 mod prepare_requests;
 mod process_file_info;
 mod util;
+mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
 use prepare_recorded::get_recorded_file_info;
@@ -37,7 +38,7 @@ use util::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-const DANO_FILE_INFO_VERSION: usize = 1;
+const DANO_FILE_INFO_VERSION: usize = 2;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";
 

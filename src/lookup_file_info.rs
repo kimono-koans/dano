@@ -59,6 +59,7 @@ pub struct FileMetadata {
     pub hash_value: u128,
     pub last_written: SystemTime,
     pub modify_time: SystemTime,
+    pub decoded_stream: bool,
 }
 
 impl FileInfo {
@@ -143,6 +144,7 @@ fn exec_ffmpeg(
                     hash_algo: first.into(),
                     hash_value: { u128::from_str_radix(last, 16)? },
                     modify_time: request.path.metadata()?.modified()?,
+                    decoded_stream: false,
                 }),
             },
             None => phantom_file_info,
