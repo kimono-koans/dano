@@ -30,7 +30,7 @@ use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::{util::DanoError, Config, ExecMode, FileInfoRequest};
+use crate::{util::DanoError, Config, FileInfoRequest};
 use crate::{DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -95,13 +95,7 @@ fn exec_ffmpeg(
     };
     let decoded = match request.decoded {
         Some(decoded) => decoded,
-        None => {
-            if let ExecMode::Write(write_config) = &config.exec_mode {
-                write_config.opt_decode
-            } else {
-                false
-            }
-        }
+        None => config.opt_decode,
     };
 
     let process_args = if decoded {

@@ -169,7 +169,6 @@ fn parse_args() -> ArgMatches {
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
-                .requires("WRITE")
                 .display_order(14))
         .arg(
             Arg::new("REWRITE_ALL")
@@ -197,7 +196,6 @@ pub struct FileInfoRequest {
 struct WriteModeConfig {
     opt_xattr: bool,
     opt_dry_run: bool,
-    opt_decode: bool,
     opt_rewrite: bool,
 }
 
@@ -219,6 +217,7 @@ enum ExecMode {
 pub struct Config {
     exec_mode: ExecMode,
     opt_silent: bool,
+    opt_decode: bool,
     opt_num_threads: Option<usize>,
     selected_hash_algo: Box<str>,
     pwd: PathBuf,
@@ -279,7 +278,6 @@ impl Config {
             ExecMode::Write(WriteModeConfig {
                 opt_xattr,
                 opt_dry_run,
-                opt_decode,
                 opt_rewrite,
             })
         } else {
@@ -335,6 +333,7 @@ impl Config {
             exec_mode,
             opt_silent,
             opt_num_threads,
+            opt_decode,
             selected_hash_algo,
             pwd,
             output_file,
