@@ -64,7 +64,7 @@ pub struct FileMetadata {
 }
 
 impl FileInfo {
-    pub fn send_file_info(
+    pub fn generate(
         config: Arc<Config>,
         request: &FileInfoRequest,
         tx_item: Sender<FileInfo>,
@@ -191,7 +191,7 @@ pub fn exec_lookup_file_info(
                 let tx_item_clone = tx_item.clone();
                 let config_clone = config_arc.clone();
                 file_info_scope.spawn(move |_| {
-                    let _ = FileInfo::send_file_info(config_clone, request, tx_item_clone);
+                    let _ = FileInfo::generate(config_clone, request, tx_item_clone);
                 })
             });
         });
