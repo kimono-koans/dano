@@ -91,7 +91,7 @@ pub fn write_all_new_paths(
                     .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
 
                 std::fs::rename(
-                    make_path_tmp(config.output_file.as_path()),
+                    make_tmp_file(config.output_file.as_path()),
                     config.output_file.clone(),
                 )
                 .map_err(|err| err.into())
@@ -100,7 +100,7 @@ pub fn write_all_new_paths(
     }
 }
 
-fn make_path_tmp(path: &Path) -> PathBuf {
+fn make_tmp_file(path: &Path) -> PathBuf {
     let path_string = path.to_string_lossy().to_string();
     let res = path_string + TMP_SUFFIX;
     PathBuf::from(res)
@@ -208,7 +208,7 @@ fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> 
 fn get_output_file(config: &Config, write_type: WriteType) -> DanoResult<File> {
     let output_file = match write_type {
         WriteType::Append => config.output_file.clone(),
-        WriteType::OverwriteAll => make_path_tmp(&config.output_file),
+        WriteType::OverwriteAll => make_tmp_file(&config.output_file),
     };
 
     let is_first_run = !output_file.exists();
