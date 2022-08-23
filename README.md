@@ -7,7 +7,8 @@
 * Non-media path filtering (which can be disabled)
 * Highly concurrent hashing (select # of threads)
 * Several useful modes: WRITE, TEST, COMPARE, PRINT
-* Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32)
+* Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32, SHA160, SHA256, SHA512)
+* Decode option which allows one to decode the stream before executing 
 * Write to xattrs or to hash file (and always read back and operate on both)
 
 ## Why `dano`? Because FLAC is really clever
@@ -28,12 +29,12 @@ So -- when I ask whether a media stream has the same checksum as when I original
 ```bash
 % dano -w 'Sample.mkv'
 murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "Sample.mkv"
-% dano -t 'Sample.mkv'
+% dano -c 'Sample.mkv'
 "Sample": OK
 # Now change our file's name and our checksum still verifies,
 # because the checksum is stored in a xattr
 % mv 'Sample.mkv' 'test1.mkv'
-% dano -t 'test2.mkv'
+% dano -c 'test2.mkv'
 "test1.mkv": OK
 # Now change our file's metadata and *write a new file in a 
 # new container* and our checksum is the *same*
