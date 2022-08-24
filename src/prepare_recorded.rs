@@ -15,12 +15,10 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::io::Read;
-
 use rayon::prelude::*;
 
 use crate::lookup_file_info::FileInfo;
-use crate::util::{deserialize, read_input_file};
+use crate::util::{deserialize, read_file_info_from_file};
 use crate::{Config, DanoError, DanoResult, ExecMode, DANO_XATTR_KEY_NAME};
 
 pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
@@ -48,10 +46,7 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     };
 
     let file_info_from_file = if config.hash_file.exists() {
-        let mut input_file = read_input_file(config)?;
-        let mut buffer = String::new();
-        input_file.read_to_string(&mut buffer)?;
-        buffer.par_lines().flat_map(deserialize).collect()
+        read_file_info_from_file(config)?
     } else {
         Vec::new()
     };

@@ -15,10 +15,9 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::{io::Read, time::SystemTime};
+use std::time::SystemTime;
 
 use itertools::Itertools;
-use rayon::prelude::*;
 use rug::Integer;
 
 use crate::{Config, DanoResult, ExecMode};
@@ -26,30 +25,29 @@ use crate::{Config, DanoResult, ExecMode};
 use crate::lookup_file_info::FileInfo;
 use crate::process_file_info::NewFilesBundle;
 use crate::util::{
-    deserialize, print_err_buf, read_input_file, write_all_new_paths, DanoError, WriteType,
+    print_err_buf, read_file_info_from_file, write_all_new_paths, DanoError, WriteType,
 };
 
-pub fn write_file_info_exec(
-    config: &Config, 
-    new_files_bundle: &NewFilesBundle
-) -> DanoResult<()> {
+const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";
+const EMPTY_STR: &str = "";
+const OVERWRITE_OLD_PREFIX: &str = "Overwriting dano hash for: ";
+const NOT_WRITE_NEW_PREFIX: &str = "Not writing dano hash for: ";
+const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
+const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: {";
+const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
+
+pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     write_new_files(config, new_files_bundle)?;
     write_new_filenames(config, new_files_bundle)?;
-    
+
     Ok(())
 }
 
-fn write_new_files(
-    config: &Config, 
-    new_files_bundle: &NewFilesBundle
-) -> DanoResult<()>{
+fn write_new_files(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write new files - no hash match in record
     if !new_files_bundle.new_files.is_empty() {
         let write_new = || -> DanoResult<()> {
-            let prefix = "Writing dano hash for: ";
-            let suffix = "";            
-            print_write_action(prefix, suffix, &new_files_bundle.new_files)?;
-            
+            print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)?;
             write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
         };
 
@@ -59,9 +57,11 @@ fn write_new_files(
                 if compare_config.opt_write_new {
                     write_new()?
                 } else {
-                    let prefix = "Not writing dano hash for: ";
-                    let suffix = ", --write-new was not specified.";
-                    print_write_action(prefix, suffix, &new_files_bundle.new_files)?;
+                    print_write_action(
+                        NOT_WRITE_NEW_PREFIX,
+                        NOT_WRITE_NEW_SUFFIX,
+                        &new_files_bundle.new_files,
+                    )?;
                 }
             }
             _ => unreachable!(),
@@ -75,20 +75,19 @@ fn write_new_files(
     } else {
         eprintln!("No new file paths to write.");
     }
-    
+
     Ok(())
 }
 
-fn write_new_filenames(
-    config: &Config, 
-    new_files_bundle: &NewFilesBundle
-) -> DanoResult<()>{
+fn write_new_filenames(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write old files with new names - hash matches
     if !new_files_bundle.new_filenames.is_empty() {
         let overwrite_old = || -> DanoResult<()> {
-            let prefix = "Overwriting dano hash for: ";
-            let suffix = "";
-            print_write_action(prefix, suffix, &new_files_bundle.new_filenames)?;
+            print_write_action(
+                OVERWRITE_OLD_PREFIX,
+                EMPTY_STR,
+                &new_files_bundle.new_filenames,
+            )?;
             overwrite_old_file_info(config, new_files_bundle)
         };
 
@@ -98,9 +97,11 @@ fn write_new_filenames(
                 if compare_config.opt_overwrite_old {
                     overwrite_old()?
                 } else {
-                    let prefix = "Not overwriting dano hash for: {";
-                    let suffix = ", --overwrite was not specified.";
-                    print_write_action(prefix, suffix, &new_files_bundle.new_filenames)?;                    
+                    print_write_action(
+                        NOT_OVERWRITE_OLD_PREFIX,
+                        NOT_OVERWRITE_OLD_SUFFIX,
+                        &new_files_bundle.new_filenames,
+                    )?;
                 }
             }
             _ => unreachable!(),
@@ -118,16 +119,10 @@ fn write_new_filenames(
     Ok(())
 }
 
-fn print_write_action(
-    prefix: &str,
-    suffix: &str,
-    file_bundle: &Vec<FileInfo>,
-) -> DanoResult<()> {
-    file_bundle
-        .iter()
-        .try_for_each(|file_info| {
-            print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
-        })
+fn print_write_action(prefix: &str, suffix: &str, file_bundle: &[FileInfo]) -> DanoResult<()> {
+    file_bundle.iter().try_for_each(|file_info| {
+        print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
+    })
 }
 
 pub fn overwrite_old_file_info(
@@ -142,11 +137,7 @@ pub fn overwrite_old_file_info(
         ExecMode::Write(write_config) if !write_config.opt_xattr => {
             // read back
             let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
-                let mut input_file = read_input_file(config)?;
-                let mut buffer = String::new();
-                input_file.read_to_string(&mut buffer)?;
-                // important this blows up because if you change the struct it can't deserialize
-                buffer.par_lines().flat_map(deserialize).collect()
+                read_file_info_from_file(config)?
             } else {
                 return Err(DanoError::new("No valid output file exists").into());
             };

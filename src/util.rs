@@ -23,6 +23,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use rayon::prelude::*;
 use serde_json::Value;
 
 use crate::lookup_file_info::FileInfo;
@@ -32,7 +33,6 @@ use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY
 // u128::MAX to LowerHex to String len is 32usize
 // this is one of those things one can't make a const function
 const HASH_VALUE_MIN_WIDTH: usize = 32;
-
 const TMP_SUFFIX: &str = ".tmp";
 
 #[derive(Debug, Clone)]
@@ -258,6 +258,13 @@ pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
     } else {
         convert_version(line)
     }
+}
+
+pub fn read_file_info_from_file(config: &Config) -> DanoResult<Vec<FileInfo>> {
+    let mut input_file = read_input_file(config)?;
+    let mut buffer = String::new();
+    input_file.read_to_string(&mut buffer)?;
+    Ok(buffer.par_lines().flat_map(deserialize).collect())
 }
 
 pub fn read_stdin() -> DanoResult<Vec<String>> {
