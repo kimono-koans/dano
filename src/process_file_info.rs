@@ -50,7 +50,7 @@ pub fn process_file_info_exec(
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare(_) => {
                 if let (Some(either), test_exit_code) =
-                    verify_file_info(config, &file_info, file_map.clone())?
+                    verify_file_info(config, file_info, file_map.clone())?
                 {
                     match either {
                         Either::Left(file_info) => new_filenames.push(file_info),
@@ -111,11 +111,11 @@ fn get_file_map(
 
 fn verify_file_info(
     config: &Config,
-    file_info: &FileInfo,
+    file_info: FileInfo,
     file_map: Arc<BTreeMap<PathBuf, Option<FileMetadata>>>,
 ) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
-    let is_same_hash = is_same_hash(&file_map, file_info);
-    let is_same_filename = is_same_filename(&file_map, file_info);
+    let is_same_hash = is_same_hash(&file_map, &file_info);
+    let is_same_filename = is_same_filename(&file_map, &file_info);
     let mut test_exit_code = 0;
 
     // must check whether metadata is none first
@@ -129,7 +129,7 @@ fn verify_file_info(
                 ))?;
             }
             ExecMode::Write(_) => {
-                print_file_info(config, file_info)?;
+                print_file_info(config, &file_info)?;
             }
             _ => unreachable!(),
         }
@@ -142,12 +142,12 @@ fn verify_file_info(
                     print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, file_info)?;
+                    print_file_info(config, &file_info)?;
                 }
                 _ => unreachable!(),
             }
         }
-        Some(Either::Right(file_info.clone()))
+        Some(Either::Right(file_info))
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
@@ -155,7 +155,7 @@ fn verify_file_info(
                     print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, file_info)?;
+                    print_file_info(config, &file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -180,11 +180,11 @@ fn verify_file_info(
                 }
             }
             ExecMode::Write(_) => {
-                print_file_info(config, file_info)?;
+                print_file_info(config, &file_info)?;
             }
             _ => unreachable!(),
         }
-        Some(Either::Left(file_info.clone()))
+        Some(Either::Left(file_info))
     } else if is_same_filename {
         // always print, even in silent
         match config.exec_mode {
@@ -195,7 +195,7 @@ fn verify_file_info(
                 ))?;
             }
             ExecMode::Write(_) => {
-                print_file_info(config, file_info)?;
+                print_file_info(config, &file_info)?;
             }
             _ => unreachable!(),
         }
