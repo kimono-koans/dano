@@ -48,16 +48,16 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
 fn write_new_files(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write new files - no hash match in record
     if !new_files_bundle.new_files.is_empty() {
-        let write_new = || -> DanoResult<()> {
+        let write_new_exec = || -> DanoResult<()> {
             print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)?;
             write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
         };
 
         match &config.exec_mode {
-            ExecMode::Write(_) => write_new()?,
+            ExecMode::Write(_) => write_new_exec()?,
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_write_new {
-                    write_new()?
+                    write_new_exec()?
                 } else {
                     print_write_action(
                         NOT_WRITE_NEW_PREFIX,
@@ -84,7 +84,7 @@ fn write_new_files(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoRe
 fn write_new_filenames(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write old files with new names - hash matches
     if !new_files_bundle.new_filenames.is_empty() {
-        let overwrite_old = || -> DanoResult<()> {
+        let overwrite_old_exec = || -> DanoResult<()> {
             print_write_action(
                 OVERWRITE_OLD_PREFIX,
                 EMPTY_STR,
@@ -94,10 +94,10 @@ fn write_new_filenames(config: &Config, new_files_bundle: &NewFilesBundle) -> Da
         };
 
         match &config.exec_mode {
-            ExecMode::Write(_) => overwrite_old()?,
+            ExecMode::Write(_) => overwrite_old_exec()?,
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_overwrite_old {
-                    overwrite_old()?
+                    overwrite_old_exec()?
                 } else {
                     print_write_action(
                         NOT_OVERWRITE_OLD_PREFIX,
