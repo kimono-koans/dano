@@ -73,8 +73,8 @@ pub fn process_file_info_exec(
     }
 
     // sort new paths before writing to file, threads may complete in non-sorted order
-    new_filenames.par_sort_unstable_by_key(|file_info| file_info.clone().path);
-    new_files.par_sort_unstable_by_key(|file_info| file_info.clone().path);
+    new_filenames.par_sort_unstable_by_key(|file_info| file_info.path.clone());
+    new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
     Ok(NewFilesBundle {
         new_filenames,
