@@ -24,6 +24,7 @@ use clap::{crate_name, crate_version, Arg, ArgMatches};
 use rayon::{prelude::*, ThreadPool};
 
 mod lookup_file_info;
+mod output_file_info;
 mod prepare_recorded;
 mod prepare_requests;
 mod process_file_info;
@@ -31,9 +32,10 @@ mod util;
 mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
+use output_file_info::write_new_file_info;
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{exec_process_file_info, write_new_file_info, NewFilesBundle};
+use process_file_info::{exec_process_file_info, NewFilesBundle};
 use util::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
