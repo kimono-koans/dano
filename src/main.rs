@@ -28,7 +28,7 @@ mod output_file_info;
 mod prepare_recorded;
 mod prepare_requests;
 mod process_file_info;
-mod util;
+mod utility;
 mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
@@ -36,7 +36,7 @@ use output_file_info::write_file_info_exec;
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
 use process_file_info::{process_file_info_exec, NewFilesBundle};
-use util::{print_file_info, read_stdin, DanoError};
+use utility::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 

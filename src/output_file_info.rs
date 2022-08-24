@@ -24,7 +24,7 @@ use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::FileInfo;
 use crate::process_file_info::NewFilesBundle;
-use crate::util::{
+use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError,
 };

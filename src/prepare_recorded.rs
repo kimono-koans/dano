@@ -18,7 +18,7 @@
 use rayon::prelude::*;
 
 use crate::lookup_file_info::FileInfo;
-use crate::util::{deserialize, read_file_info_from_file};
+use crate::utility::{deserialize, read_file_info_from_file};
 use crate::{Config, DanoError, DanoResult, ExecMode, DANO_XATTR_KEY_NAME};
 
 pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {

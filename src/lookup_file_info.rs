@@ -30,7 +30,7 @@ use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::{util::DanoError, Config, FileInfoRequest};
+use crate::{utility::DanoError, Config, FileInfoRequest};
 use crate::{DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -70,7 +70,8 @@ impl FileInfo {
         tx_item: Sender<FileInfo>,
     ) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
-            exec_ffmpeg(&config, request, &ffmpeg_command, tx_item)
+            let res = FileInfo::exec_ffmpeg(&config, request, &ffmpeg_command)?;
+            FileInfo::send(request, &res, tx_item)
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -78,97 +79,105 @@ impl FileInfo {
             .into())
         }
     }
-}
 
-fn exec_ffmpeg(
-    config: &Config,
-    request: &FileInfoRequest,
-    ffmpeg_command: &Path,
-    tx_item: Sender<FileInfo>,
-) -> DanoResult<()> {
-    // all snapshots should have the same timestamp
-    let timestamp = &SystemTime::now();
-    let path_string = request.path.to_string_lossy();
-    let hash_algo = match &request.hash_algo {
-        Some(hash_algo) => hash_algo,
-        None => &config.selected_hash_algo,
-    };
-    let decoded = match request.decoded {
-        Some(decoded) => decoded,
-        None => config.opt_decode,
-    };
-
-    let process_args = if decoded {
-        vec![
-            "-i",
-            path_string.as_ref(),
-            "-f",
-            "hash",
-            "-hash",
-            hash_algo,
-            "-",
-        ]
-    } else {
-        vec![
-            "-i",
-            path_string.as_ref(),
-            "-codec",
-            "copy",
-            "-f",
-            "hash",
-            "-hash",
-            hash_algo,
-            "-",
-        ]
-    };
-
-    let process_output = ExecProcess::new(ffmpeg_command)
-        .args(&process_args)
-        .output()?;
-    let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
-    let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
-
-    if stderr_string.contains("incorrect codec parameters") {
-        eprintln!(
-            "Error: Invalid hash algorithm specified.  \
-        This version of ffmpeg does not support: {} .  \
-        Upgrade or specify another hash algorithm.",
-            config.selected_hash_algo
-        );
-        std::process::exit(1)
-    }
-
-    let phantom_file_info = FileInfo {
-        path: request.path.to_owned(),
-        version: DANO_FILE_INFO_VERSION,
-        metadata: None,
-    };
-
-    if stdout_string.is_empty() {
-        // if stdout string is empty, then file DNE
-        // we want to print the request instead of an error
-        // or just continuing so we send the path + dummy value
-        tx_item.send(phantom_file_info)?;
-
-        Ok(())
-    } else {
-        let res = match stdout_string.split_once('=') {
-            Some((first, last)) => FileInfo {
-                path: request.path.to_owned(),
-                version: DANO_FILE_INFO_VERSION,
-                metadata: Some(FileMetadata {
-                    last_written: timestamp.to_owned(),
-                    hash_algo: first.into(),
-                    hash_value: { Integer::from_str_radix(last, 16)? },
-                    modify_time: request.path.metadata()?.modified()?,
-                    decoded: false,
-                }),
-            },
-            None => phantom_file_info,
+    fn exec_ffmpeg(
+        config: &Config,
+        request: &FileInfoRequest,
+        ffmpeg_command: &Path,
+    ) -> DanoResult<String> {
+        // all snapshots should have the same timestamp
+        let path_string = request.path.to_string_lossy();
+        let hash_algo = match &request.hash_algo {
+            Some(hash_algo) => hash_algo,
+            None => &config.selected_hash_algo,
+        };
+        let decoded = match request.decoded {
+            Some(decoded) => decoded,
+            None => config.opt_decode,
         };
 
-        tx_item.send(res)?;
-        Ok(())
+        let process_args = if decoded {
+            vec![
+                "-i",
+                path_string.as_ref(),
+                "-f",
+                "hash",
+                "-hash",
+                hash_algo,
+                "-",
+            ]
+        } else {
+            vec![
+                "-i",
+                path_string.as_ref(),
+                "-codec",
+                "copy",
+                "-f",
+                "hash",
+                "-hash",
+                hash_algo,
+                "-",
+            ]
+        };
+
+        let process_output = ExecProcess::new(ffmpeg_command)
+            .args(&process_args)
+            .output()?;
+        let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
+        let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
+
+        if stderr_string.contains("incorrect codec parameters") {
+            eprintln!(
+                "Error: Invalid hash algorithm specified.  \
+            This version of ffmpeg does not support: {} .  \
+            Upgrade or specify another hash algorithm.",
+                config.selected_hash_algo
+            );
+            std::process::exit(1)
+        }
+
+        Ok(stdout_string.to_owned())
+    }
+
+    fn send(
+        request: &FileInfoRequest,
+        stdout_string: &str,
+        tx_item: Sender<FileInfo>,
+    ) -> DanoResult<()> {
+        let timestamp = &SystemTime::now();
+
+        let phantom_file_info = FileInfo {
+            path: request.path.to_owned(),
+            version: DANO_FILE_INFO_VERSION,
+            metadata: None,
+        };
+
+        if stdout_string.is_empty() {
+            // if stdout string is empty, then file DNE
+            // we want to print the request instead of an error
+            // or just continuing so we send the path + dummy value
+            tx_item.send(phantom_file_info)?;
+
+            Ok(())
+        } else {
+            let res = match stdout_string.split_once('=') {
+                Some((first, last)) => FileInfo {
+                    path: request.path.to_owned(),
+                    version: DANO_FILE_INFO_VERSION,
+                    metadata: Some(FileMetadata {
+                        last_written: timestamp.to_owned(),
+                        hash_algo: first.into(),
+                        hash_value: { Integer::from_str_radix(last, 16)? },
+                        modify_time: request.path.metadata()?.modified()?,
+                        decoded: false,
+                    }),
+                },
+                None => phantom_file_info,
+            };
+
+            tx_item.send(res)?;
+            Ok(())
+        }
     }
 }
 

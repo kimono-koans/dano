@@ -24,7 +24,7 @@ use rayon::prelude::*;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::util::{print_file_info, print_out_buf};
+use crate::utility::{print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
 pub struct NewFilesBundle {
