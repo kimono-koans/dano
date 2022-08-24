@@ -71,7 +71,7 @@ impl FileInfo {
     ) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
             let res = FileInfo::exec_ffmpeg(&config, request, &ffmpeg_command)?;
-            FileInfo::send(request, &res, tx_item)
+            FileInfo::transmit_file_info(request, &res, tx_item)
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -139,7 +139,7 @@ impl FileInfo {
         Ok(stdout_string.to_owned())
     }
 
-    fn send(
+    fn transmit_file_info(
         request: &FileInfoRequest,
         stdout_string: &str,
         tx_item: Sender<FileInfo>,
