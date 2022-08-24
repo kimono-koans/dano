@@ -32,7 +32,7 @@ pub struct NewFilesBundle {
     pub new_files: Vec<FileInfo>,
 }
 
-pub fn exec_process_file_info(
+pub fn process_file_info_exec(
     config: &Config,
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,

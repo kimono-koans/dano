@@ -32,10 +32,10 @@ mod util;
 mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
-use output_file_info::write_new_file_info;
+use output_file_info::write_file_info_exec;
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{exec_process_file_info, NewFilesBundle};
+use process_file_info::{process_file_info_exec, NewFilesBundle};
 use util::{print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -425,20 +425,20 @@ fn exec() -> DanoResult<()> {
 
                 let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
                 let compare_hashes_bundle =
-                    exec_process_file_info(&config, &recorded_file_info, rx_item)?;
+                    process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
                 compare_hashes_bundle
             };
 
-            write_new_file_info(&config, &file_bundle)
+            write_file_info_exec(&config, &file_bundle)
         }
         ExecMode::Compare(_) => {
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
-                exec_process_file_info(&config, &recorded_file_info, rx_item)?;
+                process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-            write_new_file_info(&config, &compare_hashes_bundle)
+            write_file_info_exec(&config, &compare_hashes_bundle)
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {

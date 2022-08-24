@@ -29,7 +29,7 @@ use crate::util::{
     deserialize, print_err_buf, read_input_file, write_all_new_paths, DanoError, WriteType,
 };
 
-pub fn write_new_file_info(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
+pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
     // write new files - no hash match in record
     if !new_files_bundle.new_files.is_empty() {
         let write_new = || -> DanoResult<()> {
