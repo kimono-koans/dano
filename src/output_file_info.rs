@@ -25,7 +25,8 @@ use crate::{Config, DanoResult, ExecMode};
 use crate::lookup_file_info::FileInfo;
 use crate::process_file_info::NewFilesBundle;
 use crate::util::{
-    print_err_buf, read_file_info_from_file, write_all_new_paths, DanoError, WriteType,
+    get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
+    write_non_file, DanoError,
 };
 
 const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";
@@ -79,6 +80,46 @@ fn write_new_files(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoRe
     }
 
     Ok(())
+}
+
+pub enum WriteType {
+    Append,
+    OverwriteAll,
+}
+
+pub fn write_all_new_paths(
+    config: &Config,
+    new_files: &[FileInfo],
+    write_type: WriteType,
+) -> DanoResult<()> {
+    match &config.exec_mode {
+        ExecMode::Write(write_config) if write_config.opt_dry_run || write_config.opt_xattr => {
+            new_files
+                .iter()
+                .try_for_each(|file_info| write_non_file(config, file_info))
+        }
+        _ => match write_type {
+            WriteType::Append => {
+                let mut output_file = get_output_file(config, WriteType::Append)?;
+                new_files
+                    .iter()
+                    .try_for_each(|file_info| write_file(file_info, &mut output_file))
+            }
+            WriteType::OverwriteAll => {
+                let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
+
+                new_files
+                    .iter()
+                    .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
+
+                std::fs::rename(
+                    make_tmp_file(config.output_file.as_path()),
+                    config.output_file.clone(),
+                )
+                .map_err(|err| err.into())
+            }
+        },
+    }
 }
 
 fn write_new_filenames(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {

@@ -27,6 +27,7 @@ use rayon::prelude::*;
 use serde_json::Value;
 
 use crate::lookup_file_info::FileInfo;
+use crate::output_file_info::WriteType;
 use crate::versions::convert_version;
 use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
 
@@ -60,58 +61,18 @@ impl Error for DanoError {
     }
 }
 
-pub enum WriteType {
-    Append,
-    OverwriteAll,
-}
-
-pub fn write_all_new_paths(
-    config: &Config,
-    new_files: &[FileInfo],
-    write_type: WriteType,
-) -> DanoResult<()> {
-    match &config.exec_mode {
-        ExecMode::Write(write_config) if write_config.opt_dry_run || write_config.opt_xattr => {
-            new_files
-                .iter()
-                .try_for_each(|file_info| write_non_file(config, file_info))
-        }
-        _ => match write_type {
-            WriteType::Append => {
-                let mut output_file = get_output_file(config, WriteType::Append)?;
-                new_files
-                    .iter()
-                    .try_for_each(|file_info| write_file(file_info, &mut output_file))
-            }
-            WriteType::OverwriteAll => {
-                let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
-
-                new_files
-                    .iter()
-                    .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
-
-                std::fs::rename(
-                    make_tmp_file(config.output_file.as_path()),
-                    config.output_file.clone(),
-                )
-                .map_err(|err| err.into())
-            }
-        },
-    }
-}
-
-fn make_tmp_file(path: &Path) -> PathBuf {
+pub fn make_tmp_file(path: &Path) -> PathBuf {
     let path_string = path.to_string_lossy().to_string();
     let res = path_string + TMP_SUFFIX;
     PathBuf::from(res)
 }
 
-fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
+pub fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()> {
     let serialized = serialize(file_info)?;
     write_out_file(&serialized, output_file)
 }
 
-fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
+pub fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(write_config) if write_config.opt_dry_run => {
             let serialized = serialize(file_info)?;
@@ -186,7 +147,7 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
     }
 }
 
-pub fn read_input_file(config: &Config) -> DanoResult<File> {
+pub fn get_hash_file(config: &Config) -> DanoResult<File> {
     if let Ok(input_file) = OpenOptions::new().read(true).open(&config.hash_file) {
         Ok(input_file)
     } else {
@@ -205,7 +166,7 @@ fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> 
     )
 }
 
-fn get_output_file(config: &Config, write_type: WriteType) -> DanoResult<File> {
+pub fn get_output_file(config: &Config, write_type: WriteType) -> DanoResult<File> {
     let output_file = match write_type {
         WriteType::Append => config.output_file.clone(),
         WriteType::OverwriteAll => make_tmp_file(&config.output_file),
@@ -261,7 +222,7 @@ pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
 }
 
 pub fn read_file_info_from_file(config: &Config) -> DanoResult<Vec<FileInfo>> {
-    let mut input_file = read_input_file(config)?;
+    let mut input_file = get_hash_file(config)?;
     let mut buffer = String::new();
     input_file.read_to_string(&mut buffer)?;
     Ok(buffer.par_lines().flat_map(deserialize).collect())
