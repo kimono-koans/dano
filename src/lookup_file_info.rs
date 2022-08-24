@@ -70,7 +70,7 @@ impl FileInfo {
         tx_item: Sender<FileInfo>,
     ) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
-            let res = FileInfo::exec_ffmpeg(&config, request, &ffmpeg_command)?;
+            let res = FileInfo::get_hash_value(&config, request, &ffmpeg_command)?;
             FileInfo::transmit_file_info(request, &res, tx_item)
         } else {
             Err(DanoError::new(
@@ -80,7 +80,7 @@ impl FileInfo {
         }
     }
 
-    fn exec_ffmpeg(
+    fn get_hash_value(
         config: &Config,
         request: &FileInfoRequest,
         ffmpeg_command: &Path,
