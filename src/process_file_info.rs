@@ -84,9 +84,8 @@ pub fn process_file_info_exec(
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
     file_map
-        .clone()
         .into_par_iter()
-        .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata)
+        .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
         .any(|file_map_metadata| match &path.metadata {
             Some(path_metadata) => path_metadata.hash_value == file_map_metadata.hash_value,
             None => false,
