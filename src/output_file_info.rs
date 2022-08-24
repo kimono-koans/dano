@@ -31,8 +31,10 @@ use crate::util::{
 const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";
 const EMPTY_STR: &str = "";
 const OVERWRITE_OLD_PREFIX: &str = "Overwriting dano hash for: ";
+
 const NOT_WRITE_NEW_PREFIX: &str = "Not writing dano hash for: ";
 const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
+
 const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: {";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
