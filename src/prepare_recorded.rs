@@ -57,7 +57,7 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         }
     }
 
-    // include test paths and combine
+    // combine
     file_info_from_xattrs.extend(file_info_from_file);
     let mut recorded_file_info: Vec<FileInfo> = file_info_from_xattrs;
 

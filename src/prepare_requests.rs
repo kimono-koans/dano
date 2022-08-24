@@ -70,7 +70,6 @@ pub fn get_file_info_requests(
         })
         .collect();
 
-    // include all config.paths in requests, but only if record_file_info does not contain the hash algo
     paths_requests.into_iter().for_each(|request| {
         // don't care about the Option returned
         let _ = recorded_file_info_requests.insert(request.path.clone(), request);
