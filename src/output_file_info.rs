@@ -29,33 +29,39 @@ use crate::util::{
     deserialize, print_err_buf, read_input_file, write_all_new_paths, DanoError, WriteType,
 };
 
-pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
+pub fn write_file_info_exec(
+    config: &Config, 
+    new_files_bundle: &NewFilesBundle
+) -> DanoResult<()> {
+    write_new_files(config, new_files_bundle)?;
+    write_new_filenames(config, new_files_bundle)?;
+    
+    Ok(())
+}
+
+fn write_new_files(
+    config: &Config, 
+    new_files_bundle: &NewFilesBundle
+) -> DanoResult<()>{
     // write new files - no hash match in record
     if !new_files_bundle.new_files.is_empty() {
         let write_new = || -> DanoResult<()> {
-            new_files_bundle
-                .new_files
-                .iter()
-                .try_for_each(|file_info| {
-                    print_err_buf(&format!("Writing dano hash for: {:?}\n", file_info.path))
-                })?;
+            let prefix = "Writing dano hash for: ";
+            let suffix = "";            
+            print_write_action(prefix, suffix, &new_files_bundle.new_files)?;
+            
             write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
         };
+
         match &config.exec_mode {
             ExecMode::Write(_) => write_new()?,
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_write_new {
                     write_new()?
                 } else {
-                    new_files_bundle
-                        .new_files
-                        .iter()
-                        .try_for_each(|file_info| {
-                            print_err_buf(&format!(
-                                "Not writing dano hash for: {:?}, --write-new was not specified.\n",
-                                file_info.path
-                            ))
-                        })?
+                    let prefix = "Not writing dano hash for: ";
+                    let suffix = ", --write-new was not specified.";
+                    print_write_action(prefix, suffix, &new_files_bundle.new_files)?;
                 }
             }
             _ => unreachable!(),
@@ -69,19 +75,20 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
     } else {
         eprintln!("No new file paths to write.");
     }
+    
+    Ok(())
+}
 
+fn write_new_filenames(
+    config: &Config, 
+    new_files_bundle: &NewFilesBundle
+) -> DanoResult<()>{
     // write old files with new names - hash matches
     if !new_files_bundle.new_filenames.is_empty() {
         let overwrite_old = || -> DanoResult<()> {
-            new_files_bundle
-                .new_filenames
-                .iter()
-                .try_for_each(|file_info| {
-                    print_err_buf(&format!(
-                        "Overwriting dano hash for: {:?}\n",
-                        file_info.path
-                    ))
-                })?;
+            let prefix = "Overwriting dano hash for: ";
+            let suffix = "";
+            print_write_action(prefix, suffix, &new_files_bundle.new_filenames)?;
             overwrite_old_file_info(config, new_files_bundle)
         };
 
@@ -91,15 +98,9 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
                 if compare_config.opt_overwrite_old {
                     overwrite_old()?
                 } else {
-                    new_files_bundle
-                        .new_filenames
-                        .iter()
-                        .try_for_each(|file_info| {
-                            print_err_buf(&format!(
-                                "Not overwriting dano hash for: {:?}, --overwrite was not specified.\n",
-                                file_info.path
-                            ))
-                        })?
+                    let prefix = "Not overwriting dano hash for: {";
+                    let suffix = ", --overwrite was not specified.";
+                    print_write_action(prefix, suffix, &new_files_bundle.new_filenames)?;                    
                 }
             }
             _ => unreachable!(),
@@ -115,6 +116,18 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
     }
 
     Ok(())
+}
+
+fn print_write_action(
+    prefix: &str,
+    suffix: &str,
+    file_bundle: &Vec<FileInfo>,
+) -> DanoResult<()> {
+    file_bundle
+        .iter()
+        .try_for_each(|file_info| {
+            print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
+        })
 }
 
 pub fn overwrite_old_file_info(
