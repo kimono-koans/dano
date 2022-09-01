@@ -398,13 +398,6 @@ fn exec() -> DanoResult<()> {
 
     let recorded_file_info = get_recorded_file_info(&config)?;
 
-    if recorded_file_info.is_empty() && !matches!(config.exec_mode, ExecMode::Write(_)) {
-        return Err(DanoError::new(
-            "Nothing to check or print.  No record of file checksums present.",
-        )
-        .into());
-    }
-
     let thread_pool = prepare_thread_pool(&config)?;
 
     match &config.exec_mode {
