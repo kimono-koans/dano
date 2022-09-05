@@ -63,7 +63,7 @@ dpkg -i ./target/debian/dano_*.deb
 # or convert to RPM 
 alien -r ./target/debian/dano_*.deb
 # and install on a Redhat-based system
-rpm -i ./dano*.rpm
+rpm -i --replacefiles ./dano*.rpm
 ```
 
 ## Installation from Source
