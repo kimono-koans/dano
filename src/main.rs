@@ -32,7 +32,7 @@ mod utility;
 mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
-use output_file_info::write_file_info_exec;
+use output_file_info::{write_all_new_paths, write_file_info_exec, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
 use process_file_info::{process_file_info_exec, NewFilesBundle};
@@ -107,6 +107,11 @@ fn parse_args() -> ArgMatches {
                 .long("print")
                 .display_order(7))
         .arg(
+            Arg::new("DUMP")
+                .help("dump the detected file hashes to the output file (don't process).")
+                .long("dump")
+                .display_order(8))
+        .arg(
             Arg::new("NUM_THREADS")
                 .help("requested number of threads to use for file processing.  Default is twice the number of logical cores.")
                 .short('j')
@@ -115,39 +120,39 @@ fn parse_args() -> ArgMatches {
                 .min_values(1)
                 .require_equals(true)
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(7))
+                .display_order(9))
         .arg(
             Arg::new("SILENT")
                 .help("quiet many informational messages (like \"OK\").")
                 .short('s')
                 .long("silent")
-                .display_order(8),
+                .display_order(10),
         )
         .arg(
             Arg::new("WRITE_NEW")
                 .help("if new files are present in COMPARE mode, append such file info.")
                 .long("write-new")
                 .requires("COMPARE")
-                .display_order(9),
+                .display_order(11),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
                 .long("overwrite")
                 .conflicts_with_all(&["TEST", "PRINT"])
-                .display_order(10),
+                .display_order(12),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
                 .help("by default, dano filters file extensions not recognized by ffmpeg.  Here, you may disable such filtering.")
                 .long("disable-filter")
-                .display_order(11),
+                .display_order(13),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
                 .help("use canonical paths (instead of potentially relative paths).")
                 .long("canonical-paths")
-                .display_order(12),
+                .display_order(14),
         )
         .arg(
             Arg::new("XATTR")
@@ -155,7 +160,7 @@ fn parse_args() -> ArgMatches {
                 Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.")
                 .short('x')
                 .long("xattr")
-                .display_order(12),
+                .display_order(15),
         )
         .arg(
             Arg::new("HASH_ALGO")
@@ -166,24 +171,24 @@ fn parse_args() -> ArgMatches {
                 .require_equals(true)
                 .possible_values(&["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(13))
+                .display_order(16))
         .arg(
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
-                .display_order(14))
+                .display_order(17))
         .arg(
             Arg::new("REWRITE_ALL")
                 .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
                 .long("rewrite")
                 .requires("WRITE")
-                .display_order(15))
+                .display_order(18))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .requires("WRITE")
-            .display_order(16))
+            .display_order(19))
         .get_matches()
 }
 
@@ -213,6 +218,7 @@ enum ExecMode {
     Compare(CompareModeConfig),
     Write(WriteModeConfig),
     Print,
+    Dump,
 }
 
 #[derive(Debug, Clone)]
@@ -274,6 +280,8 @@ impl Config {
                 opt_overwrite_old,
                 opt_write_new,
             })
+        } else if matches.is_present("DUMP") && !matches.is_present("WRITE") {
+            ExecMode::Dump
         } else if matches.is_present("PRINT") && !matches.is_present("WRITE") {
             ExecMode::Print
         } else if matches.is_present("WRITE") {
@@ -284,7 +292,7 @@ impl Config {
             })
         } else {
             return Err(DanoError::new(
-                "You must specify an execution mode: COMPARE, TEST, WRITE, or PRINT",
+                "You must specify an execution mode: COMPARE, TEST, WRITE, PRINT or DUMP",
             )
             .into());
         };
@@ -440,6 +448,21 @@ fn exec() -> DanoResult<()> {
                 recorded_file_info
                     .iter()
                     .try_for_each(|file_info| print_file_info(&config, file_info))?;
+            }
+
+            Ok(())
+        }
+        ExecMode::Dump => {
+            if recorded_file_info.is_empty() {
+                return Err(
+                    DanoError::new("No recorded file info is available to dump to file.").into(),
+                );
+            } else {
+                write_all_new_paths(
+                    &config,
+                    recorded_file_info.as_slice(),
+                    WriteType::OverwriteAll,
+                )?
             }
 
             Ok(())

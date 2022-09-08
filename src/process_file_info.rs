@@ -61,7 +61,7 @@ pub fn process_file_info_exec(
                     }
                 }
             }
-            ExecMode::Print => unreachable!(),
+            ExecMode::Print | ExecMode::Dump => unreachable!(),
         }
     }
 
