@@ -160,7 +160,6 @@ fn parse_args() -> ArgMatches {
                 Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.")
                 .short('x')
                 .long("xattr")
-                .requires("WRITE")
                 .display_order(15),
         )
         .arg(
