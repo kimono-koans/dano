@@ -49,10 +49,10 @@ pub fn process_file_info_exec(
     while let Ok(file_info) = rx_item.recv() {
         match config.exec_mode {
             ExecMode::Write(_) | ExecMode::Compare(_) => {
-                if let (Some(either), test_exit_code) =
+                if let (Some(new_files_partitioned), test_exit_code) =
                     verify_file_info(config, file_info, file_map.clone())?
                 {
-                    match either {
+                    match new_files_partitioned {
                         Either::Left(file_info) => new_filenames.push(file_info),
                         Either::Right(file_info) => new_files.push(file_info),
                     }
