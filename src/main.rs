@@ -48,7 +48,7 @@ fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
         .about("dano is a wrapper for ffmpeg that checksums the internal file streams of certain media files, \
         and stores them in a format which can be used to verify such checksums later.  This is handy, because, \
-        should you choose to change metadata tags, or change file names, the media checksums *should* remain the same.")
+        should you choose to change metadata tags, or change file names, the media checksums should remain the same.")
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
@@ -60,7 +60,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("OUTPUT_FILE")
-                .help("output file which will hold the hashes. If not specified, 'dano_hashes.txt' in the PWD will be used.")
+                .help("output file which will contain the hashes. If not specified, 'dano_hashes.txt' in the current working directory will be used.")
                 .short('o')
                 .long("output-file")
                 .takes_value(true)
@@ -71,7 +71,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("HASH_FILE")
-                .help("file from which to read the hashes.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the PWD).")
+                .help("file from which to read hashes.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the current working directory).")
                 .short('k')
                 .long("hash-file")
                 .takes_value(true)
@@ -82,13 +82,13 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE")
-                .help("write the input files' hashes.")
+                .help("write the new input files' hashes (and ignore files that already have file hashes).")
                 .short('w')
                 .long("write")
                 .display_order(4))
         .arg(
             Arg::new("COMPARE")
-                .help("compare the input files to the hashes in a hash file (or in a xattr).")
+                .help("compare the input files to the hashes in a hash file (and/or contained within a file's xattrs).")
                 .short('c')
                 .long("compare")
                 .display_order(6),
@@ -108,7 +108,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(7))
         .arg(
             Arg::new("DUMP")
-                .help("dump the detected file hashes to the output file (don't process).")
+                .help("dump the recorded file information (hashes and xattrs) to the output file (don't test/compare).")
                 .long("dump")
                 .display_order(8))
         .arg(
@@ -144,7 +144,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("DISABLE_FILTER")
-                .help("by default, dano filters file extensions not recognized by ffmpeg.  Here, you may disable such filtering.")
+                .help("by default, file extensions not recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
                 .long("disable-filter")
                 .display_order(13),
         )
