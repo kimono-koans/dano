@@ -280,12 +280,12 @@ impl Config {
                 opt_overwrite_old,
                 opt_write_new,
             })
-        } else if matches.is_present("DUMP") && !matches.is_present("WRITE") {
-            ExecMode::Dump
-        } else if matches.is_present("PRINT") && !matches.is_present("WRITE") {
-            ExecMode::Print
         } else if matches.is_present("WRITE") {
             ExecMode::Write(WriteModeConfig { opt_rewrite })
+        } else if matches.is_present("DUMP") {
+            ExecMode::Dump
+        } else if matches.is_present("PRINT") {
+            ExecMode::Print
         } else {
             return Err(DanoError::new(
                 "You must specify an execution mode: COMPARE, TEST, WRITE, PRINT or DUMP",
