@@ -455,6 +455,11 @@ fn exec() -> DanoResult<()> {
                 return Err(
                     DanoError::new("No recorded file info is available to dump to file.").into(),
                 );
+            } else if config.output_file.exists() {
+                return Err(DanoError::new(
+                    "Output file already exists.  Quitting without dumping to file.",
+                )
+                .into());
             } else {
                 write_all_new_paths(
                     &config,
