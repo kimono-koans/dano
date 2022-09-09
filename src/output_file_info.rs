@@ -92,7 +92,9 @@ pub fn write_all_new_paths(
     new_files: &[FileInfo],
     write_type: WriteType,
 ) -> DanoResult<()> {
-    if config.opt_xattr {
+    // ExecMode::Dump is about writing to a file always want to skip xattrs
+    // can always be enabled by env var so ad hoc debugging can be tricky
+    if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
         new_files
             .iter()
             .try_for_each(|file_info| write_non_file(config, file_info))
