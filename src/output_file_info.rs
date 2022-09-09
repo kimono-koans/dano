@@ -94,9 +94,13 @@ pub fn write_all_new_paths(
 ) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(write_config) if write_config.opt_dry_run || write_config.opt_xattr => {
-            new_files
-                .iter()
-                .try_for_each(|file_info| write_non_file(config, file_info))
+            if !write_config.opt_dry_run {
+                new_files
+                    .iter()
+                    .try_for_each(|file_info| write_non_file(config, file_info))
+            } else {
+                Ok(())
+            }  
         }
         _ => match write_type {
             WriteType::Append => {
