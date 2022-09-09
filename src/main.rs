@@ -201,8 +201,6 @@ pub struct FileInfoRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WriteModeConfig {
-    opt_xattr: bool,
-    opt_dry_run: bool,
     opt_rewrite: bool,
 }
 
@@ -226,6 +224,8 @@ pub struct Config {
     exec_mode: ExecMode,
     opt_silent: bool,
     opt_decode: bool,
+    opt_xattr: bool,
+    opt_dry_run: bool,
     opt_num_threads: Option<usize>,
     selected_hash_algo: Box<str>,
     pwd: PathBuf,
@@ -285,11 +285,7 @@ impl Config {
         } else if matches.is_present("PRINT") && !matches.is_present("WRITE") {
             ExecMode::Print
         } else if matches.is_present("WRITE") {
-            ExecMode::Write(WriteModeConfig {
-                opt_xattr,
-                opt_dry_run,
-                opt_rewrite,
-            })
+            ExecMode::Write(WriteModeConfig { opt_rewrite })
         } else {
             return Err(DanoError::new(
                 "You must specify an execution mode: COMPARE, TEST, WRITE, PRINT or DUMP",
@@ -344,6 +340,8 @@ impl Config {
             opt_silent,
             opt_num_threads,
             opt_decode,
+            opt_xattr,
+            opt_dry_run,
             selected_hash_algo,
             pwd,
             output_file,

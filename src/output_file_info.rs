@@ -92,13 +92,12 @@ pub fn write_all_new_paths(
     new_files: &[FileInfo],
     write_type: WriteType,
 ) -> DanoResult<()> {
-    match &config.exec_mode {
-        ExecMode::Write(write_config) if write_config.opt_dry_run || write_config.opt_xattr => {
-            new_files
-                .iter()
-                .try_for_each(|file_info| write_non_file(config, file_info))
-        }
-        _ => match write_type {
+    if config.opt_xattr {
+        new_files
+            .iter()
+            .try_for_each(|file_info| write_non_file(config, file_info))
+    } else {
+        match write_type {
             WriteType::Append => {
                 let mut output_file = get_output_file(config, WriteType::Append)?;
                 new_files
@@ -118,7 +117,7 @@ pub fn write_all_new_paths(
                 )
                 .map_err(|err| err.into())
             }
-        },
+        }
     }
 }
 
@@ -177,7 +176,7 @@ pub fn overwrite_old_file_info(
 
     // overwrite all paths if in non-xattr/file write mode
     match &config.exec_mode {
-        ExecMode::Write(write_config) if !write_config.opt_xattr => {
+        ExecMode::Write(_) if !config.opt_xattr => {
             // read back
             let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
                 read_file_info_from_file(config)?
