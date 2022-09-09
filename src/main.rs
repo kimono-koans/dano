@@ -466,7 +466,9 @@ fn exec() -> DanoResult<()> {
                     recorded_file_info.as_slice(),
                     WriteType::OverwriteAll,
                 )?;
-                print_err_buf("Dump to dano output file was successful.")?
+                if !config.opt_silent {
+                    print_err_buf("Dump to dano output file was successful.")?
+                }
             }
 
             Ok(())
