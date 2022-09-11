@@ -8,7 +8,7 @@
 * Highly concurrent hashing (select # of threads)
 * Several useful modes: WRITE, TEST, COMPARE, PRINT or DUMP
 * Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32, SHA160, SHA256, SHA512)
-* Decode option to decode the stream before executing 
+* Option to decode the stream before executing hash function
 * Write to xattrs or to hash file (and always read back and operate on both)
 
 ## Why `dano`? Because FLAC is really clever
