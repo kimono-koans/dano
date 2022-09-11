@@ -65,7 +65,7 @@ pub fn process_file_info_exec(
         }
     }
 
-    // exit with non-zero status is test is not "OK"
+    // exit with non-zero status if test is not "OK"
     if let ExecMode::Compare(compare_config) = &config.exec_mode {
         if compare_config.opt_test_mode {
             std::process::exit(exit_code)
