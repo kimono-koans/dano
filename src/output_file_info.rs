@@ -94,7 +94,7 @@ pub fn write_all_new_paths(
 ) -> DanoResult<()> {
     // ExecMode::Dump is about writing to a file always want to skip xattrs
     // can always be enabled by env var so ad hoc debugging can be tricky
-    if config.opt_dry_run {
+    if !config.opt_dry_run {
         if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
             new_files
                 .iter()
