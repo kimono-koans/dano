@@ -70,8 +70,12 @@ impl FileInfo {
         tx_item: Sender<FileInfo>,
     ) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
-            let res = FileInfo::get_hash_value(&config, request, &ffmpeg_command)?;
-            FileInfo::transmit_file_info(request, &res, tx_item)
+            let decoded = match request.decoded {
+                Some(decoded) => decoded,
+                None => config.opt_decode,
+            };
+            let res = FileInfo::get_hash_value(&config, request, &ffmpeg_command, decoded)?;
+            FileInfo::transmit_file_info(request, &res, tx_item, decoded)
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -84,16 +88,13 @@ impl FileInfo {
         config: &Config,
         request: &FileInfoRequest,
         ffmpeg_command: &Path,
+        decoded: bool,
     ) -> DanoResult<String> {
         // all snapshots should have the same timestamp
         let path_string = request.path.to_string_lossy();
         let hash_algo = match &request.hash_algo {
             Some(hash_algo) => hash_algo,
             None => &config.selected_hash_algo,
-        };
-        let decoded = match request.decoded {
-            Some(decoded) => decoded,
-            None => config.opt_decode,
         };
 
         let process_args = if decoded {
@@ -143,6 +144,7 @@ impl FileInfo {
         request: &FileInfoRequest,
         stdout_string: &str,
         tx_item: Sender<FileInfo>,
+        decoded: bool,
     ) -> DanoResult<()> {
         let timestamp = &SystemTime::now();
 
@@ -169,7 +171,7 @@ impl FileInfo {
                         hash_algo: first.into(),
                         hash_value: { Integer::from_str_radix(last, 16)? },
                         modify_time: request.path.metadata()?.modified()?,
-                        decoded: false,
+                        decoded,
                     }),
                 },
                 None => phantom_file_info,
