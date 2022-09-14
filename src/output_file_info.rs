@@ -36,7 +36,7 @@ const OVERWRITE_OLD_PREFIX: &str = "Overwriting dano hash for: ";
 const NOT_WRITE_NEW_PREFIX: &str = "Not writing dano hash for: ";
 const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 
-const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: {";
+const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
 pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
@@ -50,8 +50,12 @@ fn write_new_files(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoRe
     // write new files - no hash match in record
     if !new_files_bundle.new_files.is_empty() {
         let write_new_exec = || -> DanoResult<()> {
-            print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)?;
-            write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
+            if config.opt_dry_run {
+                print_write_action(NOT_WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)
+            } else {
+                print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)?;
+                write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
+            }
         };
 
         match &config.exec_mode {
@@ -96,9 +100,7 @@ pub fn write_all_new_paths(
     // can always be enabled by env var so ad hoc debugging can be tricky
     if !config.opt_dry_run {
         if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
-            new_files
-                .iter()
-                .try_for_each(write_non_file)
+            new_files.iter().try_for_each(write_non_file)
         } else {
             match write_type {
                 WriteType::Append => {
@@ -131,12 +133,20 @@ fn write_new_filenames(config: &Config, new_files_bundle: &NewFilesBundle) -> Da
     // write old files with new names - hash matches
     if !new_files_bundle.new_filenames.is_empty() {
         let overwrite_old_exec = || -> DanoResult<()> {
-            print_write_action(
-                OVERWRITE_OLD_PREFIX,
-                EMPTY_STR,
-                &new_files_bundle.new_filenames,
-            )?;
-            overwrite_old_file_info(config, new_files_bundle)
+            if config.opt_dry_run {
+                print_write_action(
+                    OVERWRITE_OLD_PREFIX,
+                    EMPTY_STR,
+                    &new_files_bundle.new_filenames,
+                )           
+            } else {
+                print_write_action(
+                    OVERWRITE_OLD_PREFIX,
+                    EMPTY_STR,
+                    &new_files_bundle.new_filenames,
+                )?;
+                overwrite_old_file_info(config, new_files_bundle)
+            }
         };
 
         match &config.exec_mode {
