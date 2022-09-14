@@ -39,48 +39,105 @@ const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
+enum WriteNewType {
+    NewFiles,
+    NewFileNames,
+}
+
 pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
-    write_new_files(config, new_files_bundle)?;
-    write_new_filenames(config, new_files_bundle)?;
+    write_new_files(config, &new_files_bundle.new_files, &WriteNewType::NewFiles)?;
+    write_new_files(
+        config,
+        &new_files_bundle.new_filenames,
+        &WriteNewType::NewFileNames,
+    )?;
 
     Ok(())
 }
 
-fn write_new_files(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
+fn write_new_files(
+    config: &Config,
+    files_bundle: &[FileInfo],
+    write_type: &WriteNewType,
+) -> DanoResult<()> {
     // write new files - no hash match in record
-    if !new_files_bundle.new_files.is_empty() {
-        let write_new_exec = || -> DanoResult<()> {
-            if config.opt_dry_run {
-                print_write_action(NOT_WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)
-            } else {
-                print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, &new_files_bundle.new_files)?;
-                write_all_new_paths(config, &new_files_bundle.new_files, WriteType::Append)
-            }
-        };
+    let write_new_exec = || -> DanoResult<()> {
+        if config.opt_dry_run {
+            print_write_action(NOT_WRITE_NEW_PREFIX, EMPTY_STR, files_bundle)
+        } else {
+            print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, files_bundle)?;
+            write_all_new_paths(config, files_bundle, WriteType::Append)
+        }
+    };
 
+    let overwrite_old_exec = || -> DanoResult<()> {
+        if config.opt_dry_run {
+            print_write_action(OVERWRITE_OLD_PREFIX, EMPTY_STR, files_bundle)
+        } else {
+            print_write_action(OVERWRITE_OLD_PREFIX, EMPTY_STR, files_bundle)?;
+            overwrite_old_file_info(config, files_bundle)
+        }
+    };
+
+    if !files_bundle.is_empty() {
         match &config.exec_mode {
-            ExecMode::Write(_) => write_new_exec()?,
+            ExecMode::Write(_) => match write_type {
+                WriteNewType::NewFiles => write_new_exec()?,
+                WriteNewType::NewFileNames => overwrite_old_exec()?,
+            },
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_write_new {
-                    write_new_exec()?
+                    match write_type {
+                        WriteNewType::NewFiles => write_new_exec()?,
+                        WriteNewType::NewFileNames => overwrite_old_exec()?,
+                    }
                 } else {
-                    print_write_action(
-                        NOT_WRITE_NEW_PREFIX,
-                        NOT_WRITE_NEW_SUFFIX,
-                        &new_files_bundle.new_files,
-                    )?;
+                    match write_type {
+                        WriteNewType::NewFiles => {
+                            print_write_action(
+                                NOT_WRITE_NEW_PREFIX,
+                                NOT_WRITE_NEW_SUFFIX,
+                                files_bundle,
+                            )?;
+                        }
+                        WriteNewType::NewFileNames => {
+                            print_write_action(
+                                NOT_OVERWRITE_OLD_PREFIX,
+                                NOT_OVERWRITE_OLD_SUFFIX,
+                                files_bundle,
+                            )?;
+                        }
+                    }
                 }
             }
             _ => unreachable!(),
         }
     } else if let ExecMode::Compare(compare_config) = &config.exec_mode {
-        if compare_config.opt_write_new {
-            eprintln!("No new file paths to write.");
-        } else {
-            eprintln!("No new file paths to write, and --write-new was not specified");
+        match write_type {
+            WriteNewType::NewFiles => {
+                if compare_config.opt_write_new {
+                    eprintln!("No new file paths to write.");
+                } else {
+                    eprintln!("No new file paths to write, and --write-new was not specified");
+                }
+            }
+            WriteNewType::NewFileNames => {
+                if compare_config.opt_overwrite_old {
+                    eprintln!("No old file hashes to overwrite.");
+                } else {
+                    eprintln!("No old file hash to overwrite, and --overwrite was not specified.");
+                }
+            }
         }
     } else {
-        eprintln!("No new file paths to write.");
+        match write_type {
+            WriteNewType::NewFiles => {
+                eprintln!("No new file paths to write.");
+            }
+            WriteNewType::NewFileNames => {
+                eprintln!("No old file hashes to overwrite.");
+            }
+        }
     }
 
     Ok(())
@@ -129,66 +186,15 @@ pub fn write_all_new_paths(
     }
 }
 
-fn write_new_filenames(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
-    // write old files with new names - hash matches
-    if !new_files_bundle.new_filenames.is_empty() {
-        let overwrite_old_exec = || -> DanoResult<()> {
-            if config.opt_dry_run {
-                print_write_action(
-                    OVERWRITE_OLD_PREFIX,
-                    EMPTY_STR,
-                    &new_files_bundle.new_filenames,
-                )           
-            } else {
-                print_write_action(
-                    OVERWRITE_OLD_PREFIX,
-                    EMPTY_STR,
-                    &new_files_bundle.new_filenames,
-                )?;
-                overwrite_old_file_info(config, new_files_bundle)
-            }
-        };
-
-        match &config.exec_mode {
-            ExecMode::Write(_) => overwrite_old_exec()?,
-            ExecMode::Compare(compare_config) => {
-                if compare_config.opt_overwrite_old {
-                    overwrite_old_exec()?
-                } else {
-                    print_write_action(
-                        NOT_OVERWRITE_OLD_PREFIX,
-                        NOT_OVERWRITE_OLD_SUFFIX,
-                        &new_files_bundle.new_filenames,
-                    )?;
-                }
-            }
-            _ => unreachable!(),
-        }
-    } else if let ExecMode::Compare(compare_config) = &config.exec_mode {
-        if compare_config.opt_overwrite_old {
-            eprintln!("No old file hashes to overwrite.");
-        } else {
-            eprintln!("No old file hash to overwrite, and --overwrite was not specified.");
-        }
-    } else {
-        eprintln!("No old file hashes to overwrite.");
-    }
-
-    Ok(())
-}
-
 fn print_write_action(prefix: &str, suffix: &str, file_bundle: &[FileInfo]) -> DanoResult<()> {
     file_bundle.iter().try_for_each(|file_info| {
         print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
     })
 }
 
-pub fn overwrite_old_file_info(
-    config: &Config,
-    new_files_bundle: &NewFilesBundle,
-) -> DanoResult<()> {
+pub fn overwrite_old_file_info(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
     // append new paths
-    write_all_new_paths(config, &new_files_bundle.new_filenames, WriteType::Append)?;
+    write_all_new_paths(config, files_bundle, WriteType::Append)?;
 
     // overwrite all paths if in non-xattr/file write mode
     match &config.exec_mode {
