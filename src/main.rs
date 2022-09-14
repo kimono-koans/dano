@@ -176,6 +176,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
+                .conflicts_with_all(&["TEST", "PRINT"])
                 .display_order(17))
         .arg(
             Arg::new("REWRITE_ALL")
