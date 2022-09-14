@@ -94,32 +94,36 @@ pub fn write_all_new_paths(
 ) -> DanoResult<()> {
     // ExecMode::Dump is about writing to a file always want to skip xattrs
     // can always be enabled by env var so ad hoc debugging can be tricky
-    if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
-        new_files
-            .iter()
-            .try_for_each(|file_info| write_non_file(config, file_info))
-    } else {
-        match write_type {
-            WriteType::Append => {
-                let mut output_file = get_output_file(config, WriteType::Append)?;
-                new_files
-                    .iter()
-                    .try_for_each(|file_info| write_file(file_info, &mut output_file))
-            }
-            WriteType::OverwriteAll => {
-                let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
+    if config.opt_dry_run {
+        if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
+            new_files
+                .iter()
+                .try_for_each(write_non_file)
+        } else {
+            match write_type {
+                WriteType::Append => {
+                    let mut output_file = get_output_file(config, WriteType::Append)?;
+                    new_files
+                        .iter()
+                        .try_for_each(|file_info| write_file(file_info, &mut output_file))
+                }
+                WriteType::OverwriteAll => {
+                    let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
 
-                new_files
-                    .iter()
-                    .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
+                    new_files
+                        .iter()
+                        .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
 
-                std::fs::rename(
-                    make_tmp_file(config.output_file.as_path()),
-                    config.output_file.clone(),
-                )
-                .map_err(|err| err.into())
+                    std::fs::rename(
+                        make_tmp_file(config.output_file.as_path()),
+                        config.output_file.clone(),
+                    )
+                    .map_err(|err| err.into())
+                }
             }
         }
+    } else {
+        Ok(())
     }
 }
 

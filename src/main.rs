@@ -188,7 +188,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
-            .requires("WRITE")
+            .conflicts_with_all(&["TEST", "PRINT"])
             .display_order(19))
         .get_matches()
 }

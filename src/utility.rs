@@ -72,24 +72,17 @@ pub fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()
     write_out_file(&serialized, output_file)
 }
 
-pub fn write_non_file(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
-    if config.opt_dry_run {
-        let serialized = serialize(file_info)?;
-        print_out_buf(&serialized)
-    } else if config.opt_xattr {
-        // write empty path for path, because we a re writing to an actual path
-        // that may change if the file name is changed
-        let rewrite = FileInfo {
-            version: file_info.version,
-            path: PathBuf::new(),
-            metadata: file_info.metadata.to_owned(),
-        };
+pub fn write_non_file(file_info: &FileInfo) -> DanoResult<()> {
+    // write empty path for path, because we a re writing to an actual path
+    // that may change if the file name is changed
+    let rewrite = FileInfo {
+        version: file_info.version,
+        path: PathBuf::new(),
+        metadata: file_info.metadata.to_owned(),
+    };
 
-        let serialized = serialize(&rewrite)?;
-        write_out_xattr(&serialized, file_info)
-    } else {
-        unreachable!()
-    }
+    let serialized = serialize(&rewrite)?;
+    write_out_xattr(&serialized, file_info)
 }
 
 fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
