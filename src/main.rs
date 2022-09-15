@@ -95,22 +95,27 @@ fn parse_args() -> ArgMatches {
             )
         .arg(
             Arg::new("TEST")
-                .help("compare the hashes in a hash file to the files currently on disk.")
+                .help("test the hashes in a hash file (or xattrs) to the files currently on disk.")
                 .short('t')
                 .long("test")
-                .conflicts_with("INPUT_FILES")
                 .display_order(5))
         .arg(
             Arg::new("PRINT")
-                .help("pretty print the file hashes.")
+                .help("pretty print all hashes.")
                 .short('p')
                 .long("print")
                 .display_order(7))
         .arg(
             Arg::new("DUMP")
-                .help("dump the recorded file information (hashes and xattrs) to the output file (don't test/compare).")
+                .help("dump the recorded file information (file hashes and xattrs) to the output file (don't test/compare).")
                 .long("dump")
                 .display_order(8))
+        .arg(
+            Arg::new("IMPORT_FLAC")
+                .help("import flac and write hashes")
+                .long("import-flac")
+                .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
+                .display_order(9))
         .arg(
             Arg::new("NUM_THREADS")
                 .help("requested number of threads to use for file processing.  Default is twice the number of logical cores.")
@@ -120,39 +125,39 @@ fn parse_args() -> ArgMatches {
                 .min_values(1)
                 .require_equals(true)
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(9))
+                .display_order(10))
         .arg(
             Arg::new("SILENT")
                 .help("quiet many informational messages (like \"OK\").")
                 .short('s')
                 .long("silent")
-                .display_order(10),
+                .display_order(11),
         )
         .arg(
             Arg::new("WRITE_NEW")
                 .help("if new files are present in COMPARE mode, append such file info.")
                 .long("write-new")
                 .requires("COMPARE")
-                .display_order(11),
+                .display_order(12),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
                 .long("overwrite")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-                .display_order(12),
+                .display_order(13),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
                 .help("by default, file extensions not recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
                 .long("disable-filter")
-                .display_order(13),
+                .display_order(14),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
                 .help("use canonical paths (instead of potentially relative paths).")
                 .long("canonical-paths")
-                .display_order(14),
+                .display_order(15),
         )
         .arg(
             Arg::new("XATTR")
@@ -160,7 +165,7 @@ fn parse_args() -> ArgMatches {
                 Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.")
                 .short('x')
                 .long("xattr")
-                .display_order(15),
+                .display_order(16),
         )
         .arg(
             Arg::new("HASH_ALGO")
@@ -171,25 +176,25 @@ fn parse_args() -> ArgMatches {
                 .require_equals(true)
                 .possible_values(&["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(16))
+                .display_order(17))
         .arg(
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-                .display_order(17))
+                .display_order(18))
         .arg(
             Arg::new("REWRITE_ALL")
                 .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
                 .long("rewrite")
                 .requires("WRITE")
-                .display_order(18))
+                .display_order(19))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-            .display_order(19))
+            .display_order(20))
         .get_matches()
 }
 
@@ -203,6 +208,7 @@ pub struct FileInfoRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WriteModeConfig {
     opt_rewrite: bool,
+    opt_import_flac: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -273,7 +279,8 @@ impl Config {
         let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
         let opt_test_mode = matches.is_present("TEST");
         let opt_decode = matches.is_present("DECODE");
-        let opt_rewrite = matches.is_present("REWRITE_ALL");
+        let opt_import_flac = matches.is_present("IMPORT_FLAC");
+        let opt_rewrite = matches.is_present("REWRITE_ALL") || opt_import_flac;
 
         let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
             ExecMode::Compare(CompareModeConfig {
@@ -281,8 +288,11 @@ impl Config {
                 opt_overwrite_old,
                 opt_write_new,
             })
-        } else if matches.is_present("WRITE") {
-            ExecMode::Write(WriteModeConfig { opt_rewrite })
+        } else if matches.is_present("WRITE") || opt_rewrite || opt_import_flac {
+            ExecMode::Write(WriteModeConfig {
+                opt_rewrite,
+                opt_import_flac,
+            })
         } else if matches.is_present("DUMP") {
             ExecMode::Dump
         } else if matches.is_present("PRINT") {
@@ -321,9 +331,13 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Compare(compare_config) if compare_config.opt_test_mode && hash_file.exists() => Vec::new(),
+                    ExecMode::Compare(compare_config)
+                        if compare_config.opt_test_mode && hash_file.exists() =>
+                    {
+                        Vec::new()
+                    }
                     _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
-                }    
+                }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
@@ -405,7 +419,7 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
-            let file_bundle = if write_config.opt_rewrite {
+            let file_bundle = if write_config.opt_rewrite || write_config.opt_import_flac {
                 vec![
                     NewFileBundle {
                         files: Vec::new(),
