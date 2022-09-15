@@ -108,9 +108,9 @@ fn print_bundle_empty(config: &Config, write_type: WriteNewType) {
             }
             WriteNewType::NewFileNames => {
                 if compare_config.opt_overwrite_old {
-                    eprintln!("No old file hashes to overwrite.");
+                    eprintln!("No old file data to overwrite.");
                 } else {
-                    eprintln!("No old file hash to overwrite, and --overwrite was not specified.");
+                    eprintln!("No old file data to overwrite, and --overwrite was not specified.");
                 }
             }
         }
@@ -120,7 +120,7 @@ fn print_bundle_empty(config: &Config, write_type: WriteNewType) {
                 eprintln!("No new file paths to write.");
             }
             WriteNewType::NewFileNames => {
-                eprintln!("No old file hashes to overwrite.");
+                eprintln!("No old file data to overwrite.");
             }
         }
     }
