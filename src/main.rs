@@ -23,6 +23,7 @@ use std::{
 use clap::{crate_name, crate_version, Arg, ArgMatches};
 use rayon::{prelude::*, ThreadPool};
 
+mod flac_import;
 mod lookup_file_info;
 mod output_file_info;
 mod prepare_recorded;
