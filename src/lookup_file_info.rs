@@ -30,7 +30,7 @@ use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::{utility::DanoError, Config, FileInfoRequest};
+use crate::{utility::DanoError, Config, FileInfoRequest, SelectedStreams};
 use crate::{DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -61,6 +61,7 @@ pub struct FileMetadata {
     pub last_written: SystemTime,
     pub modify_time: SystemTime,
     pub decoded: bool,
+    pub selected_streams: SelectedStreams,
 }
 
 impl FileInfo {
@@ -75,7 +76,7 @@ impl FileInfo {
                 None => config.opt_decode,
             };
             let res = FileInfo::get_hash_value(&config, request, &ffmpeg_command, decoded)?;
-            FileInfo::transmit_file_info(request, &res, tx_item, decoded)
+            FileInfo::transmit_file_info(request, &res, tx_item, decoded, &config.selected_streams)
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -97,10 +98,24 @@ impl FileInfo {
             None => &config.selected_hash_algo,
         };
 
+        let selected_streams_str = match config.selected_streams {
+            SelectedStreams::All => {
+                "0"
+            },
+            SelectedStreams::AudioOnly => {
+                "0:a"
+            },
+            SelectedStreams::VideoOnly => {
+                "0:v"
+            },
+        };
+
         let process_args = if decoded {
             vec![
                 "-i",
                 path_string.as_ref(),
+                "-map",
+                selected_streams_str,
                 "-f",
                 "hash",
                 "-hash",
@@ -111,6 +126,8 @@ impl FileInfo {
             vec![
                 "-i",
                 path_string.as_ref(),
+                "-map",
+                selected_streams_str,
                 "-codec",
                 "copy",
                 "-f",
@@ -145,6 +162,7 @@ impl FileInfo {
         stdout_string: &str,
         tx_item: Sender<FileInfo>,
         decoded: bool,
+        selected_streams: &SelectedStreams,
     ) -> DanoResult<()> {
         let timestamp = &SystemTime::now();
 
@@ -171,6 +189,7 @@ impl FileInfo {
                         hash_algo: first.into(),
                         hash_value: { Integer::from_str_radix(last, 16)? },
                         modify_time: request.path.metadata()?.modified()?,
+                        selected_streams: selected_streams.to_owned(),
                         decoded,
                     }),
                 },

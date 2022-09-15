@@ -79,6 +79,7 @@ fn generate_flac_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInf
     let timestamp = &SystemTime::now();
     let hash_algo = "MD5".into();
     let decoded = true;
+    let selected_streams = crate::SelectedStreams::AudioOnly;
 
     Ok(FileInfo {
         path: path.to_owned(),
@@ -88,6 +89,7 @@ fn generate_flac_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInf
             hash_algo,
             hash_value: { Integer::from_str_radix(hash_string, 16)? },
             modify_time: path.metadata()?.modified()?,
+            selected_streams,
             decoded,
         }),
     })
