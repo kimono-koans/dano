@@ -51,15 +51,16 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
         Vec::new()
     };
 
-    if let ExecMode::Compare(compare_config) = &config.exec_mode {
-        if compare_config.opt_test_mode && file_info_from_file.is_empty() {
-            return Err(DanoError::new("No valid hashes could be read from the specified hash file (required in Test mode).").into());
-        }
-    }
-
     // combine
     file_info_from_xattrs.extend(file_info_from_file);
     let mut recorded_file_info: Vec<FileInfo> = file_info_from_xattrs;
+
+    // if empty no valid hashes to test in test mode, so we should quit
+    if let ExecMode::Compare(compare_config) = &config.exec_mode {
+        if compare_config.opt_test_mode && recorded_file_info.is_empty() {
+            return Err(DanoError::new("No valid hashes to test.  Quitting.").into());
+        }
+    }
 
     // sort and dedup in case we have paths in both hash file and xattrs
     recorded_file_info.par_sort_unstable_by_key(|file_info| file_info.path.clone());

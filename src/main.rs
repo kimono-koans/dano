@@ -316,18 +316,14 @@ impl Config {
             output_file.clone()
         };
 
-        if !hash_file.exists() && opt_test_mode {
-            return Err(DanoError::new("Test mode requires the user specify a hash file.").into());
-        }
-
         let paths: Vec<PathBuf> = {
             let res: Vec<PathBuf> = if let Some(input_files) = matches.values_of_os("INPUT_FILES") {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Compare(compare_config) if compare_config.opt_test_mode => Vec::new(),
+                    ExecMode::Compare(compare_config) if compare_config.opt_test_mode && hash_file.exists() => Vec::new(),
                     _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
-                }
+                }    
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
