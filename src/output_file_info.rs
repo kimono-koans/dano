@@ -55,100 +55,49 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &[NewFileBundle])
     })
 }
 
-fn print_bundle_empty(config: &Config, write_type: &BundleType) {
-    if let ExecMode::Compare(compare_config) = &config.exec_mode {
-        match write_type {
-            BundleType::NewFiles => {
-                if compare_config.opt_write_new {
-                    eprintln!("No new file paths to write.");
-                } else {
-                    eprintln!("No new file paths to write, and --write-new was not specified");
-                }
-            }
-            BundleType::NewFileNames => {
-                if compare_config.opt_overwrite_old {
-                    eprintln!("No old file data to overwrite.");
-                } else {
-                    eprintln!("No old file data to overwrite, and --overwrite was not specified.");
-                }
-            }
-        }
-    } else {
-        match write_type {
-            BundleType::NewFiles => {
-                eprintln!("No new file paths to write.");
-            }
-            BundleType::NewFileNames => {
-                eprintln!("No old file data to overwrite.");
-            }
-        }
-    }
-}
-
 fn write_new_files(
     config: &Config,
     files_bundle: &[FileInfo],
-    write_type: &BundleType,
+    bundle_type: &BundleType,
 ) -> DanoResult<()> {
-    fn exec_write_action(
-        config: &Config,
-        files_bundle: &[FileInfo],
-        dry_prefix: &str,
-        wet_prefix: &str,
-        write_type: &BundleType,
-    ) -> DanoResult<()> {
-        if config.opt_dry_run {
-            print_write_action(dry_prefix, EMPTY_STR, files_bundle)
-        } else {
-            print_write_action(wet_prefix, EMPTY_STR, files_bundle)?;
-
-            match write_type {
-                BundleType::NewFileNames => overwrite_old_file_info(config, files_bundle),
-                BundleType::NewFiles => {
-                    write_all_new_paths(config, files_bundle, WriteType::Append)
-                }
-            }
-        }
-    }
-
     match &config.exec_mode {
-        ExecMode::Write(_) => match write_type {
+        ExecMode::Write(_) => match bundle_type {
             BundleType::NewFiles => exec_write_action(
                 config,
                 files_bundle,
                 NOT_WRITE_NEW_PREFIX,
                 WRITE_NEW_PREFIX,
-                write_type,
+                bundle_type,
             )?,
             &BundleType::NewFileNames => exec_write_action(
                 config,
                 files_bundle,
                 NOT_OVERWRITE_OLD_PREFIX,
                 OVERWRITE_OLD_PREFIX,
-                write_type,
+                bundle_type,
             )?,
         },
         ExecMode::Compare(compare_config) => {
-            if compare_config.opt_write_new && matches!(write_type, BundleType::NewFiles) {
+            if compare_config.opt_write_new && matches!(bundle_type, BundleType::NewFiles) {
                 exec_write_action(
                     config,
                     files_bundle,
                     NOT_WRITE_NEW_PREFIX,
                     WRITE_NEW_PREFIX,
-                    write_type,
+                    bundle_type,
                 )?
             } else if compare_config.opt_overwrite_old
-                && matches!(write_type, BundleType::NewFileNames)
+                && matches!(bundle_type, BundleType::NewFileNames)
             {
                 exec_write_action(
                     config,
                     files_bundle,
                     NOT_OVERWRITE_OLD_PREFIX,
                     OVERWRITE_OLD_PREFIX,
-                    write_type,
+                    bundle_type,
                 )?
             } else {
-                match write_type {
+                match bundle_type {
                     BundleType::NewFiles => print_write_action(
                         NOT_WRITE_NEW_PREFIX,
                         NOT_WRITE_NEW_SUFFIX,
@@ -165,6 +114,61 @@ fn write_new_files(
         _ => unreachable!(),
     }
     Ok(())
+}
+
+fn print_bundle_empty(config: &Config, bundle_type: &BundleType) {
+    if let ExecMode::Compare(compare_config) = &config.exec_mode {
+        match bundle_type {
+            BundleType::NewFiles => {
+                if compare_config.opt_write_new {
+                    eprintln!("No new file paths to write.");
+                } else {
+                    eprintln!("No new file paths to write, and --write-new was not specified");
+                }
+            }
+            BundleType::NewFileNames => {
+                if compare_config.opt_overwrite_old {
+                    eprintln!("No old file data to overwrite.");
+                } else {
+                    eprintln!("No old file data to overwrite, and --overwrite was not specified.");
+                }
+            }
+        }
+    } else {
+        match bundle_type {
+            BundleType::NewFiles => {
+                eprintln!("No new file paths to write.");
+            }
+            BundleType::NewFileNames => {
+                eprintln!("No old file data to overwrite.");
+            }
+        }
+    }
+}
+
+fn exec_write_action(
+    config: &Config,
+    files_bundle: &[FileInfo],
+    dry_prefix: &str,
+    wet_prefix: &str,
+    bundle_type: &BundleType,
+) -> DanoResult<()> {
+    if config.opt_dry_run {
+        print_write_action(dry_prefix, EMPTY_STR, files_bundle)
+    } else {
+        print_write_action(wet_prefix, EMPTY_STR, files_bundle)?;
+
+        match bundle_type {
+            BundleType::NewFileNames => overwrite_old_file_info(config, files_bundle),
+            BundleType::NewFiles => write_all_new_paths(config, files_bundle, WriteType::Append),
+        }
+    }
+}
+
+fn print_write_action(prefix: &str, suffix: &str, file_bundle: &[FileInfo]) -> DanoResult<()> {
+    file_bundle.iter().try_for_each(|file_info| {
+        print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
+    })
 }
 
 pub fn write_all_new_paths(
@@ -203,12 +207,6 @@ pub fn write_all_new_paths(
     } else {
         Ok(())
     }
-}
-
-fn print_write_action(prefix: &str, suffix: &str, file_bundle: &[FileInfo]) -> DanoResult<()> {
-    file_bundle.iter().try_for_each(|file_info| {
-        print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
-    })
 }
 
 pub fn overwrite_old_file_info(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
