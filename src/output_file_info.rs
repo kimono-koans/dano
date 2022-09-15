@@ -45,9 +45,34 @@ enum WriteNewType {
 }
 
 pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
-    write_new_files(config, &new_files_bundle.new_files, &WriteNewType::NewFiles)?;
+    // write new files - no hash match in record
+    fn write_new_exec(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
+        if config.opt_dry_run {
+            print_write_action(NOT_WRITE_NEW_PREFIX, EMPTY_STR, files_bundle)
+        } else {
+            print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, files_bundle)?;
+            write_all_new_paths(config, files_bundle, WriteType::Append)
+        }
+    }
+
+    fn overwrite_old_exec(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
+        if config.opt_dry_run {
+            print_write_action(OVERWRITE_OLD_PREFIX, EMPTY_STR, files_bundle)
+        } else {
+            print_write_action(OVERWRITE_OLD_PREFIX, EMPTY_STR, files_bundle)?;
+            overwrite_old_file_info(config, files_bundle)
+        }
+    }
+
     write_new_files(
         config,
+        write_new_exec,
+        &new_files_bundle.new_files,
+        &WriteNewType::NewFiles,
+    )?;
+    write_new_files(
+        config,
+        overwrite_old_exec,
         &new_files_bundle.new_filenames,
         &WriteNewType::NewFileNames,
     )?;
@@ -57,56 +82,28 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
 
 fn write_new_files(
     config: &Config,
+    write_fn: fn(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()>,
     files_bundle: &[FileInfo],
     write_type: &WriteNewType,
 ) -> DanoResult<()> {
-    // write new files - no hash match in record
-    let write_new_exec = || -> DanoResult<()> {
-        if config.opt_dry_run {
-            print_write_action(NOT_WRITE_NEW_PREFIX, EMPTY_STR, files_bundle)
-        } else {
-            print_write_action(WRITE_NEW_PREFIX, EMPTY_STR, files_bundle)?;
-            write_all_new_paths(config, files_bundle, WriteType::Append)
-        }
-    };
-
-    let overwrite_old_exec = || -> DanoResult<()> {
-        if config.opt_dry_run {
-            print_write_action(OVERWRITE_OLD_PREFIX, EMPTY_STR, files_bundle)
-        } else {
-            print_write_action(OVERWRITE_OLD_PREFIX, EMPTY_STR, files_bundle)?;
-            overwrite_old_file_info(config, files_bundle)
-        }
-    };
-
     if !files_bundle.is_empty() {
         match &config.exec_mode {
-            ExecMode::Write(_) => match write_type {
-                WriteNewType::NewFiles => write_new_exec()?,
-                WriteNewType::NewFileNames => overwrite_old_exec()?,
-            },
+            ExecMode::Write(_) => write_fn(config, files_bundle)?,
             ExecMode::Compare(compare_config) => {
                 if compare_config.opt_write_new {
-                    match write_type {
-                        WriteNewType::NewFiles => write_new_exec()?,
-                        WriteNewType::NewFileNames => overwrite_old_exec()?,
-                    }
+                    write_fn(config, files_bundle)?
                 } else {
                     match write_type {
-                        WriteNewType::NewFiles => {
-                            print_write_action(
-                                NOT_WRITE_NEW_PREFIX,
-                                NOT_WRITE_NEW_SUFFIX,
-                                files_bundle,
-                            )?;
-                        }
-                        WriteNewType::NewFileNames => {
-                            print_write_action(
-                                NOT_OVERWRITE_OLD_PREFIX,
-                                NOT_OVERWRITE_OLD_SUFFIX,
-                                files_bundle,
-                            )?;
-                        }
+                        WriteNewType::NewFiles => print_write_action(
+                            NOT_WRITE_NEW_PREFIX,
+                            NOT_WRITE_NEW_SUFFIX,
+                            files_bundle,
+                        )?,
+                        WriteNewType::NewFileNames => print_write_action(
+                            NOT_OVERWRITE_OLD_PREFIX,
+                            NOT_OVERWRITE_OLD_SUFFIX,
+                            files_bundle,
+                        )?,
                     }
                 }
             }
