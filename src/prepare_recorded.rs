@@ -102,7 +102,7 @@ fn get_info_from_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         .flat_map(|path| {
             import_hash_value(path, &metaflac_cmd).map(|hash_string| (path, hash_string))
         })
-        .flat_map(|(path, hash)| generate_file_info(path, &hash))
+        .flat_map(|(path, hash)| generate_flac_file_info(path, &hash))
         .collect();
     Ok(res)
 }
@@ -133,7 +133,7 @@ fn import_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<String>
     Ok(stdout_string.to_owned())
 }
 
-fn generate_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInfo> {
+fn generate_flac_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInfo> {
     let timestamp = &SystemTime::now();
     let hash_algo = "MD5".into();
     let decoded = true;
