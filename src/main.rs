@@ -35,7 +35,7 @@ use lookup_file_info::exec_lookup_file_info;
 use output_file_info::{write_all_new_paths, write_file_info_exec, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{process_file_info_exec, NewFileBundle, WriteNewType};
+use process_file_info::{process_file_info_exec, BundleType, NewFileBundle};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -413,11 +413,11 @@ fn exec() -> DanoResult<()> {
                 vec![
                     NewFileBundle {
                         files: Vec::new(),
-                        write_type: WriteNewType::NewFiles,
+                        bundle_type: BundleType::NewFiles,
                     },
                     NewFileBundle {
                         files: recorded_file_info,
-                        write_type: WriteNewType::NewFileNames,
+                        bundle_type: BundleType::NewFileNames,
                     },
                 ]
             } else {

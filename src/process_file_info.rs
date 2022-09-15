@@ -27,7 +27,7 @@ use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::utility::{print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
-pub enum WriteNewType {
+pub enum BundleType {
     NewFiles,
     NewFileNames,
 }
@@ -35,7 +35,7 @@ pub enum WriteNewType {
 #[derive(Debug, Clone)]
 pub struct NewFileBundle {
     pub files: Vec<FileInfo>,
-    pub write_type: WriteNewType,
+    pub bundle_type: BundleType,
 }
 
 pub fn process_file_info_exec(
@@ -85,11 +85,11 @@ pub fn process_file_info_exec(
     Ok(vec![
         NewFileBundle {
             files: new_files,
-            write_type: WriteNewType::NewFiles,
+            bundle_type: BundleType::NewFiles,
         },
         NewFileBundle {
             files: new_filenames,
-            write_type: WriteNewType::NewFileNames,
+            bundle_type: BundleType::NewFileNames,
         },
     ])
 }
