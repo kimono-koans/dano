@@ -63,7 +63,7 @@ pub fn process_file_info_exec(
                         Either::Right(file_info) => new_files.push(file_info),
                     }
                     if test_exit_code != 0 {
-                        exit_code += test_exit_code
+                        exit_code = test_exit_code
                     }
                 }
             }
@@ -158,6 +158,7 @@ fn verify_file_info(
                 _ => unreachable!(),
             }
         }
+        test_exit_code = 2;
         Some(Either::Right(file_info))
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
@@ -195,6 +196,7 @@ fn verify_file_info(
             }
             _ => unreachable!(),
         }
+        test_exit_code = 2;
         Some(Either::Left(file_info))
     } else if is_same_filename {
         // always print, even in silent
@@ -210,6 +212,7 @@ fn verify_file_info(
             }
             _ => unreachable!(),
         }
+        test_exit_code = 2;
         None
     } else {
         unreachable!()
