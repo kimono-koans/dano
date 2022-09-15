@@ -64,52 +64,35 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
         }
     }
 
-    write_new_files(
-        config,
-        write_new_exec,
-        &new_files_bundle.new_files,
-        &WriteNewType::NewFiles,
-    )?;
-    write_new_files(
-        config,
-        overwrite_old_exec,
-        &new_files_bundle.new_filenames,
-        &WriteNewType::NewFileNames,
-    )?;
+    // write new
+    if !new_files_bundle.new_files.is_empty() {
+        write_new_files(
+            config,
+            write_new_exec,
+            &new_files_bundle.new_files,
+            WriteNewType::NewFiles,
+        )?;
+    } else {
+        print_bundle_empty(config, WriteNewType::NewFiles);
+    }
+
+    // overwrite_old
+    if !new_files_bundle.new_filenames.is_empty() {
+        write_new_files(
+            config,
+            overwrite_old_exec,
+            &new_files_bundle.new_filenames,
+            WriteNewType::NewFileNames,
+        )?;
+    } else {
+        print_bundle_empty(config, WriteNewType::NewFileNames);
+    }
 
     Ok(())
 }
 
-fn write_new_files(
-    config: &Config,
-    write_fn: fn(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()>,
-    files_bundle: &[FileInfo],
-    write_type: &WriteNewType,
-) -> DanoResult<()> {
-    if !files_bundle.is_empty() {
-        match &config.exec_mode {
-            ExecMode::Write(_) => write_fn(config, files_bundle)?,
-            ExecMode::Compare(compare_config) => {
-                if compare_config.opt_write_new {
-                    write_fn(config, files_bundle)?
-                } else {
-                    match write_type {
-                        WriteNewType::NewFiles => print_write_action(
-                            NOT_WRITE_NEW_PREFIX,
-                            NOT_WRITE_NEW_SUFFIX,
-                            files_bundle,
-                        )?,
-                        WriteNewType::NewFileNames => print_write_action(
-                            NOT_OVERWRITE_OLD_PREFIX,
-                            NOT_OVERWRITE_OLD_SUFFIX,
-                            files_bundle,
-                        )?,
-                    }
-                }
-            }
-            _ => unreachable!(),
-        }
-    } else if let ExecMode::Compare(compare_config) = &config.exec_mode {
+fn print_bundle_empty(config: &Config, write_type: WriteNewType) {
+    if let ExecMode::Compare(compare_config) = &config.exec_mode {
         match write_type {
             WriteNewType::NewFiles => {
                 if compare_config.opt_write_new {
@@ -136,7 +119,36 @@ fn write_new_files(
             }
         }
     }
+}
 
+fn write_new_files(
+    config: &Config,
+    write_fn: fn(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()>,
+    files_bundle: &[FileInfo],
+    write_type: WriteNewType,
+) -> DanoResult<()> {
+    match &config.exec_mode {
+        ExecMode::Write(_) => write_fn(config, files_bundle)?,
+        ExecMode::Compare(compare_config) => {
+            if compare_config.opt_write_new {
+                write_fn(config, files_bundle)?
+            } else {
+                match write_type {
+                    WriteNewType::NewFiles => print_write_action(
+                        NOT_WRITE_NEW_PREFIX,
+                        NOT_WRITE_NEW_SUFFIX,
+                        files_bundle,
+                    )?,
+                    WriteNewType::NewFileNames => print_write_action(
+                        NOT_OVERWRITE_OLD_PREFIX,
+                        NOT_OVERWRITE_OLD_SUFFIX,
+                        files_bundle,
+                    )?,
+                }
+            }
+        }
+        _ => unreachable!(),
+    }
     Ok(())
 }
 
