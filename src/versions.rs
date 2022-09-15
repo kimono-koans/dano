@@ -55,12 +55,8 @@ impl LegacyVersion {
 
     fn prepare_rewrite(&self, line: &str) -> DanoResult<FileInfo> {
         let res = match self {
-            LegacyVersion::Version1 => {
-                FileInfoV1::rewrite(line)?.convert()
-            },
-            LegacyVersion::Version2 => {
-                FileInfoV2::rewrite(line)?.convert()
-            },
+            LegacyVersion::Version1 => FileInfoV1::rewrite(line)?.convert(),
+            LegacyVersion::Version2 => FileInfoV2::rewrite(line)?.convert(),
         };
 
         res

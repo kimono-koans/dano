@@ -24,6 +24,10 @@ use which::which;
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::{Config, DanoError, DanoResult, SelectedStreams, DANO_FILE_INFO_VERSION};
 
+const FLAC_HASH_ALGO: &str = "MD5";
+const FLAC_DECODED: bool = true;
+const FLAC_SELECTED_STREAMS: SelectedStreams = SelectedStreams::AudioOnly;
+
 pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
         metaflac_cmd
@@ -52,7 +56,6 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
 fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<String> {
     // all snapshots should have the same timestamp
     let path_string = path.to_string_lossy();
-    let hash_algo = "MD5";
 
     let process_args = vec!["--show-md5sum", path_string.as_ref()];
 
@@ -62,13 +65,8 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<St
     let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
     let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
-    if stderr_string.contains("incorrect codec parameters") {
-        eprintln!(
-            "Error: Invalid hash algorithm specified.  \
-        This version of ffmpeg does not support: {} .  \
-        Upgrade or specify another hash algorithm.",
-            hash_algo
-        );
+    if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
+        eprintln!("Error: Path given is an invalid FLAC file: {}", path_string);
         std::process::exit(1)
     }
 
@@ -76,10 +74,6 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<St
 }
 
 fn generate_flac_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInfo> {
-    const FLAC_HASH_ALGO: &str = "MD5";
-    const FLAC_DECODED: bool = true;
-    const FLAC_SELECTED_STREAMS: SelectedStreams = SelectedStreams::AudioOnly;
-
     Ok(FileInfo {
         path: path.to_owned(),
         version: DANO_FILE_INFO_VERSION,

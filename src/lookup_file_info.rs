@@ -99,15 +99,9 @@ impl FileInfo {
         };
 
         let selected_streams_str = match config.selected_streams {
-            SelectedStreams::All => {
-                "0"
-            },
-            SelectedStreams::AudioOnly => {
-                "0:a"
-            },
-            SelectedStreams::VideoOnly => {
-                "0:v"
-            },
+            SelectedStreams::All => "0",
+            SelectedStreams::AudioOnly => "0:a",
+            SelectedStreams::VideoOnly => "0:v",
         };
 
         let process_args = if decoded {

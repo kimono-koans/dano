@@ -38,7 +38,7 @@ pub fn get_file_info_requests(
             path: path.clone(),
             hash_algo: Some(metadata.hash_algo.clone()),
             decoded: Some(metadata.decoded),
-            selected_streams: Some(metadata.selected_streams.to_owned())
+            selected_streams: Some(metadata.selected_streams.to_owned()),
         }
     };
 
