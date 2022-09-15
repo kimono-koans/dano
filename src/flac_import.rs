@@ -22,7 +22,7 @@ use rug::Integer;
 use which::which;
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::{Config, DanoError, DanoResult, DANO_FILE_INFO_VERSION};
+use crate::{Config, DanoError, DanoResult, SelectedStreams, DANO_FILE_INFO_VERSION};
 
 pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
@@ -76,21 +76,20 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<St
 }
 
 fn generate_flac_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInfo> {
-    let timestamp = &SystemTime::now();
-    let hash_algo = "MD5".into();
-    let decoded = true;
-    let selected_streams = crate::SelectedStreams::AudioOnly;
+    const FLAC_HASH_ALGO: &str = "MD5";
+    const FLAC_DECODED: bool = true;
+    const FLAC_SELECTED_STREAMS: SelectedStreams = SelectedStreams::AudioOnly;
 
     Ok(FileInfo {
         path: path.to_owned(),
         version: DANO_FILE_INFO_VERSION,
         metadata: Some(FileMetadata {
-            last_written: timestamp.to_owned(),
-            hash_algo,
+            last_written: SystemTime::now(),
+            hash_algo: FLAC_HASH_ALGO.into(),
             hash_value: { Integer::from_str_radix(hash_string, 16)? },
             modify_time: path.metadata()?.modified()?,
-            selected_streams,
-            decoded,
+            selected_streams: FLAC_SELECTED_STREAMS,
+            decoded: FLAC_DECODED,
         }),
     })
 }
