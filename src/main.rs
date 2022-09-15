@@ -42,7 +42,7 @@ use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-const DANO_FILE_INFO_VERSION: usize = 2;
+const DANO_FILE_INFO_VERSION: usize = 3;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";
 
