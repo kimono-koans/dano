@@ -23,7 +23,7 @@ use rug::Integer;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::FileInfo;
-use crate::process_file_info::NewFilesBundle;
+use crate::process_file_info::{NewFileBundle, WriteNewType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError,
@@ -44,12 +44,7 @@ pub enum WriteType {
     OverwriteAll,
 }
 
-enum WriteNewType {
-    NewFiles,
-    NewFileNames,
-}
-
-pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) -> DanoResult<()> {
+pub fn write_file_info_exec(config: &Config, new_files_bundle: &[NewFileBundle]) -> DanoResult<()> {
     // write new files - no hash match in record
     fn write_new_exec(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
         if config.opt_dry_run {
@@ -69,34 +64,27 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &NewFilesBundle) 
         }
     }
 
-    // write new
-    if !new_files_bundle.new_files.is_empty() {
-        write_new_files(
-            config,
-            write_new_exec,
-            &new_files_bundle.new_files,
-            WriteNewType::NewFiles,
-        )?;
-    } else {
-        print_bundle_empty(config, WriteNewType::NewFiles);
-    }
+    new_files_bundle.iter().try_for_each(|file_bundle| {
+        let write_fn = match file_bundle.write_type {
+            WriteNewType::NewFiles => write_new_exec,
+            WriteNewType::NewFileNames => overwrite_old_exec,
+        };
 
-    // overwrite_old
-    if !new_files_bundle.new_filenames.is_empty() {
-        write_new_files(
-            config,
-            overwrite_old_exec,
-            &new_files_bundle.new_filenames,
-            WriteNewType::NewFileNames,
-        )?;
-    } else {
-        print_bundle_empty(config, WriteNewType::NewFileNames);
-    }
-
-    Ok(())
+        if !file_bundle.files.is_empty() {
+            write_new_files(
+                config,
+                write_fn,
+                &file_bundle.files,
+                &file_bundle.write_type,
+            )
+        } else {
+            print_bundle_empty(config, &file_bundle.write_type);
+            Ok(())
+        }
+    })
 }
 
-fn print_bundle_empty(config: &Config, write_type: WriteNewType) {
+fn print_bundle_empty(config: &Config, write_type: &WriteNewType) {
     if let ExecMode::Compare(compare_config) = &config.exec_mode {
         match write_type {
             WriteNewType::NewFiles => {
@@ -130,7 +118,7 @@ fn write_new_files(
     config: &Config,
     write_fn: fn(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()>,
     files_bundle: &[FileInfo],
-    write_type: WriteNewType,
+    write_type: &WriteNewType,
 ) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(_) => write_fn(config, files_bundle)?,

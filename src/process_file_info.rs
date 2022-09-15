@@ -27,16 +27,22 @@ use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::utility::{print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
-pub struct NewFilesBundle {
-    pub new_filenames: Vec<FileInfo>,
-    pub new_files: Vec<FileInfo>,
+pub enum WriteNewType {
+    NewFiles,
+    NewFileNames,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewFileBundle {
+    pub files: Vec<FileInfo>,
+    pub write_type: WriteNewType,
 }
 
 pub fn process_file_info_exec(
     config: &Config,
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
-) -> DanoResult<NewFilesBundle> {
+) -> DanoResult<Vec<NewFileBundle>> {
     // prepare for loop
     let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
@@ -76,10 +82,16 @@ pub fn process_file_info_exec(
     new_filenames.par_sort_unstable_by_key(|file_info| file_info.path.clone());
     new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
-    Ok(NewFilesBundle {
-        new_filenames,
-        new_files,
-    })
+    Ok(vec![
+        NewFileBundle {
+            files: new_files,
+            write_type: WriteNewType::NewFiles,
+        },
+        NewFileBundle {
+            files: new_filenames,
+            write_type: WriteNewType::NewFileNames,
+        },
+    ])
 }
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {

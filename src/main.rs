@@ -35,7 +35,7 @@ use lookup_file_info::exec_lookup_file_info;
 use output_file_info::{write_all_new_paths, write_file_info_exec, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{process_file_info_exec, NewFilesBundle};
+use process_file_info::{process_file_info_exec, NewFileBundle, WriteNewType};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -410,10 +410,16 @@ fn exec() -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
             let file_bundle = if write_config.opt_rewrite {
-                NewFilesBundle {
-                    new_files: Vec::new(),
-                    new_filenames: recorded_file_info,
-                }
+                vec![
+                    NewFileBundle {
+                        files: Vec::new(),
+                        write_type: WriteNewType::NewFiles,
+                    },
+                    NewFileBundle {
+                        files: recorded_file_info,
+                        write_type: WriteNewType::NewFileNames,
+                    },
+                ]
             } else {
                 let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
 
