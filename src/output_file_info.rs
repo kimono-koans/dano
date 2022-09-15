@@ -39,6 +39,11 @@ const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
+pub enum WriteType {
+    Append,
+    OverwriteAll,
+}
+
 enum WriteNewType {
     NewFiles,
     NewFileNames,
@@ -150,11 +155,6 @@ fn write_new_files(
         _ => unreachable!(),
     }
     Ok(())
-}
-
-pub enum WriteType {
-    Append,
-    OverwriteAll,
 }
 
 pub fn write_all_new_paths(
