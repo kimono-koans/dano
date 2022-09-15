@@ -98,7 +98,6 @@ fn parse_args() -> ArgMatches {
                 .help("test the hashes in a hash file (or xattrs) to the files currently on disk.")
                 .short('t')
                 .long("test")
-                .conflicts_with("INPUT_FILES")
                 .display_order(5))
         .arg(
             Arg::new("PRINT")
@@ -420,7 +419,7 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
-            let file_bundle = if write_config.opt_rewrite {
+            let file_bundle = if write_config.opt_rewrite || write_config.opt_import_flac {
                 vec![
                     NewFileBundle {
                         files: Vec::new(),

@@ -28,69 +28,9 @@ use crate::{Config, DanoError, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DAN
 pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     let mut recorded_file_info: Vec<FileInfo> = match &config.exec_mode {
         ExecMode::Write(write_config) if write_config.opt_import_flac => {
-            let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
-                metaflac_cmd
-            } else {
-                return Err(DanoError::new(
-                    "'metaflac' command not found. Make sure the command 'metaflac' is in your path.",
-                )
-                .into());
-            };
-
-            config
-                .paths
-                .par_iter()
-                .filter_map(|path| match path.extension() {
-                    Some(extension) if extension == "flac" || extension == "FLAC" => Some(path),
-                    _ => None,
-                })
-                .flat_map(|path| {
-                    import_hash_value(path, &metaflac_cmd).map(|hash_string| (path, hash_string))
-                })
-                .filter_map(|(path, raw_hash)| {
-                    raw_hash
-                        .rsplit_once(':')
-                        .map(|(_first, last)| (path, last.to_owned()))
-                })
-                .flat_map(|(path, hash)| generate_file_info(path, &hash))
-                .collect()
+            get_info_from_import(config)?
         }
-        _ => {
-            let mut file_info_from_xattrs: Vec<FileInfo> = {
-                config
-                    .paths
-                    .par_iter()
-                    .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
-                    .flat_map(|(path, opt)| opt.map(|s| (path, s)))
-                    .flat_map(|(path, bytes)| {
-                        std::str::from_utf8(&bytes).map(|i| (path, i.to_owned()))
-                    })
-                    .flat_map(|(path, line)| deserialize(&line).map(|i| (path, i)))
-                    .map(|(path, file_info)| {
-                        // use the actual path name always
-                        if path != &file_info.path {
-                            FileInfo {
-                                version: file_info.version,
-                                path: path.to_owned(),
-                                metadata: file_info.metadata,
-                            }
-                        } else {
-                            file_info
-                        }
-                    })
-                    .collect()
-            };
-
-            let file_info_from_file = if config.hash_file.exists() {
-                read_file_info_from_file(config)?
-            } else {
-                Vec::new()
-            };
-
-            // combine
-            file_info_from_xattrs.extend(file_info_from_file);
-            file_info_from_xattrs
-        }
+        _ => get_info_from_recorded(config)?,
     };
 
     // if empty, no valid hashes to test in test mode, and we should quit
@@ -105,6 +45,66 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     recorded_file_info.dedup_by_key(|file_info| file_info.path.clone());
 
     Ok(recorded_file_info)
+}
+
+fn get_info_from_recorded(config: &Config) -> DanoResult<Vec<FileInfo>> {
+    let mut file_info_from_xattrs: Vec<FileInfo> = {
+        config
+            .paths
+            .par_iter()
+            .flat_map(|path| xattr::get(path, DANO_XATTR_KEY_NAME).map(|opt| (path, opt)))
+            .flat_map(|(path, opt)| opt.map(|s| (path, s)))
+            .flat_map(|(path, bytes)| std::str::from_utf8(&bytes).map(|i| (path, i.to_owned())))
+            .flat_map(|(path, line)| deserialize(&line).map(|i| (path, i)))
+            .map(|(path, file_info)| {
+                // use the actual path name always
+                if path != &file_info.path {
+                    FileInfo {
+                        version: file_info.version,
+                        path: path.to_owned(),
+                        metadata: file_info.metadata,
+                    }
+                } else {
+                    file_info
+                }
+            })
+            .collect()
+    };
+
+    let file_info_from_file = if config.hash_file.exists() {
+        read_file_info_from_file(config)?
+    } else {
+        Vec::new()
+    };
+
+    // combine
+    file_info_from_xattrs.extend(file_info_from_file);
+    Ok(file_info_from_xattrs)
+}
+
+fn get_info_from_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
+    let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
+        metaflac_cmd
+    } else {
+        return Err(DanoError::new(
+            "'metaflac' command not found. Make sure the command 'metaflac' is in your path.",
+        )
+        .into());
+    };
+
+    let res = config
+        .paths
+        .par_iter()
+        .flat_map(|path| match path.extension() {
+            Some(extension) if extension == "flac" || extension == "FLAC" => Some(path),
+            _ => None,
+        })
+        .flat_map(|path| {
+            import_hash_value(path, &metaflac_cmd).map(|hash_string| (path, hash_string))
+        })
+        .flat_map(|(path, hash)| generate_file_info(path, &hash))
+        .collect();
+    Ok(res)
 }
 
 fn import_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<String> {
