@@ -64,14 +64,14 @@ impl LegacyVersion {
 }
 
 pub trait ConvertVersion {
-    fn rewrite(line: &str) -> DanoResult<Box<Self>>
+    fn rewrite(line: &str) -> DanoResult<Self>
     where
         Self: std::marker::Sized;
     fn convert(&self) -> DanoResult<FileInfo>;
 }
 
 impl ConvertVersion for FileInfoV1 {
-    fn rewrite(line: &str) -> DanoResult<Box<Self>> {
+    fn rewrite(line: &str) -> DanoResult<Self> {
         Self::rewrite(line)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
@@ -80,7 +80,7 @@ impl ConvertVersion for FileInfoV1 {
 }
 
 impl ConvertVersion for FileInfoV2 {
-    fn rewrite(line: &str) -> DanoResult<Box<Self>> {
+    fn rewrite(line: &str) -> DanoResult<Self> {
         Self::rewrite(line)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
@@ -104,12 +104,11 @@ pub struct FileMetadataV1 {
 }
 
 impl FileInfoV1 {
-    fn rewrite(line: &str) -> DanoResult<Box<Self>> {
+    fn rewrite(line: &str) -> DanoResult<Self> {
         let rewrite = line.replace("FileInfo", "FileInfoV1");
         let legacy_file_info: FileInfoV1 = serde_json::from_str(&rewrite)?;
-        let boxed = Box::new(legacy_file_info);
 
-        Ok(boxed)
+        Ok(legacy_file_info)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
@@ -146,12 +145,11 @@ pub struct FileMetadataV2 {
 }
 
 impl FileInfoV2 {
-    fn rewrite(line: &str) -> DanoResult<Box<Self>> {
+    fn rewrite(line: &str) -> DanoResult<Self> {
         let rewrite = line.replace("FileInfo", "FileInfoV2");
         let legacy_file_info: FileInfoV2 = serde_json::from_str(&rewrite)?;
-        let boxed = Box::new(legacy_file_info);
 
-        Ok(boxed)
+        Ok(legacy_file_info)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
