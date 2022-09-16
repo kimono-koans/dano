@@ -198,6 +198,7 @@ fn parse_args() -> ArgMatches {
                 .takes_value(true)
                 .require_equals(true)
                 .possible_values(&["audio", "video"])
+                .value_parser(clap::builder::ValueParser::os_string())
                 .requires("WRITE")
                 .display_order(20))
         .arg(
@@ -325,9 +326,9 @@ impl Config {
         };
 
         let selected_streams = if let Some(only_stream) = matches.value_of_os("ONLY") {
-            if only_stream == "video" {
+            if only_stream == OsStr::new("video") {
                 SelectedStreams::VideoOnly
-            } else if only_stream == "audio" {
+            } else if only_stream == OsStr::new("audio") {
                 SelectedStreams::AudioOnly
             } else {
                 SelectedStreams::All
