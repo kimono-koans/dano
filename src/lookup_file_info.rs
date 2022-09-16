@@ -97,8 +97,12 @@ impl FileInfo {
             Some(hash_algo) => hash_algo,
             None => &config.selected_hash_algo,
         };
+        let selected_streams = match &request.selected_streams {
+            Some(selected_streams) => selected_streams,
+            None => &config.selected_streams,
+        };
 
-        let selected_streams_str = match config.selected_streams {
+        let selected_streams_str = match selected_streams {
             SelectedStreams::All => "0",
             SelectedStreams::AudioOnly => "0:a?",
             SelectedStreams::VideoOnly => "0:v?",
