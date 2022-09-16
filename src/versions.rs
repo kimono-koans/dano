@@ -32,7 +32,7 @@ pub fn convert_version(line: &str) -> DanoResult<FileInfo> {
 
     let version_number: usize = serde_json::from_value(value)?;
     let legacy_version: LegacyVersion = LegacyVersion::number_to_version(version_number)?;
-    let file_info = legacy_version.prepare_rewrite(line)?;
+    let file_info = legacy_version.convert(line)?;
 
     Ok(file_info)
 }
@@ -53,7 +53,7 @@ impl LegacyVersion {
         Ok(res)
     }
 
-    fn prepare_rewrite(&self, line: &str) -> DanoResult<FileInfo> {
+    fn convert(&self, line: &str) -> DanoResult<FileInfo> {
         let res = match self {
             LegacyVersion::Version1 => FileInfoV1::rewrite(line)?.convert(),
             LegacyVersion::Version2 => FileInfoV2::rewrite(line)?.convert(),
