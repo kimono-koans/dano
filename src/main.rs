@@ -22,6 +22,7 @@ use std::{
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
 use rayon::{prelude::*, ThreadPool};
+use serde::{Deserialize, Serialize};
 
 mod flac_import;
 mod lookup_file_info;
@@ -41,7 +42,7 @@ use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-const DANO_FILE_INFO_VERSION: usize = 2;
+const DANO_FILE_INFO_VERSION: usize = 3;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";
 
@@ -191,11 +192,21 @@ fn parse_args() -> ArgMatches {
                 .requires("WRITE")
                 .display_order(19))
         .arg(
+            Arg::new("ONLY")
+                .help("hash selected stream only")
+                .long("only")
+                .takes_value(true)
+                .require_equals(true)
+                .possible_values(&["audio", "video"])
+                .value_parser(clap::builder::ValueParser::os_string())
+                .requires("WRITE")
+                .display_order(20))
+        .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-            .display_order(20))
+            .display_order(21))
         .get_matches()
 }
 
@@ -204,6 +215,7 @@ pub struct FileInfoRequest {
     pub path: PathBuf,
     pub hash_algo: Option<Box<str>>,
     pub decoded: Option<bool>,
+    pub selected_streams: Option<SelectedStreams>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -227,6 +239,13 @@ enum ExecMode {
     Dump,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum SelectedStreams {
+    All,
+    AudioOnly,
+    VideoOnly,
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     exec_mode: ExecMode,
@@ -235,6 +254,7 @@ pub struct Config {
     opt_xattr: bool,
     opt_dry_run: bool,
     opt_num_threads: Option<usize>,
+    selected_streams: SelectedStreams,
     selected_hash_algo: Box<str>,
     pwd: PathBuf,
     output_file: PathBuf,
@@ -305,6 +325,18 @@ impl Config {
             .into());
         };
 
+        let selected_streams = if let Some(only_stream) = matches.value_of_os("ONLY") {
+            if only_stream == OsStr::new("video") {
+                SelectedStreams::VideoOnly
+            } else if only_stream == OsStr::new("audio") {
+                SelectedStreams::AudioOnly
+            } else {
+                SelectedStreams::All
+            }
+        } else {
+            SelectedStreams::All
+        };
+
         let output_file = if let Some(output_file) = matches.value_of_os("OUTPUT_FILE") {
             PathBuf::from(output_file)
         } else {
@@ -354,6 +386,7 @@ impl Config {
             opt_decode,
             opt_xattr,
             opt_dry_run,
+            selected_streams,
             selected_hash_algo,
             pwd,
             output_file,
