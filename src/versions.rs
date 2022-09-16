@@ -118,7 +118,7 @@ impl FileInfoV1 {
             last_written: metadata.last_written,
             modify_time: metadata.modify_time,
             decoded: false,
-            selected_streams: crate::SelectedStreams::All,
+            selected_streams: SelectedStreams::All,
         });
 
         Ok(FileInfo {

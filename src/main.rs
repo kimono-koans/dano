@@ -244,6 +244,7 @@ pub enum SelectedStreams {
     All,
     AudioOnly,
     VideoOnly,
+    PrimaryOnly,
 }
 
 #[derive(Debug, Clone)]
