@@ -42,7 +42,7 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         .paths
         .par_iter()
         .flat_map(|path| match path.extension() {
-            Some(extension) if extension == "flac" || extension == "FLAC" => Some(path),
+            Some(extension) if extension.to_ascii_lowercase() == "flac" => Some(path),
             _ => None,
         })
         .flat_map(|path| {
@@ -50,6 +50,7 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         })
         .flat_map(|(path, hash)| generate_flac_file_info(path, &hash))
         .collect();
+
     Ok(res)
 }
 
