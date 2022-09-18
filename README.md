@@ -69,12 +69,14 @@ You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ 
 `dano` allows you have to store a stable checksum, and verify it later, just like FLAC:
 
 ```bash
+# To test, this we create an ALAC copy of your FLAC file
+ffmpeg -i 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' -acodec alac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
 # Write dano checksum to an xattr
 % dano -w --only=audio --decode --hash-algo=md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
 MD5=fed8052012fb6d0523ef3980a0f6f7bd : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 No old file data to overwrite.
-# Verify checksum is the same as the FLAC decoded WAV
+# Verify checksum is the same as the decoded FLAC audio stream
 % metaflac --show-md5sum "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 fed8052012fb6d0523ef3980a0f6f7bd
 # Verify the decoded ALAC audio stream is the same as the xattr checksum
