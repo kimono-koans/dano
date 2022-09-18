@@ -114,7 +114,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(8))
         .arg(
             Arg::new("IMPORT_FLAC")
-                .help("import flac and write hashes")
+                .help("import flac and overwrite previous file hashes")
                 .long("import-flac")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
                 .display_order(9))
@@ -453,7 +453,7 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
-            let file_bundle = if write_config.opt_rewrite || write_config.opt_import_flac {
+            let file_bundle = if write_config.opt_rewrite {
                 vec![
                     NewFileBundle {
                         files: Vec::new(),
@@ -461,6 +461,17 @@ fn exec() -> DanoResult<()> {
                     },
                     NewFileBundle {
                         files: recorded_file_info,
+                        bundle_type: BundleType::NewFileNames,
+                    },
+                ]
+            } else if write_config.opt_import_flac {
+                vec![
+                    NewFileBundle {
+                        files: recorded_file_info,
+                        bundle_type: BundleType::NewFiles,
+                    },
+                    NewFileBundle {
+                        files: Vec::new(),
                         bundle_type: BundleType::NewFileNames,
                     },
                 ]
