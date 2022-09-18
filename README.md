@@ -118,13 +118,15 @@ rpm -i --replacefiles ./dano*.rpm
 
 ## Installation from Source
 
-For now, `dano` depends on `ffmpeg`.  
+For now, `dano` depends on `ffmpeg` and `metaflac` if you want to import FLAC files.
 
-`dano` is only tested on MacOS and Linux, and will probably only compile and run on Unix-y Rust supported platforms, but a Windows is version is *likely* to compile with only minor changes.  My further thoughts on a Windows version can be found in this [linked issue](https://github.com/kimono-koans/dano/issues/3).
-
-Note: In addition to what your package manager or OS may provide, there are several [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the `rustc` compiler and `cargo` besides the method described below.
+You may install `rustup` and build `dano` like so:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
-cargo install --git https://github.com/kimono-koans/dano.git 
+cargo install dano
 ```
+
+Caveat: `dano` is only tested on MacOS and Linux, and will probably only compile and run on Unix-y Rust supported platforms, but a Windows is version is *likely* to compile with only minor changes.  My further thoughts on a Windows version can be found in this [linked issue](https://github.com/kimono-koans/dano/issues/3).
+
+Note: In addition to what your package manager or OS may provide (for instance, `apt install rustc cargo`, security-minded users may be interested to know that there are [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the `rustc` compiler and `cargo` besides the method described above, which allow you to verify the `rustup` before install.
