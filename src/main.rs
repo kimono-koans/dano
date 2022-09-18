@@ -449,8 +449,6 @@ fn exec() -> DanoResult<()> {
 
     let recorded_file_info = get_recorded_file_info(&config)?;
 
-    let thread_pool = prepare_thread_pool(&config)?;
-
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
             let file_bundle = if write_config.opt_import_flac || write_config.opt_rewrite {
@@ -485,6 +483,8 @@ fn exec() -> DanoResult<()> {
                     unreachable!()
                 }
             } else {
+                let thread_pool = prepare_thread_pool(&config)?;
+
                 let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
 
                 // filter out files for which we already have a hash, only do requests on new files
@@ -503,6 +503,8 @@ fn exec() -> DanoResult<()> {
             write_file_info_exec(&config, &file_bundle)
         }
         ExecMode::Compare(_) => {
+            let thread_pool = prepare_thread_pool(&config)?;
+
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
             let compare_hashes_bundle =
