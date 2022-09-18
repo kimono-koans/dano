@@ -42,6 +42,42 @@ murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "Sample.mkv"
 % dano -w 'test2.mp4'
 murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 ```
+## Can I use `dano` with my FLAC files?
+
+Of course you can.  `dano` will even import your FLAC file's checksums directly:
+
+```bash
+% dano --import-flac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+```
+
+## Ugh, why can't ALAC be more like FLAC?
+
+`dano` can help!  ALAC, again like most formats, misses integrated checksums and verification, which make ALAC less suitable for the long term storage of lossless audio.
+
+You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.   `dano` now allows you to do the same with ALAC:
+
+```bash
+# Write dano checksum to an xattr
+% dano -w --only=audio --decode --hash-algo=md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
+MD5=fed8052012fb6d0523ef3980a0f6f7bd : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+No old file data to overwrite.
+# Verify checksum is the same as the FLAC decoded WAV
+% metaflac --show-md5sum "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
+fed8052012fb6d0523ef3980a0f6f7bd
+# Verify the ALAC audio stream is the same as the xattr checksum
+%  dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+"Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
+```
+
+Because MD5 is generally overkill for a file checksum, `dano` also supports faster algorithms, like murmur3, thus verifying all your checksums can be significantly faster using `dano`.
+
+```bash
+% dano -w --only=audio --decode --hash-algo=murmur3 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
+murmur3=f863a834f4d8504944b6121eee3d1993 : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+No old file data to overwrite.
+```
 
 ## Shout outs! Yo, yo, yo!
 
