@@ -453,28 +453,37 @@ fn exec() -> DanoResult<()> {
 
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
-            let file_bundle = if write_config.opt_rewrite {
-                vec![
-                    NewFileBundle {
-                        files: Vec::new(),
-                        bundle_type: BundleType::NewFiles,
-                    },
-                    NewFileBundle {
-                        files: recorded_file_info,
-                        bundle_type: BundleType::NewFileNames,
-                    },
-                ]
-            } else if write_config.opt_import_flac {
-                vec![
-                    NewFileBundle {
-                        files: recorded_file_info,
-                        bundle_type: BundleType::NewFiles,
-                    },
-                    NewFileBundle {
-                        files: Vec::new(),
-                        bundle_type: BundleType::NewFileNames,
-                    },
-                ]
+            let file_bundle = if write_config.opt_import_flac || write_config.opt_rewrite {
+                // here we print_verify_info because we don't run these opts through verify_file_info
+                recorded_file_info
+                    .iter()
+                    .try_for_each(|file_info| print_file_info(&config, file_info))?;
+
+                if write_config.opt_rewrite {
+                    vec![
+                        NewFileBundle {
+                            files: Vec::new(),
+                            bundle_type: BundleType::NewFiles,
+                        },
+                        NewFileBundle {
+                            files: recorded_file_info,
+                            bundle_type: BundleType::NewFileNames,
+                        },
+                    ]
+                } else if write_config.opt_import_flac {
+                    vec![
+                        NewFileBundle {
+                            files: recorded_file_info,
+                            bundle_type: BundleType::NewFiles,
+                        },
+                        NewFileBundle {
+                            files: Vec::new(),
+                            bundle_type: BundleType::NewFileNames,
+                        },
+                    ]
+                } else {
+                    unreachable!()
+                }
             } else {
                 let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
 
