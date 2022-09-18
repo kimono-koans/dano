@@ -52,7 +52,7 @@ Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 ## Ugh, why can't ALAC be more like FLAC?
 
-`dano` can help!  ALAC, again like most formats, misses integrated checksums and verification, which make ALAC less suitable for the long term storage of lossless audio.
+ALAC, like most formats, misses integrated checksums and verification, which make ALAC less suitable for the long term storage of lossless audio.
 
 You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.  For serious collectors, if you can't verify your checksums later when you change the album art, what use is a checksum?
 
