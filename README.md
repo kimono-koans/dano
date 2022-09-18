@@ -48,6 +48,8 @@ Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 ```bash
 % dano --import-flac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
+No old file data to overwrite.
 ```
 
 ## Ugh, why can't ALAC be more like FLAC?
