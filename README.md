@@ -54,9 +54,9 @@ Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 `dano` can help!  ALAC, again like most formats, misses integrated checksums and verification, which make ALAC less suitable for the long term storage of lossless audio.
 
-You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.  
+You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.  For serious collectors, if you can't verify your checksums later when you change the album art, what use is a checksum?
 
-However, `dano` allows you have stable checksums and verification just like FLAC:
+`dano` allows you have stable checksums and verification just like FLAC:
 
 ```bash
 # Write dano checksum to an xattr
@@ -108,7 +108,7 @@ rpm -i --replacefiles ./dano*.rpm
 
 For now, `dano` depends on `ffmpeg`.  
 
-`dano` is only tested, by me, on MacOS and Linux, and will probably only compile and run on Unix-y Rust supported platforms, but a Windows is version is *likely* to compile with only minor changes.  My further thoughts on a Windows version can be found in this [linked issue](https://github.com/kimono-koans/dano/issues/3).
+`dano` is only tested on MacOS and Linux, and will probably only compile and run on Unix-y Rust supported platforms, but a Windows is version is *likely* to compile with only minor changes.  My further thoughts on a Windows version can be found in this [linked issue](https://github.com/kimono-koans/dano/issues/3).
 
 Note: In addition to what your package manager or OS may provide, there are several [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the `rustc` compiler and `cargo` besides the method described below.
 
