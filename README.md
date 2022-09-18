@@ -69,7 +69,7 @@ You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ 
 `dano` allows you have to store a stable checksum, and verify it later, just like FLAC:
 
 ```bash
-# To test, this we create an ALAC copy of your FLAC file
+# To test, this we will create an ALAC copy of a FLAC file
 ffmpeg -i 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' -acodec alac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
 # Write dano checksum to an xattr
 % dano -w --only=audio --decode --hash-algo=md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
