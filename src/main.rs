@@ -301,7 +301,7 @@ impl Config {
         let opt_test_mode = matches.is_present("TEST");
         let opt_decode = matches.is_present("DECODE");
         let opt_import_flac = matches.is_present("IMPORT_FLAC");
-        let opt_rewrite = matches.is_present("REWRITE_ALL") || opt_import_flac;
+        let opt_rewrite = matches.is_present("REWRITE_ALL");
 
         let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
             ExecMode::Compare(CompareModeConfig {
