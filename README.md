@@ -47,9 +47,15 @@ murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 ```bash
+% metaflac --show-md5sum 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+fed8052012fb6d0523ef3980a0f6f7bd
 % dano --import-flac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
 Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 No old file data to overwrite.
+% dano -p 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+MD5=fed8052012fb6d0523ef3980a0f6f7bd : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
+% dano -t 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+"Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac": OK
 ```
 
 ## Ugh, why can't ALAC be more like FLAC?
@@ -70,7 +76,7 @@ No old file data to overwrite.
 % metaflac --show-md5sum "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 fed8052012fb6d0523ef3980a0f6f7bd
 # Verify the ALAC audio stream is the same as the xattr checksum
-%  dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+% dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
 ```
 
