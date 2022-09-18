@@ -47,12 +47,15 @@ murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 ```bash
-% metaflac --show-md5sum 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
-fed8052012fb6d0523ef3980a0f6f7bd
+# Import dano checksum from FLAC and write to an xattr
 % dano --import-flac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
 MD5=fed8052012fb6d0523ef3980a0f6f7bd : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 No old file data to overwrite.
+# Verify checksum is the same as the checksum embedded in the FLAC container
+% metaflac --show-md5sum 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+fed8052012fb6d0523ef3980a0f6f7bd
+# Verify the decoded FLAC audio stream is the same as the xattr checksum
 % dano -t 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac": OK
 ```
@@ -63,7 +66,7 @@ ALAC, like most formats, misses integrated checksums and verification, which mak
 
 You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.  For serious collectors, if you can't verify your checksums later when you change the album art, what use is a checksum?
 
-`dano` allows you have stable checksums and verification just like FLAC:
+`dano` allows you have to store a stable checksum, and verify it later, just like FLAC:
 
 ```bash
 # Write dano checksum to an xattr
@@ -74,7 +77,7 @@ No old file data to overwrite.
 # Verify checksum is the same as the FLAC decoded WAV
 % metaflac --show-md5sum "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 fed8052012fb6d0523ef3980a0f6f7bd
-# Verify the ALAC audio stream is the same as the xattr checksum
+# Verify the decoded ALAC audio stream is the same as the xattr checksum
 % dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
 ```
