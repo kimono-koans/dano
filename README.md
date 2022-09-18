@@ -54,7 +54,9 @@ Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 `dano` can help!  ALAC, again like most formats, misses integrated checksums and verification, which make ALAC less suitable for the long term storage of lossless audio.
 
-You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.   `dano` now allows you to do the same with ALAC:
+You, of course, could checksum the file yourself (`md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'`), but, if you change the ALAC file's metadata, or, significantly, its album art, then the checksum changes.  
+
+However, `dano` allows you have stable checksums and verification just like FLAC:
 
 ```bash
 # Write dano checksum to an xattr
@@ -70,7 +72,7 @@ fed8052012fb6d0523ef3980a0f6f7bd
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
 ```
 
-Because MD5 is generally overkill for a file checksum, `dano` also supports faster algorithms, like murmur3, thus verifying all your checksums can be significantly faster using `dano`.
+Because MD5 is generally overkill for a file checksum, `dano` also supports faster algorithms, like murmur3, thus verifying all your checksums can be faster using `dano`.
 
 ```bash
 % dano -w --only=audio --decode --hash-algo=murmur3 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
