@@ -452,7 +452,8 @@ fn exec() -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(write_config) => {
             let file_bundle = if write_config.opt_import_flac || write_config.opt_rewrite {
-                // here we print_verify_info because we don't run these opts through verify_file_info
+                // here we print_file_info because we don't run these opts through verify_file_info,
+                // which would ordinary print this information
                 recorded_file_info
                     .iter()
                     .try_for_each(|file_info| print_file_info(&config, file_info))?;
@@ -486,7 +487,6 @@ fn exec() -> DanoResult<()> {
                 let thread_pool = prepare_thread_pool(&config)?;
 
                 let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
-
                 // filter out files for which we already have a hash, only do requests on new files
                 let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
                     .into_iter()
