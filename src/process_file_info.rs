@@ -53,21 +53,16 @@ pub fn process_file_info_exec(
 
     // loop while recv from channel
     while let Ok(file_info) = rx_item.recv() {
-        match config.exec_mode {
-            ExecMode::Write(_) | ExecMode::Compare(_) => {
-                if let (Some(new_files_partitioned), test_exit_code) =
-                    verify_file_info(config, file_info, file_map.clone())?
-                {
-                    match new_files_partitioned {
-                        Either::Left(file_info) => new_filenames.push(file_info),
-                        Either::Right(file_info) => new_files.push(file_info),
-                    }
-                    if test_exit_code != 0 {
-                        exit_code = test_exit_code
-                    }
-                }
+        if let (Some(new_files_partitioned), test_exit_code) =
+            verify_file_info(config, file_info, file_map.clone())?
+        {
+            match new_files_partitioned {
+                Either::Left(file_info) => new_filenames.push(file_info),
+                Either::Right(file_info) => new_files.push(file_info),
             }
-            ExecMode::Print | ExecMode::Dump => unreachable!(),
+            if test_exit_code != 0 {
+                exit_code = test_exit_code
+            }
         }
     }
 
