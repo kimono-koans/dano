@@ -148,11 +148,7 @@ pub fn get_hash_file(config: &Config) -> DanoResult<File> {
 
 fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> {
     write_out_file(
-        format!(
-            "// DANO, Invoked from: {:?}\n",
-            config.pwd
-        )
-        .as_str(),
+        format!("// DANO, Invoked from: {:?}\n", config.pwd).as_str(),
         output_file,
     )
 }

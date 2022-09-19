@@ -24,7 +24,7 @@ use rayon::prelude::*;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::utility::{print_file_info, print_out_buf};
+use crate::utility::{print_err_buf, print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
 pub enum BundleType {
@@ -69,6 +69,12 @@ pub fn process_file_info_exec(
     // exit with non-zero status if test is not "OK"
     if let ExecMode::Compare(compare_config) = &config.exec_mode {
         if compare_config.opt_test_mode {
+            if exit_code == 0 {
+                print_err_buf("PASSED: File paths are consistent, and contain no hash or filename mismatches.")?
+            } else if exit_code == 2 {
+                print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch is detected.")?
+            }
+
             std::process::exit(exit_code)
         }
     }
