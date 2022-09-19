@@ -72,7 +72,7 @@ pub fn process_file_info_exec(
             if exit_code == 0 {
                 print_err_buf("PASSED: File paths are consistent, and contain no hash or filename mismatches.")?
             } else if exit_code == 2 {
-                print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch is detected.")?
+                print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.")?
             }
 
             std::process::exit(exit_code)
