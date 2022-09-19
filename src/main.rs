@@ -540,7 +540,7 @@ fn exec() -> DanoResult<()> {
                     WriteType::OverwriteAll,
                 )?;
                 if !config.opt_silent {
-                    print_err_buf("Dump to dano output file was successful.")?
+                    print_err_buf("Dump to dano output file was successful.\n")?
                 }
             }
 

@@ -70,9 +70,9 @@ pub fn process_file_info_exec(
     if let ExecMode::Compare(compare_config) = &config.exec_mode {
         if compare_config.opt_test_mode {
             if exit_code == 0 {
-                print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.")?
+                print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n")?
             } else if exit_code == 2 {
-                print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.")?
+                print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n")?
             }
 
             std::process::exit(exit_code)
