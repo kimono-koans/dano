@@ -54,7 +54,7 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("input files to be hashed or checked.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.")
+                .help("input files to be hashed or verified.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.")
                 .takes_value(true)
                 .multiple_values(true)
                 .value_parser(clap::builder::ValueParser::os_string())
@@ -62,7 +62,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("OUTPUT_FILE")
-                .help("output file which will contain the hashes. If not specified, 'dano_hashes.txt' in the current working directory will be used.")
+                .help("output file which will contain the recorded file information. If not specified, 'dano_hashes.txt' in the current working directory will be used.")
                 .short('o')
                 .long("output-file")
                 .takes_value(true)
@@ -73,7 +73,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("HASH_FILE")
-                .help("file from which to read hashes.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the current working directory).")
+                .help("file from which to read recorded file information.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the current working directory).")
                 .short('k')
                 .long("hash-file")
                 .takes_value(true)
@@ -84,37 +84,36 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE")
-                .help("write the new input files' hashes (and ignore files that already have file hashes).")
+                .help("write the new input files' hash information (and ignore files that already have file hashes).")
                 .short('w')
                 .long("write")
                 .display_order(4))
         .arg(
-            Arg::new("COMPARE")
-                .help("compare the input files to the hashes in a hash file (and/or contained within a file's xattrs).")
-                .short('c')
-                .long("compare")
-                .display_order(6),
-            )
-        .arg(
             Arg::new("TEST")
-                .help("test the hashes in a hash file (or xattrs) to the files currently on disk.")
+                .help("verify the recorded file information.  Also prints the pass/fail status, and exists with a non-zero code if failed.")
                 .short('t')
                 .long("test")
                 .display_order(5))
         .arg(
+            Arg::new("COMPARE")
+                .help("compare the recorded file information in a hash file (or xattrs) to the files currently on disk, and, potentially, perform write operations, like --write-new or --overwrite.")
+                .short('c')
+                .long("compare")
+                .display_order(6))
+        .arg(
             Arg::new("PRINT")
-                .help("pretty print all hashes.")
+                .help("pretty print all recorded file information (in hash file and xattrs).")
                 .short('p')
                 .long("print")
                 .display_order(7))
         .arg(
             Arg::new("DUMP")
-                .help("dump the recorded file information (file hashes and xattrs) to the output file (don't test/compare).")
+                .help("dump the recorded file information (in hash file and xattrs) to the output file (don't test/compare).")
                 .long("dump")
                 .display_order(8))
         .arg(
             Arg::new("IMPORT_FLAC")
-                .help("import flac and overwrite previous file hashes")
+                .help("import flac checksums and write as dano recorded file information.")
                 .long("import-flac")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
                 .display_order(9))
