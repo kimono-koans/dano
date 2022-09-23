@@ -67,10 +67,7 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<In
     let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
     if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
-        let msg = format!(
-            "Error: Path is not a valid FLAC file: {}",
-            path_string
-        );
+        let msg = format!("Error: Path is not a valid FLAC file: {}", path_string);
         return Err(DanoError::new(&msg).into());
     }
 
@@ -78,7 +75,7 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<In
         Ok(hash_value) => hash_value,
         Err(err) => {
             let msg = format!(
-                "Error: Could not parse hash from FLAC file: {}\n",
+                "Error: Could not parse hash for FLAC file: {}\n",
                 path_string
             );
             return Err(DanoError::with_context(&msg, err.into()).into());
