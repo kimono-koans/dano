@@ -106,7 +106,10 @@ fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &
         })
 }
 
-fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &FileInfo) -> bool {
+fn is_same_filename(
+    file_map: &BTreeMap<PathBuf, Option<FileMetadata>>,
+    file_info: &FileInfo,
+) -> bool {
     file_map.contains_key(&file_info.path)
 }
 

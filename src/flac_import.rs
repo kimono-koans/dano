@@ -38,7 +38,7 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         .into());
     };
 
-    let res = config
+    let res: DanoResult<Vec<FileInfo>> = config
         .paths
         .par_iter()
         .flat_map(|path| match path.extension() {
@@ -48,13 +48,13 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         .flat_map(|path| {
             import_flac_hash_value(path, &metaflac_cmd).map(|hash_string| (path, hash_string))
         })
-        .flat_map(|(path, hash)| generate_flac_file_info(path, &hash))
+        .map(|(path, hash_value)| generate_flac_file_info(path, hash_value))
         .collect();
 
-    Ok(res)
+    res
 }
 
-fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<String> {
+fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<Integer> {
     // all snapshots should have the same timestamp
     let path_string = path.to_string_lossy();
 
@@ -67,21 +67,45 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<St
     let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
     if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
-        eprintln!("Error: Path given is an invalid FLAC file: {}", path_string);
-        std::process::exit(1)
+        let msg = format!(
+            "Error: Could not generate hash from FLAC file: {}",
+            path_string
+        );
+        return Err(DanoError::new(&msg).into());
     }
 
-    Ok(stdout_string.to_owned())
+    let hash_value = match Integer::from_str_radix(stdout_string, 16) {
+        Ok(hash_value) => hash_value,
+        Err(err) => {
+            let msg = format!(
+                "Error: Could not generate hash from FLAC file: {}",
+                path_string
+            );
+            return Err(DanoError::with_context(&msg, err.into()).into());
+        }
+    };
+
+    if stdout_string.is_empty() {
+        // likely file DNE?, except we have already check when we parsed input files
+        // so this is a catch all, here we just bail if we have no explanation to give the user
+        let msg = format!(
+            "Error: Could not generate hash from FLAC file: {}",
+            path_string
+        );
+        return Err(DanoError::new(&msg).into());
+    }
+
+    Ok(hash_value)
 }
 
-fn generate_flac_file_info(path: &Path, hash_string: &str) -> DanoResult<FileInfo> {
+fn generate_flac_file_info(path: &Path, hash_value: Integer) -> DanoResult<FileInfo> {
     Ok(FileInfo {
         path: path.to_owned(),
         version: DANO_FILE_INFO_VERSION,
         metadata: Some(FileMetadata {
             last_written: SystemTime::now(),
             hash_algo: FLAC_HASH_ALGO.into(),
-            hash_value: { Integer::from_str_radix(hash_string, 16)? },
+            hash_value,
             modify_time: path.metadata()?.modified()?,
             selected_streams: FLAC_SELECTED_STREAMS,
             decoded: FLAC_DECODED,
