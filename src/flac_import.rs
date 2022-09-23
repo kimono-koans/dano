@@ -78,7 +78,7 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<In
         Ok(hash_value) => hash_value,
         Err(err) => {
             let msg = format!(
-                "Error: Could not generate hash from FLAC file: {}",
+                "Error: Could not parse hash from FLAC file: {}\n",
                 path_string
             );
             return Err(DanoError::with_context(&msg, err.into()).into());
