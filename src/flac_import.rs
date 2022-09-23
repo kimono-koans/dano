@@ -68,7 +68,7 @@ fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<In
 
     if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
         let msg = format!(
-            "Error: Could not generate hash from FLAC file: {}",
+            "Error: Path is not a valid FLAC file: {}",
             path_string
         );
         return Err(DanoError::new(&msg).into());
