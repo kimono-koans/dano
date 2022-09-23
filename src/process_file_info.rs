@@ -96,18 +96,18 @@ pub fn process_file_info_exec(
     ])
 }
 
-fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
+fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &FileInfo) -> bool {
     file_map
         .into_par_iter()
         .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
-        .any(|file_map_metadata| match &path.metadata {
+        .any(|file_map_metadata| match &file_info.metadata {
             Some(path_metadata) => path_metadata.hash_value == file_map_metadata.hash_value,
             None => false,
         })
 }
 
-fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, path: &FileInfo) -> bool {
-    file_map.contains_key(&path.path)
+fn is_same_filename(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &FileInfo) -> bool {
+    file_map.contains_key(&file_info.path)
 }
 
 fn get_file_map(
