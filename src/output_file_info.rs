@@ -44,10 +44,13 @@ pub enum WriteType {
     OverwriteAll,
 }
 
-pub fn write_file_info_exec(config: &Config, new_files_bundle: &[NewFileBundle]) -> DanoResult<()> {
+pub fn write_file_info_bundle(
+    config: &Config,
+    new_files_bundle: &[NewFileBundle],
+) -> DanoResult<()> {
     new_files_bundle.iter().try_for_each(|file_bundle| {
         if !file_bundle.files.is_empty() {
-            write_new_files(config, &file_bundle.files, &file_bundle.bundle_type)
+            write_file_info(config, &file_bundle.files, &file_bundle.bundle_type)
         } else {
             print_bundle_empty(config, &file_bundle.bundle_type);
             Ok(())
@@ -55,7 +58,7 @@ pub fn write_file_info_exec(config: &Config, new_files_bundle: &[NewFileBundle])
     })
 }
 
-fn write_new_files(
+fn write_file_info(
     config: &Config,
     files_bundle: &[FileInfo],
     bundle_type: &BundleType,
@@ -159,8 +162,8 @@ fn exec_write_action(
         print_write_action(wet_prefix, EMPTY_STR, files_bundle)?;
 
         match bundle_type {
-            BundleType::NewFileNames => overwrite_old_file_info(config, files_bundle),
-            BundleType::NewFiles => write_all_new_paths(config, files_bundle, WriteType::Append),
+            BundleType::NewFileNames => overwrite_all(config, files_bundle),
+            BundleType::NewFiles => write_new(config, files_bundle, WriteType::Append),
         }
     }
 }
@@ -171,11 +174,7 @@ fn print_write_action(prefix: &str, suffix: &str, file_bundle: &[FileInfo]) -> D
     })
 }
 
-pub fn write_all_new_paths(
-    config: &Config,
-    new_files: &[FileInfo],
-    write_type: WriteType,
-) -> DanoResult<()> {
+pub fn write_new(config: &Config, new_files: &[FileInfo], write_type: WriteType) -> DanoResult<()> {
     // ExecMode::Dump is about writing to a file always want to skip xattrs
     // can always be enabled by env var so ad hoc debugging can be tricky
     if !config.opt_dry_run {
@@ -209,9 +208,9 @@ pub fn write_all_new_paths(
     }
 }
 
-pub fn overwrite_old_file_info(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
+pub fn overwrite_all(config: &Config, files_bundle: &[FileInfo]) -> DanoResult<()> {
     // append new paths
-    write_all_new_paths(config, files_bundle, WriteType::Append)?;
+    write_new(config, files_bundle, WriteType::Append)?;
 
     // overwrite all paths if in non-xattr/file write mode
     match &config.exec_mode {
@@ -243,7 +242,7 @@ pub fn overwrite_old_file_info(config: &Config, files_bundle: &[FileInfo]) -> Da
                 .collect();
 
             // and overwrite
-            write_all_new_paths(config, &unique_paths, WriteType::OverwriteAll)
+            write_new(config, &unique_paths, WriteType::OverwriteAll)
         }
         _ => Ok(()),
     }

@@ -34,7 +34,7 @@ mod utility;
 mod versions;
 
 use lookup_file_info::exec_lookup_file_info;
-use output_file_info::{write_all_new_paths, write_file_info_exec, WriteType};
+use output_file_info::{write_file_info_bundle, write_new, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
 use process_file_info::{process_file_info_exec, BundleType, NewFileBundle};
@@ -499,7 +499,7 @@ fn exec() -> DanoResult<()> {
                 compare_hashes_bundle
             };
 
-            write_file_info_exec(&config, &file_bundle)
+            write_file_info_bundle(&config, &file_bundle)
         }
         ExecMode::Compare(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
@@ -509,7 +509,7 @@ fn exec() -> DanoResult<()> {
             let compare_hashes_bundle =
                 process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_exec(&config, &compare_hashes_bundle)
+            write_file_info_bundle(&config, &compare_hashes_bundle)
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
@@ -533,7 +533,7 @@ fn exec() -> DanoResult<()> {
                 )
                 .into());
             } else {
-                write_all_new_paths(
+                write_new(
                     &config,
                     recorded_file_info.as_slice(),
                     WriteType::OverwriteAll,
