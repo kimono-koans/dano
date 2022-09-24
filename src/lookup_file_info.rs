@@ -30,8 +30,8 @@ use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::{utility::DanoError, Config, FileInfoRequest, SelectedStreams};
-use crate::{DanoResult, DANO_FILE_INFO_VERSION};
+use crate::utility::DanoError;
+use crate::{Config, DanoResult, FileInfoRequest, SelectedStreams, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileInfo {
@@ -75,8 +75,15 @@ impl FileInfo {
                 Some(decoded) => decoded,
                 None => config.opt_decode,
             };
-            let res = FileInfo::get_hash_value(&config, request, &ffmpeg_command, decoded)?;
-            FileInfo::transmit_file_info(request, res, tx_item, decoded, &config.selected_streams)
+            let stdout_string =
+                FileInfo::get_hash_value(&config, request, &ffmpeg_command, decoded)?;
+            FileInfo::transmit_file_info(
+                request,
+                &stdout_string,
+                tx_item,
+                decoded,
+                &config.selected_streams,
+            )
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -143,13 +150,13 @@ impl FileInfo {
         let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
         if stderr_string.contains("incorrect codec parameters") {
-            eprintln!(
+            let msg = format!(
                 "Error: Invalid hash algorithm specified.  \
             This version of ffmpeg does not support: {} .  \
             Upgrade or specify another hash algorithm.",
                 config.selected_hash_algo
             );
-            std::process::exit(1)
+            return Err(DanoError::new(&msg).into());
         }
 
         Ok(stdout_string.into())
@@ -157,7 +164,7 @@ impl FileInfo {
 
     fn transmit_file_info(
         request: &FileInfoRequest,
-        stdout_string: Box<str>,
+        stdout_string: &str,
         tx_item: Sender<FileInfo>,
         decoded: bool,
         selected_streams: &SelectedStreams,
@@ -219,7 +226,10 @@ pub fn exec_lookup_file_info(
                 let tx_item_clone = tx_item.clone();
                 let config_clone = config_arc.clone();
                 file_info_scope.spawn(move |_| {
-                    let _ = FileInfo::generate(config_clone, request, tx_item_clone);
+                    if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                        eprintln!("Error: {}", err);
+                        std::process::exit(1)
+                    }
                 })
             });
         });
