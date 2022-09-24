@@ -76,7 +76,7 @@ impl FileInfo {
                 None => config.opt_decode,
             };
             let res = FileInfo::get_hash_value(&config, request, &ffmpeg_command, decoded)?;
-            FileInfo::transmit_file_info(request, &res, tx_item, decoded, &config.selected_streams)
+            FileInfo::transmit_file_info(request, res, tx_item, decoded, &config.selected_streams)
         } else {
             Err(DanoError::new(
                 "'ffmpeg' command not found. Make sure the command 'ffmpeg' is in your path.",
@@ -90,7 +90,7 @@ impl FileInfo {
         request: &FileInfoRequest,
         ffmpeg_command: &Path,
         decoded: bool,
-    ) -> DanoResult<String> {
+    ) -> DanoResult<Box<str>> {
         // all snapshots should have the same timestamp
         let path_string = request.path.to_string_lossy();
         let hash_algo = match &request.hash_algo {
@@ -152,17 +152,17 @@ impl FileInfo {
             std::process::exit(1)
         }
 
-        Ok(stdout_string.to_owned())
+        Ok(stdout_string.into())
     }
 
     fn transmit_file_info(
         request: &FileInfoRequest,
-        stdout_string: &str,
+        stdout_string: Box<str>,
         tx_item: Sender<FileInfo>,
         decoded: bool,
         selected_streams: &SelectedStreams,
     ) -> DanoResult<()> {
-        let timestamp = &SystemTime::now();
+        let timestamp = SystemTime::now();
 
         let phantom_file_info = FileInfo {
             path: request.path.to_owned(),
@@ -183,7 +183,7 @@ impl FileInfo {
                     path: request.path.to_owned(),
                     version: DANO_FILE_INFO_VERSION,
                     metadata: Some(FileMetadata {
-                        last_written: timestamp.to_owned(),
+                        last_written: timestamp,
                         hash_algo: first.into(),
                         hash_value: { Integer::from_str_radix(last, 16)? },
                         modify_time: request.path.metadata()?.modified()?,
