@@ -38,11 +38,16 @@ pub struct NewFileBundle {
     pub bundle_type: BundleType,
 }
 
+pub struct ProcessedFiles {
+    pub file_bundle: Vec<NewFileBundle>,
+    pub exit_code: i32,
+}
+
 pub fn process_file_info_exec(
     config: &Config,
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
-) -> DanoResult<(Vec<NewFileBundle>, i32)> {
+) -> DanoResult<ProcessedFiles> {
     // prepare for loop
     let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
@@ -70,19 +75,21 @@ pub fn process_file_info_exec(
     new_filenames.par_sort_unstable_by_key(|file_info| file_info.path.clone());
     new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
-    Ok((
-        vec![
-            NewFileBundle {
-                files: new_files,
-                bundle_type: BundleType::NewFiles,
-            },
-            NewFileBundle {
-                files: new_filenames,
-                bundle_type: BundleType::NewFileNames,
-            },
-        ],
+    let file_bundle = vec![
+        NewFileBundle {
+            files: new_files,
+            bundle_type: BundleType::NewFiles,
+        },
+        NewFileBundle {
+            files: new_filenames,
+            bundle_type: BundleType::NewFileNames,
+        },
+    ];
+
+    Ok(ProcessedFiles {
+        file_bundle,
         exit_code,
-    ))
+    })
 }
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &FileInfo) -> bool {

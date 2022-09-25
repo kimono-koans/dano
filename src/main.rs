@@ -40,6 +40,8 @@ use prepare_requests::get_file_info_requests;
 use process_file_info::{process_file_info_exec, BundleType, NewFileBundle};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
+use crate::process_file_info::ProcessedFiles;
+
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 const DANO_FILE_INFO_VERSION: usize = 3;
@@ -454,9 +456,7 @@ fn exec() -> DanoResult<i32> {
 
     let exit_code = match &config.exec_mode {
         ExecMode::Write(write_config) => {
-            let (file_bundle, exit_code) = if write_config.opt_import_flac
-                || write_config.opt_rewrite
-            {
+            let processed_files = if write_config.opt_import_flac || write_config.opt_rewrite {
                 // here we print_file_info because we don't run these opts through verify_file_info,
                 // which would ordinary print this information
                 recorded_file_info
@@ -464,8 +464,8 @@ fn exec() -> DanoResult<i32> {
                     .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
                 if write_config.opt_rewrite {
-                    (
-                        vec![
+                    ProcessedFiles {
+                        file_bundle: vec![
                             NewFileBundle {
                                 files: Vec::new(),
                                 bundle_type: BundleType::NewFiles,
@@ -475,11 +475,11 @@ fn exec() -> DanoResult<i32> {
                                 bundle_type: BundleType::NewFileNames,
                             },
                         ],
-                        DANO_CLEAN_EXIT_CODE,
-                    )
+                        exit_code: DANO_CLEAN_EXIT_CODE,
+                    }
                 } else if write_config.opt_import_flac {
-                    (
-                        vec![
+                    ProcessedFiles {
+                        file_bundle: vec![
                             NewFileBundle {
                                 files: recorded_file_info,
                                 bundle_type: BundleType::NewFiles,
@@ -489,8 +489,8 @@ fn exec() -> DanoResult<i32> {
                                 bundle_type: BundleType::NewFileNames,
                             },
                         ],
-                        DANO_CLEAN_EXIT_CODE,
-                    )
+                        exit_code: DANO_CLEAN_EXIT_CODE,
+                    }
                 } else {
                     unreachable!()
                 }
@@ -509,19 +509,18 @@ fn exec() -> DanoResult<i32> {
                 process_file_info_exec(&config, &recorded_file_info, rx_item)?
             };
 
-            write_file_info_bundle(&config, &file_bundle)?;
-            exit_code
+            write_file_info_bundle(&config, &processed_files.file_bundle)?;
+            processed_files.exit_code
         }
         ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let (test_hashes_bundle, exit_code) =
-                process_file_info_exec(&config, &recorded_file_info, rx_item)?;
+            let processed_files = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_bundle(&config, &test_hashes_bundle)?;
-            exit_code
+            write_file_info_bundle(&config, &processed_files.file_bundle)?;
+            processed_files.exit_code
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
