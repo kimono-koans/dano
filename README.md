@@ -20,7 +20,7 @@ To me, first class checksums are one thing that sets the FLAC music format apart
 Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 ```
 
-*For lossless files*, this means we can confirm that a lossless file decodes to the same to the exact bitstream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container to another.
+*For lossless files*, this means we can confirm that a lossless file decodes to the same to the exact bitstream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container into another.
 
 ## Why can't I do that everywhere?
 
@@ -118,6 +118,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install dano
 ```
 
-Caveat: `dano` is only tested on MacOS and Linux, and will probably only compile and run on Unix-y Rust supported platforms, but a Windows is version is *likely* to compile with only minor changes.  My further thoughts on a Windows version can be found in this [linked issue](https://github.com/kimono-koans/dano/issues/3).
-
 Note: In addition to what your package manager or OS may provide (for instance, `apt install rustc cargo`, security-minded users may be interested to know that there are [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the `rustc` compiler and `cargo` besides the method described above, which allow you to verify the `rustup` before install.
+
+Caveat: `dano` is only tested on MacOS and Linux, and will probably only compile and run on Unix-y Rust supported platforms, but a Windows is version is *likely* to compile with only minor changes.  My further thoughts on a Windows version can be found in this [linked issue](https://github.com/kimono-koans/dano/issues/3).
