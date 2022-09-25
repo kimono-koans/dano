@@ -20,6 +20,8 @@ To me, first class checksums are one thing that sets the FLAC music format apart
 Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 ```
 
+*For lossless files*, this means we can confirm that a lossless file decodes to the same to the exact bit stream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container to another 
+
 ## Why can't I do that everywhere?
 
 The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  `dano` aims to make what `ffmpeg` provides easier to use.
@@ -80,15 +82,6 @@ fed8052012fb6d0523ef3980a0f6f7bd
 # Verify the decoded ALAC audio stream is the same as the xattr checksum
 % dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
-```
-
-Because MD5 is generally overkill for a file checksum, `dano` also supports faster algorithms, like murmur3, thus verifying all your checksums can be faster using `dano`.
-
-```bash
-% dano -w --only=audio --decode --hash-algo=murmur3 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
-murmur3=f863a834f4d8504944b6121eee3d1993 : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
-Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
-No old file data to overwrite.
 ```
 
 ## Shout outs! Yo, yo, yo!
