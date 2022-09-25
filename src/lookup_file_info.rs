@@ -115,7 +115,12 @@ impl FileInfo {
             SelectedStreams::VideoOnly => Some("0:v?"),
         };
 
-        let process_args = FileInfo::build_process_args(&path_string, hash_algo, decoded, opt_selected_streams_str);
+        let process_args = FileInfo::build_process_args(
+            &path_string,
+            hash_algo,
+            decoded,
+            opt_selected_streams_str,
+        );
 
         let process_output = ExecProcess::new(ffmpeg_command)
             .args(&process_args)
@@ -180,24 +185,17 @@ impl FileInfo {
         }
     }
 
-    fn build_process_args<'a>(path_string: &'a str, hash_algo: &'a str, decoded: bool, opt_selected_streams_str: Option<&'a str> ) -> Vec<&'a str> {
-        let mut process_args = vec![
-                "-i",
-                path_string.as_ref(),
-            ];
+    fn build_process_args<'a>(
+        path_string: &'a str,
+        hash_algo: &'a str,
+        decoded: bool,
+        opt_selected_streams_str: Option<&'a str>,
+    ) -> Vec<&'a str> {
+        let mut process_args = vec!["-i", path_string];
 
-        let end_opts = vec![
-            "-f",
-            "hash",
-            "-hash",
-            hash_algo,
-            "-",
-        ];
+        let end_opts = vec!["-f", "hash", "-hash", hash_algo, "-"];
 
-        let codec_copy = vec![
-            "-codec",
-            "copy",
-        ];
+        let codec_copy = vec!["-codec", "copy"];
 
         if let Some(selected_streams_str) = opt_selected_streams_str {
             process_args.push("-map");
