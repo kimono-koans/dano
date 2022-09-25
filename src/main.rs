@@ -147,7 +147,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("OVERWRITE_OLD")
                 .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
                 .long("overwrite")
-                .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
+                .conflicts_with_all(&["PRINT", "DUMP"])
                 .display_order(12),
         )
         .arg(
@@ -184,7 +184,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
-                .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
+                .conflicts_with_all(&["PRINT", "DUMP"])
                 .display_order(17))
         .arg(
             Arg::new("REWRITE_ALL")
@@ -206,7 +206,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
-            .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
+            .conflicts_with_all(&["PRINT", "DUMP"])
             .display_order(20))
         .get_matches()
 }
