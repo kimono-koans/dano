@@ -27,19 +27,19 @@ use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::utility::{print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
-pub enum BundleType {
+pub enum RemainderType {
     NewFiles,
     NewFileNames,
 }
 
 #[derive(Debug, Clone)]
-pub struct NewFileBundle {
+pub struct RemainderFileBundle {
     pub files: Vec<FileInfo>,
-    pub bundle_type: BundleType,
+    pub remainder_type: RemainderType,
 }
 
-pub struct ProcessedFiles {
-    pub file_bundle: Vec<NewFileBundle>,
+pub struct ProcessingResult {
+    pub file_bundle: Vec<RemainderFileBundle>,
     pub exit_code: i32,
 }
 
@@ -47,7 +47,7 @@ pub fn process_file_info_exec(
     config: &Config,
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
-) -> DanoResult<ProcessedFiles> {
+) -> DanoResult<ProcessingResult> {
     // prepare for loop
     let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
@@ -76,17 +76,17 @@ pub fn process_file_info_exec(
     new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
     let file_bundle = vec![
-        NewFileBundle {
+        RemainderFileBundle {
             files: new_files,
-            bundle_type: BundleType::NewFiles,
+            remainder_type: RemainderType::NewFiles,
         },
-        NewFileBundle {
+        RemainderFileBundle {
             files: new_filenames,
-            bundle_type: BundleType::NewFileNames,
+            remainder_type: RemainderType::NewFileNames,
         },
     ];
 
-    Ok(ProcessedFiles {
+    Ok(ProcessingResult {
         file_bundle,
         exit_code,
     })

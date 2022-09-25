@@ -37,10 +37,10 @@ use lookup_file_info::exec_lookup_file_info;
 use output_file_info::{write_file_info_bundle, write_new, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{process_file_info_exec, BundleType, NewFileBundle};
+use process_file_info::{process_file_info_exec, RemainderFileBundle, RemainderType};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
-use crate::process_file_info::ProcessedFiles;
+use crate::process_file_info::ProcessingResult;
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -472,22 +472,22 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_files = ProcessedFiles {
+            let processed_res = ProcessingResult {
                 file_bundle: vec![
-                    NewFileBundle {
+                    RemainderFileBundle {
                         files: recorded_file_info,
-                        bundle_type: BundleType::NewFiles,
+                        remainder_type: RemainderType::NewFiles,
                     },
-                    NewFileBundle {
+                    RemainderFileBundle {
                         files: Vec::new(),
-                        bundle_type: BundleType::NewFileNames,
+                        remainder_type: RemainderType::NewFileNames,
                     },
                 ],
                 exit_code: DANO_CLEAN_EXIT_CODE,
             };
 
-            write_file_info_bundle(&config, &processed_files.file_bundle)?;
-            processed_files.exit_code
+            write_file_info_bundle(&config, &processed_res.file_bundle)?;
+            processed_res.exit_code
         }
         ExecMode::Write(write_config) if write_config.opt_rewrite => {
             // here we print_file_info because we don't run these opts through verify_file_info,
@@ -496,22 +496,22 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_files = ProcessedFiles {
+            let processed_res = ProcessingResult {
                 file_bundle: vec![
-                    NewFileBundle {
+                    RemainderFileBundle {
                         files: Vec::new(),
-                        bundle_type: BundleType::NewFiles,
+                        remainder_type: RemainderType::NewFiles,
                     },
-                    NewFileBundle {
+                    RemainderFileBundle {
                         files: recorded_file_info,
-                        bundle_type: BundleType::NewFileNames,
+                        remainder_type: RemainderType::NewFileNames,
                     },
                 ],
                 exit_code: DANO_CLEAN_EXIT_CODE,
             };
 
-            write_file_info_bundle(&config, &processed_files.file_bundle)?;
-            processed_files.exit_code
+            write_file_info_bundle(&config, &processed_res.file_bundle)?;
+            processed_res.exit_code
         }
         ExecMode::Write(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
@@ -524,20 +524,20 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .collect();
 
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let processed_files = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
+            let processed_res = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_bundle(&config, &processed_files.file_bundle)?;
-            processed_files.exit_code
+            write_file_info_bundle(&config, &processed_res.file_bundle)?;
+            processed_res.exit_code
         }
         ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let processed_files = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
+            let processed_res = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_bundle(&config, &processed_files.file_bundle)?;
-            processed_files.exit_code
+            write_file_info_bundle(&config, &processed_res.file_bundle)?;
+            processed_res.exit_code
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
