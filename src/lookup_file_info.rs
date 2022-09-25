@@ -109,39 +109,13 @@ impl FileInfo {
             None => &config.selected_streams,
         };
 
-        let selected_streams_str = match selected_streams {
-            SelectedStreams::All => "0",
-            SelectedStreams::AudioOnly => "0:a?",
-            SelectedStreams::VideoOnly => "0:v?",
+        let opt_selected_streams_str = match selected_streams {
+            SelectedStreams::All => None,
+            SelectedStreams::AudioOnly => Some("0:a?"),
+            SelectedStreams::VideoOnly => Some("0:v?"),
         };
 
-        let process_args = if decoded {
-            vec![
-                "-i",
-                path_string.as_ref(),
-                "-map",
-                selected_streams_str,
-                "-f",
-                "hash",
-                "-hash",
-                hash_algo,
-                "-",
-            ]
-        } else {
-            vec![
-                "-i",
-                path_string.as_ref(),
-                "-map",
-                selected_streams_str,
-                "-codec",
-                "copy",
-                "-f",
-                "hash",
-                "-hash",
-                hash_algo,
-                "-",
-            ]
-        };
+        let process_args = FileInfo::build_process_args(&path_string, hash_algo, decoded, opt_selected_streams_str);
 
         let process_output = ExecProcess::new(ffmpeg_command)
             .args(&process_args)
@@ -204,6 +178,39 @@ impl FileInfo {
             tx_item.send(res)?;
             Ok(())
         }
+    }
+
+    fn build_process_args<'a>(path_string: &'a str, hash_algo: &'a str, decoded: bool, opt_selected_streams_str: Option<&'a str> ) -> Vec<&'a str> {
+        let mut process_args = vec![
+                "-i",
+                path_string.as_ref(),
+            ];
+
+        let end_opts = vec![
+            "-f",
+            "hash",
+            "-hash",
+            hash_algo,
+            "-",
+        ];
+
+        let codec_copy = vec![
+            "-codec",
+            "copy",
+        ];
+
+        if let Some(selected_streams_str) = opt_selected_streams_str {
+            process_args.push("-map");
+            process_args.push(selected_streams_str);
+        }
+
+        if !decoded {
+            process_args.extend(codec_copy);
+        };
+
+        process_args.extend(end_opts);
+
+        process_args
     }
 }
 
