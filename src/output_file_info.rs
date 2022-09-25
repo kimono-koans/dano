@@ -65,14 +65,14 @@ fn write_file_info(
 ) -> DanoResult<()> {
     match &config.exec_mode {
         ExecMode::Write(_) => match remainder_type {
-            RemainderType::NewFiles => exec_write_action(
+            RemainderType::NewFile => exec_write_action(
                 config,
                 files_bundle,
                 NOT_WRITE_NEW_PREFIX,
                 WRITE_NEW_PREFIX,
                 remainder_type,
             )?,
-            &RemainderType::NewFileNames => exec_write_action(
+            &RemainderType::ModifiedFilename => exec_write_action(
                 config,
                 files_bundle,
                 NOT_OVERWRITE_OLD_PREFIX,
@@ -81,7 +81,7 @@ fn write_file_info(
             )?,
         },
         ExecMode::Test(test_config) => {
-            if test_config.opt_write_new && matches!(remainder_type, RemainderType::NewFiles) {
+            if test_config.opt_write_new && matches!(remainder_type, RemainderType::NewFile) {
                 exec_write_action(
                     config,
                     files_bundle,
@@ -90,7 +90,7 @@ fn write_file_info(
                     remainder_type,
                 )?
             } else if test_config.opt_overwrite_old
-                && matches!(remainder_type, RemainderType::NewFileNames)
+                && matches!(remainder_type, RemainderType::ModifiedFilename)
             {
                 exec_write_action(
                     config,
@@ -101,12 +101,12 @@ fn write_file_info(
                 )?
             } else {
                 match remainder_type {
-                    RemainderType::NewFiles => print_write_action(
+                    RemainderType::NewFile => print_write_action(
                         NOT_WRITE_NEW_PREFIX,
                         NOT_WRITE_NEW_SUFFIX,
                         files_bundle,
                     )?,
-                    RemainderType::NewFileNames => print_write_action(
+                    RemainderType::ModifiedFilename => print_write_action(
                         NOT_OVERWRITE_OLD_PREFIX,
                         NOT_OVERWRITE_OLD_SUFFIX,
                         files_bundle,
@@ -122,14 +122,14 @@ fn write_file_info(
 fn print_bundle_empty(config: &Config, remainder_type: &RemainderType) {
     if let ExecMode::Test(test_config) = &config.exec_mode {
         match remainder_type {
-            RemainderType::NewFiles => {
+            RemainderType::NewFile => {
                 if test_config.opt_write_new {
                     eprintln!("No new file paths to write.");
                 } else if !config.is_single_path {
                     eprintln!("No new file paths to write, and --write-new was not specified");
                 }
             }
-            RemainderType::NewFileNames => {
+            RemainderType::ModifiedFilename => {
                 if test_config.opt_overwrite_old {
                     eprintln!("No old file data to overwrite.");
                 } else if !config.is_single_path {
@@ -139,10 +139,10 @@ fn print_bundle_empty(config: &Config, remainder_type: &RemainderType) {
         }
     } else if !config.is_single_path {
         match remainder_type {
-            RemainderType::NewFiles => {
+            RemainderType::NewFile => {
                 eprintln!("No new file paths to write.");
             }
-            RemainderType::NewFileNames => {
+            RemainderType::ModifiedFilename => {
                 eprintln!("No old file data to overwrite.");
             }
         }
@@ -162,8 +162,8 @@ fn exec_write_action(
         print_write_action(wet_prefix, EMPTY_STR, files_bundle)?;
 
         match remainder_type {
-            RemainderType::NewFileNames => overwrite_all(config, files_bundle),
-            RemainderType::NewFiles => write_new(config, files_bundle, WriteType::Append),
+            RemainderType::ModifiedFilename => overwrite_all(config, files_bundle),
+            RemainderType::NewFile => write_new(config, files_bundle, WriteType::Append),
         }
     }
 }

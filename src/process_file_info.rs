@@ -28,8 +28,8 @@ use crate::utility::{print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
 pub enum RemainderType {
-    NewFiles,
-    NewFileNames,
+    NewFile,
+    ModifiedFilename,
 }
 
 #[derive(Debug, Clone)]
@@ -78,11 +78,11 @@ pub fn process_file_info_exec(
     let file_bundle = vec![
         RemainderFileBundle {
             files: new_files,
-            remainder_type: RemainderType::NewFiles,
+            remainder_type: RemainderType::NewFile,
         },
         RemainderFileBundle {
             files: new_filenames,
-            remainder_type: RemainderType::NewFileNames,
+            remainder_type: RemainderType::ModifiedFilename,
         },
     ];
 

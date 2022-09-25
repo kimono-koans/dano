@@ -476,11 +476,11 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 file_bundle: vec![
                     RemainderFileBundle {
                         files: recorded_file_info,
-                        remainder_type: RemainderType::NewFiles,
+                        remainder_type: RemainderType::NewFile,
                     },
                     RemainderFileBundle {
                         files: Vec::new(),
-                        remainder_type: RemainderType::NewFileNames,
+                        remainder_type: RemainderType::ModifiedFilename,
                     },
                 ],
                 exit_code: DANO_CLEAN_EXIT_CODE,
@@ -500,11 +500,11 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 file_bundle: vec![
                     RemainderFileBundle {
                         files: Vec::new(),
-                        remainder_type: RemainderType::NewFiles,
+                        remainder_type: RemainderType::NewFile,
                     },
                     RemainderFileBundle {
                         files: recorded_file_info,
-                        remainder_type: RemainderType::NewFileNames,
+                        remainder_type: RemainderType::ModifiedFilename,
                     },
                 ],
                 exit_code: DANO_CLEAN_EXIT_CODE,
