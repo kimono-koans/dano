@@ -38,7 +38,7 @@ pub struct RemainderFilesBundle {
     pub remainder_type: RemainderType,
 }
 
-pub struct ProcessingResult {
+pub struct ProcessingRemainder {
     pub file_bundle: Vec<RemainderFilesBundle>,
     pub exit_code: i32,
 }
@@ -47,7 +47,7 @@ pub fn process_file_info_exec(
     config: &Config,
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
-) -> DanoResult<ProcessingResult> {
+) -> DanoResult<ProcessingRemainder> {
     // prepare for loop
     let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
@@ -86,7 +86,7 @@ pub fn process_file_info_exec(
         },
     ];
 
-    Ok(ProcessingResult {
+    Ok(ProcessingRemainder {
         file_bundle,
         exit_code,
     })

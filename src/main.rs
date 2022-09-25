@@ -40,7 +40,7 @@ use prepare_requests::get_file_info_requests;
 use process_file_info::{process_file_info_exec, RemainderFilesBundle, RemainderType};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
-use crate::process_file_info::ProcessingResult;
+use crate::process_file_info::ProcessingRemainder;
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -472,7 +472,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_res = ProcessingResult {
+            let processed_res = ProcessingRemainder {
                 file_bundle: vec![
                     RemainderFilesBundle {
                         files: recorded_file_info,
@@ -496,7 +496,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_res = ProcessingResult {
+            let processed_res = ProcessingRemainder {
                 file_bundle: vec![
                     RemainderFilesBundle {
                         files: Vec::new(),
