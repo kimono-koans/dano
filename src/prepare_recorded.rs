@@ -31,8 +31,8 @@ pub fn get_recorded_file_info(config: &Config) -> DanoResult<Vec<FileInfo>> {
     };
 
     // if empty, no valid hashes to test in test mode, and we should quit
-    if let ExecMode::Compare(compare_config) = &config.exec_mode {
-        if compare_config.opt_test_mode && recorded_file_info.is_empty() {
+    if let ExecMode::Test(_) = &config.exec_mode {
+        if recorded_file_info.is_empty() {
             return Err(DanoError::new("No valid hashes to test.  Quitting.").into());
         }
     }

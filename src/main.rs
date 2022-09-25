@@ -46,6 +46,10 @@ const DANO_FILE_INFO_VERSION: usize = 3;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";
 
+const DANO_CLEAN_EXIT_CODE: i32 = 0i32;
+const DANO_ERROR_EXIT_CODE: i32 = 1i32;
+const DANO_DISORDER_EXIT_CODE: i32 = 2i32;
+
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
         .about("dano is a wrapper for ffmpeg that checksums the internal file streams of certain media files, \
@@ -90,33 +94,29 @@ fn parse_args() -> ArgMatches {
                 .display_order(4))
         .arg(
             Arg::new("TEST")
-                .help("verify the recorded file information.  Also prints the pass/fail status, and exists with a non-zero code if failed.")
+                .help("verify the recorded file information.  Prints the pass/fail status, exits with a non-zero code if failed, and, potentially, perform write operations, like --write-new or --overwrite.")
                 .short('t')
                 .long("test")
+                .alias("compare")
+                .short_alias('c')
                 .display_order(5))
-        .arg(
-            Arg::new("COMPARE")
-                .help("compare the recorded file information in a hash file (or xattrs) to the files currently on disk, and, potentially, perform write operations, like --write-new or --overwrite.")
-                .short('c')
-                .long("compare")
-                .display_order(6))
         .arg(
             Arg::new("PRINT")
                 .help("pretty print all recorded file information (in hash file and xattrs).")
                 .short('p')
                 .long("print")
-                .display_order(7))
+                .display_order(6))
         .arg(
             Arg::new("DUMP")
                 .help("dump the recorded file information (in hash file and xattrs) to the output file (don't test/compare).")
                 .long("dump")
-                .display_order(8))
+                .display_order(7))
         .arg(
             Arg::new("IMPORT_FLAC")
                 .help("import flac checksums and write as dano recorded file information.")
                 .long("import-flac")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-                .display_order(9))
+                .display_order(8))
         .arg(
             Arg::new("NUM_THREADS")
                 .help("requested number of threads to use for file processing.  Default is twice the number of logical cores.")
@@ -126,39 +126,39 @@ fn parse_args() -> ArgMatches {
                 .min_values(1)
                 .require_equals(true)
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(10))
+                .display_order(9))
         .arg(
             Arg::new("SILENT")
                 .help("quiet many informational messages (like \"OK\").")
                 .short('s')
                 .long("silent")
-                .display_order(11),
+                .display_order(10),
         )
         .arg(
             Arg::new("WRITE_NEW")
-                .help("if new files are present in COMPARE mode, append such file info.")
+                .help("if new files are present in TEST mode, append such file info.")
                 .long("write-new")
-                .requires("COMPARE")
-                .display_order(12),
+                .requires("TEST")
+                .display_order(11),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
                 .long("overwrite")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-                .display_order(13),
+                .display_order(12),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
                 .help("by default, file extensions not recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
                 .long("disable-filter")
-                .display_order(14),
+                .display_order(13),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
                 .help("use canonical paths (instead of potentially relative paths).")
                 .long("canonical-paths")
-                .display_order(15),
+                .display_order(14),
         )
         .arg(
             Arg::new("XATTR")
@@ -166,7 +166,7 @@ fn parse_args() -> ArgMatches {
                 Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.")
                 .short('x')
                 .long("xattr")
-                .display_order(16),
+                .display_order(15),
         )
         .arg(
             Arg::new("HASH_ALGO")
@@ -177,19 +177,19 @@ fn parse_args() -> ArgMatches {
                 .require_equals(true)
                 .possible_values(&["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(17))
+                .display_order(16))
         .arg(
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-                .display_order(18))
+                .display_order(17))
         .arg(
             Arg::new("REWRITE_ALL")
                 .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
                 .long("rewrite")
                 .requires("WRITE")
-                .display_order(19))
+                .display_order(18))
         .arg(
             Arg::new("ONLY")
                 .help("hash selected stream only")
@@ -199,13 +199,13 @@ fn parse_args() -> ArgMatches {
                 .possible_values(&["audio", "video"])
                 .value_parser(clap::builder::ValueParser::os_string())
                 .requires("WRITE")
-                .display_order(20))
+                .display_order(19))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-            .display_order(21))
+            .display_order(20))
         .get_matches()
 }
 
@@ -224,15 +224,14 @@ struct WriteModeConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct CompareModeConfig {
-    opt_test_mode: bool,
+struct TestModeConfig {
     opt_write_new: bool,
     opt_overwrite_old: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ExecMode {
-    Compare(CompareModeConfig),
+    Test(TestModeConfig),
     Write(WriteModeConfig),
     Print,
     Dump,
@@ -297,14 +296,12 @@ impl Config {
         let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
         let opt_disable_filter = matches.is_present("DISABLE_FILTER");
         let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
-        let opt_test_mode = matches.is_present("TEST");
         let opt_decode = matches.is_present("DECODE");
         let opt_import_flac = matches.is_present("IMPORT_FLAC");
         let opt_rewrite = matches.is_present("REWRITE_ALL");
 
-        let exec_mode = if matches.is_present("COMPARE") || opt_test_mode {
-            ExecMode::Compare(CompareModeConfig {
-                opt_test_mode,
+        let exec_mode = if matches.is_present("TEST") {
+            ExecMode::Test(TestModeConfig {
                 opt_overwrite_old,
                 opt_write_new,
             })
@@ -319,7 +316,7 @@ impl Config {
             ExecMode::Print
         } else {
             return Err(DanoError::new(
-                "You must specify an execution mode: COMPARE, TEST, WRITE, PRINT or DUMP",
+                "You must specify an execution mode: TEST, WRITE, PRINT or DUMP",
             )
             .into());
         };
@@ -363,18 +360,14 @@ impl Config {
                 input_files.par_bridge().map(PathBuf::from).collect()
             } else {
                 match &exec_mode {
-                    ExecMode::Compare(compare_config)
-                        if compare_config.opt_test_mode && hash_file.exists() =>
-                    {
-                        Vec::new()
-                    }
+                    ExecMode::Test(_) if hash_file.exists() => Vec::new(),
                     _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                 }
             };
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
-        if paths.is_empty() && (matches!(exec_mode, ExecMode::Write(_)) || !opt_test_mode) {
+        if paths.is_empty() && !matches!(exec_mode, ExecMode::Test(_)) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
 
@@ -435,22 +428,34 @@ fn parse_paths(
 
 fn main() {
     match exec() {
-        Ok(_) => std::process::exit(0),
+        Ok(exit_code) => {
+            if exit_code == DANO_CLEAN_EXIT_CODE {
+                let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
+            } else if exit_code == DANO_DISORDER_EXIT_CODE {
+                let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
+            } else {
+                unreachable!()
+            }
+
+            std::process::exit(exit_code)
+        }
         Err(error) => {
             eprintln!("Error: {}", error);
-            std::process::exit(1)
+            std::process::exit(DANO_ERROR_EXIT_CODE)
         }
     }
 }
 
-fn exec() -> DanoResult<()> {
+fn exec() -> DanoResult<i32> {
     let config = Config::new()?;
 
     let recorded_file_info = get_recorded_file_info(&config)?;
 
-    match &config.exec_mode {
+    let exit_code = match &config.exec_mode {
         ExecMode::Write(write_config) => {
-            let file_bundle = if write_config.opt_import_flac || write_config.opt_rewrite {
+            let (file_bundle, exit_code) = if write_config.opt_import_flac
+                || write_config.opt_rewrite
+            {
                 // here we print_file_info because we don't run these opts through verify_file_info,
                 // which would ordinary print this information
                 recorded_file_info
@@ -458,27 +463,33 @@ fn exec() -> DanoResult<()> {
                     .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
                 if write_config.opt_rewrite {
-                    vec![
-                        NewFileBundle {
-                            files: Vec::new(),
-                            bundle_type: BundleType::NewFiles,
-                        },
-                        NewFileBundle {
-                            files: recorded_file_info,
-                            bundle_type: BundleType::NewFileNames,
-                        },
-                    ]
+                    (
+                        vec![
+                            NewFileBundle {
+                                files: Vec::new(),
+                                bundle_type: BundleType::NewFiles,
+                            },
+                            NewFileBundle {
+                                files: recorded_file_info,
+                                bundle_type: BundleType::NewFileNames,
+                            },
+                        ],
+                        DANO_CLEAN_EXIT_CODE,
+                    )
                 } else if write_config.opt_import_flac {
-                    vec![
-                        NewFileBundle {
-                            files: recorded_file_info,
-                            bundle_type: BundleType::NewFiles,
-                        },
-                        NewFileBundle {
-                            files: Vec::new(),
-                            bundle_type: BundleType::NewFileNames,
-                        },
-                    ]
+                    (
+                        vec![
+                            NewFileBundle {
+                                files: recorded_file_info,
+                                bundle_type: BundleType::NewFiles,
+                            },
+                            NewFileBundle {
+                                files: Vec::new(),
+                                bundle_type: BundleType::NewFileNames,
+                            },
+                        ],
+                        DANO_CLEAN_EXIT_CODE,
+                    )
                 } else {
                     unreachable!()
                 }
@@ -493,23 +504,23 @@ fn exec() -> DanoResult<()> {
                     .collect();
 
                 let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-                let compare_hashes_bundle =
-                    process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-                compare_hashes_bundle
+                process_file_info_exec(&config, &recorded_file_info, rx_item)?
             };
 
-            write_file_info_bundle(&config, &file_bundle)
+            write_file_info_bundle(&config, &file_bundle)?;
+            exit_code
         }
-        ExecMode::Compare(_) => {
+        ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let compare_hashes_bundle =
+            let (test_hashes_bundle, exit_code) =
                 process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_bundle(&config, &compare_hashes_bundle)
+            write_file_info_bundle(&config, &test_hashes_bundle)?;
+            exit_code
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
@@ -520,7 +531,7 @@ fn exec() -> DanoResult<()> {
                     .try_for_each(|file_info| print_file_info(&config, file_info))?;
             }
 
-            Ok(())
+            DANO_CLEAN_EXIT_CODE
         }
         ExecMode::Dump => {
             if recorded_file_info.is_empty() {
@@ -543,9 +554,11 @@ fn exec() -> DanoResult<()> {
                 }
             }
 
-            Ok(())
+            DANO_CLEAN_EXIT_CODE
         }
-    }
+    };
+
+    Ok(exit_code)
 }
 
 fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {

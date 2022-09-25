@@ -24,7 +24,7 @@ use rayon::prelude::*;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::utility::{print_err_buf, print_file_info, print_out_buf};
+use crate::utility::{print_file_info, print_out_buf};
 
 #[derive(Debug, Clone)]
 pub enum BundleType {
@@ -42,7 +42,7 @@ pub fn process_file_info_exec(
     config: &Config,
     recorded_file_info: &[FileInfo],
     rx_item: Receiver<FileInfo>,
-) -> DanoResult<Vec<NewFileBundle>> {
+) -> DanoResult<(Vec<NewFileBundle>, i32)> {
     // prepare for loop
     let file_map = Arc::new(get_file_map(recorded_file_info)?);
     let mut exit_code = 0;
@@ -66,34 +66,23 @@ pub fn process_file_info_exec(
         }
     }
 
-    // exit with non-zero status if test is not "OK"
-    if let ExecMode::Compare(compare_config) = &config.exec_mode {
-        // print FAILED/PASSED if test mode and path is larger than 1
-        if compare_config.opt_test_mode && config.paths.len() > 1 {
-            if exit_code == 0 {
-                print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n")?
-            } else if exit_code == 2 {
-                print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n")?
-            }
-
-            std::process::exit(exit_code)
-        }
-    }
-
     // sort new paths before writing to file, threads may complete in non-sorted order
     new_filenames.par_sort_unstable_by_key(|file_info| file_info.path.clone());
     new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
-    Ok(vec![
-        NewFileBundle {
-            files: new_files,
-            bundle_type: BundleType::NewFiles,
-        },
-        NewFileBundle {
-            files: new_filenames,
-            bundle_type: BundleType::NewFileNames,
-        },
-    ])
+    Ok((
+        vec![
+            NewFileBundle {
+                files: new_files,
+                bundle_type: BundleType::NewFiles,
+            },
+            NewFileBundle {
+                files: new_filenames,
+                bundle_type: BundleType::NewFileNames,
+            },
+        ],
+        exit_code,
+    ))
 }
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &FileInfo) -> bool {
@@ -138,7 +127,7 @@ fn verify_file_info(
     let opt_file_info = if file_info.metadata.is_none() {
         // always print, even in silent
         match config.exec_mode {
-            ExecMode::Compare(_) => {
+            ExecMode::Test(_) => {
                 print_out_buf(&format!(
                     "{:?}: WARNING, path does not exist.\n",
                     &file_info.path
@@ -154,7 +143,7 @@ fn verify_file_info(
     } else if !is_same_filename && !is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
-                ExecMode::Compare(_) => {
+                ExecMode::Test(_) => {
                     print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
@@ -168,7 +157,7 @@ fn verify_file_info(
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
             match config.exec_mode {
-                ExecMode::Compare(_) => {
+                ExecMode::Test(_) => {
                     print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                 }
                 ExecMode::Write(_) => {
@@ -180,7 +169,7 @@ fn verify_file_info(
         None
     } else if is_same_hash {
         match &config.exec_mode {
-            ExecMode::Compare(compare_config) => {
+            ExecMode::Test(compare_config) => {
                 if compare_config.opt_write_new && compare_config.opt_overwrite_old {
                     print_out_buf(format!(
                         "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
@@ -206,7 +195,7 @@ fn verify_file_info(
     } else if is_same_filename {
         // always print, even in silent
         match config.exec_mode {
-            ExecMode::Compare(_) => {
+            ExecMode::Test(_) => {
                 print_out_buf(&format!(
                     "{:?}: WARNING, path has new hash for same filename.\n",
                     file_info.path

@@ -80,8 +80,8 @@ fn write_file_info(
                 bundle_type,
             )?,
         },
-        ExecMode::Compare(compare_config) => {
-            if compare_config.opt_write_new && matches!(bundle_type, BundleType::NewFiles) {
+        ExecMode::Test(test_config) => {
+            if test_config.opt_write_new && matches!(bundle_type, BundleType::NewFiles) {
                 exec_write_action(
                     config,
                     files_bundle,
@@ -89,7 +89,7 @@ fn write_file_info(
                     WRITE_NEW_PREFIX,
                     bundle_type,
                 )?
-            } else if compare_config.opt_overwrite_old
+            } else if test_config.opt_overwrite_old
                 && matches!(bundle_type, BundleType::NewFileNames)
             {
                 exec_write_action(
@@ -120,17 +120,17 @@ fn write_file_info(
 }
 
 fn print_bundle_empty(config: &Config, bundle_type: &BundleType) {
-    if let ExecMode::Compare(compare_config) = &config.exec_mode {
+    if let ExecMode::Test(test_config) = &config.exec_mode {
         match bundle_type {
             BundleType::NewFiles => {
-                if compare_config.opt_write_new {
+                if test_config.opt_write_new {
                     eprintln!("No new file paths to write.");
                 } else {
                     eprintln!("No new file paths to write, and --write-new was not specified");
                 }
             }
             BundleType::NewFileNames => {
-                if compare_config.opt_overwrite_old {
+                if test_config.opt_overwrite_old {
                     eprintln!("No old file data to overwrite.");
                 } else {
                     eprintln!("No old file data to overwrite, and --overwrite was not specified.");
