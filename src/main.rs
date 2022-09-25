@@ -433,7 +433,7 @@ fn main() {
         Ok(status) => {
             // only print information about inconsistent/disorder in test mode,
             // but always exit with disorder exit status if necessary
-            if matches!(status.config.exec_mode, ExecMode::Test(_)) {
+            if matches!(status.exec_mode, ExecMode::Test(_)) {
                 if status.exit_code == DANO_CLEAN_EXIT_CODE {
                     let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
                 } else if status.exit_code == DANO_DISORDER_EXIT_CODE {
@@ -452,7 +452,7 @@ fn main() {
 }
 
 struct ExecExitStatus {
-    config: Config,
+    exec_mode: ExecMode,
     exit_code: i32,
 }
 
@@ -565,7 +565,10 @@ fn exec() -> DanoResult<ExecExitStatus> {
         }
     };
 
-    Ok(ExecExitStatus { config, exit_code })
+    Ok(ExecExitStatus {
+        exec_mode: config.exec_mode,
+        exit_code,
+    })
 }
 
 fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
