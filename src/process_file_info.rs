@@ -93,13 +93,23 @@ pub fn process_file_info_exec(
 }
 
 fn is_same_hash(file_map: &BTreeMap<PathBuf, Option<FileMetadata>>, file_info: &FileInfo) -> bool {
-    file_map
-        .into_par_iter()
-        .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
-        .any(|file_map_metadata| match &file_info.metadata {
-            Some(path_metadata) => path_metadata.hash_value == file_map_metadata.hash_value,
-            None => false,
-        })
+    match &file_info.metadata {
+        Some(path_metadata) => {
+            // fast path
+            if let Some(Some(fast_path_metadata)) = file_map.get(&file_info.path) {
+                if fast_path_metadata.hash_value == path_metadata.hash_value {
+                    return true;
+                }
+            }
+
+            // slow path
+            file_map
+                .into_par_iter()
+                .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
+                .any(|file_map_metadata| path_metadata.hash_value == file_map_metadata.hash_value)
+        }
+        None => false,
+    }
 }
 
 fn is_same_filename(
