@@ -427,7 +427,7 @@ fn parse_paths(
 }
 
 fn main() {
-    match exec() {
+    let exit_code = match exec() {
         Ok(exit_code) => {
             if exit_code == DANO_CLEAN_EXIT_CODE {
                 let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
@@ -436,14 +436,15 @@ fn main() {
             } else {
                 unreachable!()
             }
-
-            std::process::exit(exit_code)
+            exit_code
         }
         Err(error) => {
             eprintln!("Error: {}", error);
-            std::process::exit(DANO_ERROR_EXIT_CODE)
+            DANO_ERROR_EXIT_CODE
         }
-    }
+    };
+
+    std::process::exit(exit_code)
 }
 
 fn exec() -> DanoResult<i32> {
