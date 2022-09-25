@@ -370,8 +370,6 @@ impl Config {
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
-        let is_single_path = paths.len() <= 1;
-
         if paths.is_empty() && !matches!(exec_mode, ExecMode::Test(_)) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
@@ -383,7 +381,7 @@ impl Config {
             opt_decode,
             opt_xattr,
             opt_dry_run,
-            is_single_path,
+            is_single_path: { paths.len() <= 1 },
             selected_streams,
             selected_hash_algo,
             pwd,
@@ -467,59 +465,66 @@ fn exec() -> DanoResult<ExecExitStatus> {
     let recorded_file_info = get_recorded_file_info(&config)?;
 
     let exit_code = match &config.exec_mode {
-        ExecMode::Write(write_config) => {
-            let processed_files = if write_config.opt_import_flac || write_config.opt_rewrite {
-                // here we print_file_info because we don't run these opts through verify_file_info,
-                // which would ordinary print this information
-                recorded_file_info
-                    .iter()
-                    .try_for_each(|file_info| print_file_info(&config, file_info))?;
+        ExecMode::Write(write_config) if write_config.opt_import_flac => {
+            // here we print_file_info because we don't run these opts through verify_file_info,
+            // which would ordinary print this information
+            recorded_file_info
+                .iter()
+                .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-                if write_config.opt_rewrite {
-                    ProcessedFiles {
-                        file_bundle: vec![
-                            NewFileBundle {
-                                files: Vec::new(),
-                                bundle_type: BundleType::NewFiles,
-                            },
-                            NewFileBundle {
-                                files: recorded_file_info,
-                                bundle_type: BundleType::NewFileNames,
-                            },
-                        ],
-                        exit_code: DANO_CLEAN_EXIT_CODE,
-                    }
-                } else if write_config.opt_import_flac {
-                    ProcessedFiles {
-                        file_bundle: vec![
-                            NewFileBundle {
-                                files: recorded_file_info,
-                                bundle_type: BundleType::NewFiles,
-                            },
-                            NewFileBundle {
-                                files: Vec::new(),
-                                bundle_type: BundleType::NewFileNames,
-                            },
-                        ],
-                        exit_code: DANO_CLEAN_EXIT_CODE,
-                    }
-                } else {
-                    unreachable!()
-                }
-            } else {
-                let thread_pool = prepare_thread_pool(&config)?;
-
-                let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
-                // filter out files for which we already have a hash, only do requests on new files
-                let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
-                    .into_iter()
-                    .filter(|request| request.hash_algo.is_none())
-                    .collect();
-
-                let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-
-                process_file_info_exec(&config, &recorded_file_info, rx_item)?
+            let processed_files = ProcessedFiles {
+                file_bundle: vec![
+                    NewFileBundle {
+                        files: recorded_file_info,
+                        bundle_type: BundleType::NewFiles,
+                    },
+                    NewFileBundle {
+                        files: Vec::new(),
+                        bundle_type: BundleType::NewFileNames,
+                    },
+                ],
+                exit_code: DANO_CLEAN_EXIT_CODE,
             };
+
+            write_file_info_bundle(&config, &processed_files.file_bundle)?;
+            processed_files.exit_code
+        }
+        ExecMode::Write(write_config) if write_config.opt_rewrite => {
+            // here we print_file_info because we don't run these opts through verify_file_info,
+            // which would ordinary print this information
+            recorded_file_info
+                .iter()
+                .try_for_each(|file_info| print_file_info(&config, file_info))?;
+
+            let processed_files = ProcessedFiles {
+                file_bundle: vec![
+                    NewFileBundle {
+                        files: Vec::new(),
+                        bundle_type: BundleType::NewFiles,
+                    },
+                    NewFileBundle {
+                        files: recorded_file_info,
+                        bundle_type: BundleType::NewFileNames,
+                    },
+                ],
+                exit_code: DANO_CLEAN_EXIT_CODE,
+            };
+
+            write_file_info_bundle(&config, &processed_files.file_bundle)?;
+            processed_files.exit_code
+        }
+        ExecMode::Write(_) => {
+            let thread_pool = prepare_thread_pool(&config)?;
+
+            let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
+            // filter out files for which we already have a hash, only do requests on new files
+            let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
+                .into_iter()
+                .filter(|request| request.hash_algo.is_none())
+                .collect();
+
+            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
+            let processed_files = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
             write_file_info_bundle(&config, &processed_files.file_bundle)?;
             processed_files.exit_code

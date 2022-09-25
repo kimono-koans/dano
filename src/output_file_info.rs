@@ -133,9 +133,7 @@ fn print_bundle_empty(config: &Config, bundle_type: &BundleType) {
                 if test_config.opt_overwrite_old {
                     eprintln!("No old file data to overwrite.");
                 } else if !config.is_single_path {
-                    eprintln!(
-                        "No old file data to overwrite, and --overwrite was not specified."
-                    );
+                    eprintln!("No old file data to overwrite, and --overwrite was not specified.");
                 }
             }
         }
