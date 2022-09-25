@@ -43,12 +43,15 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         .par_iter()
         .flat_map(|path| match path.extension() {
             Some(extension) if extension.to_ascii_lowercase() == "flac" => Some(path),
-            _ => None,
+            _ => {
+                eprintln!("Error: {:?} does not have a valid FLAC extension", path);
+                None
+            }
         })
-        .flat_map(|path| {
-            import_flac_hash_value(path, &metaflac_cmd).map(|hash_string| (path, hash_string))
+        .map(|path| match import_flac_hash_value(path, &metaflac_cmd) {
+            Ok(hash_value) => generate_flac_file_info(path, hash_value),
+            Err(err) => Err(err),
         })
-        .map(|(path, hash_value)| generate_flac_file_info(path, hash_value))
         .collect()
 }
 
