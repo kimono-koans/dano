@@ -38,7 +38,7 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
         .into());
     };
 
-    let res: DanoResult<Vec<FileInfo>> = config
+    config
         .paths
         .par_iter()
         .flat_map(|path| match path.extension() {
@@ -49,9 +49,7 @@ pub fn get_info_from_flac_import(config: &Config) -> DanoResult<Vec<FileInfo>> {
             import_flac_hash_value(path, &metaflac_cmd).map(|hash_string| (path, hash_string))
         })
         .map(|(path, hash_value)| generate_flac_file_info(path, hash_value))
-        .collect();
-
-    res
+        .collect()
 }
 
 fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<Integer> {
