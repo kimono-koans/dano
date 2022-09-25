@@ -430,13 +430,13 @@ fn parse_paths(
 
 fn main() {
     let exit_code = match exec() {
-        Ok(exit_code) => {
-            if exit_code == DANO_CLEAN_EXIT_CODE {
-                let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
-            } else if exit_code == DANO_DISORDER_EXIT_CODE {
-                let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
-            } else {
-                unreachable!()
+        Ok((config, exit_code)) => {
+            if matches!(config.exec_mode, ExecMode::Test(_)) {
+                if exit_code == DANO_CLEAN_EXIT_CODE {
+                    let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
+                } else if exit_code == DANO_DISORDER_EXIT_CODE {
+                    let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
+                }
             }
             exit_code
         }
@@ -449,7 +449,7 @@ fn main() {
     std::process::exit(exit_code)
 }
 
-fn exec() -> DanoResult<i32> {
+fn exec() -> DanoResult<(Config, i32)> {
     let config = Config::new()?;
 
     let recorded_file_info = get_recorded_file_info(&config)?;
@@ -558,7 +558,7 @@ fn exec() -> DanoResult<i32> {
         }
     };
 
-    Ok(exit_code)
+    Ok((config, exit_code))
 }
 
 fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
