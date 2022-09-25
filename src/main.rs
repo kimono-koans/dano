@@ -37,7 +37,7 @@ use lookup_file_info::exec_lookup_file_info;
 use output_file_info::{write_file_info_bundle, write_new, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{process_file_info_exec, RemainderFileBundle, RemainderType};
+use process_file_info::{process_file_info_exec, RemainderFilesBundle, RemainderType};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
 use crate::process_file_info::ProcessingResult;
@@ -474,11 +474,11 @@ fn exec() -> DanoResult<ExecExitStatus> {
 
             let processed_res = ProcessingResult {
                 file_bundle: vec![
-                    RemainderFileBundle {
+                    RemainderFilesBundle {
                         files: recorded_file_info,
                         remainder_type: RemainderType::NewFile,
                     },
-                    RemainderFileBundle {
+                    RemainderFilesBundle {
                         files: Vec::new(),
                         remainder_type: RemainderType::ModifiedFilename,
                     },
@@ -498,11 +498,11 @@ fn exec() -> DanoResult<ExecExitStatus> {
 
             let processed_res = ProcessingResult {
                 file_bundle: vec![
-                    RemainderFileBundle {
+                    RemainderFilesBundle {
                         files: Vec::new(),
                         remainder_type: RemainderType::NewFile,
                     },
-                    RemainderFileBundle {
+                    RemainderFilesBundle {
                         files: recorded_file_info,
                         remainder_type: RemainderType::ModifiedFilename,
                     },

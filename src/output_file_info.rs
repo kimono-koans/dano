@@ -23,7 +23,7 @@ use rug::Integer;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::FileInfo;
-use crate::process_file_info::{RemainderFileBundle, RemainderType};
+use crate::process_file_info::{RemainderFilesBundle, RemainderType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError,
@@ -46,7 +46,7 @@ pub enum WriteType {
 
 pub fn write_file_info_bundle(
     config: &Config,
-    new_files_bundle: &[RemainderFileBundle],
+    new_files_bundle: &[RemainderFilesBundle],
 ) -> DanoResult<()> {
     new_files_bundle.iter().try_for_each(|file_bundle| {
         if !file_bundle.files.is_empty() {
