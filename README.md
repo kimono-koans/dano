@@ -20,7 +20,7 @@ To me, first class checksums are one thing that sets the FLAC music format apart
 Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 ```
 
-*For lossless files*, this means we can confirm that a lossless file decodes to the same to the exact bit stream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container to another 
+*For lossless files*, this means we can confirm that a lossless file decodes to the same to the exact bitstream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container to another.
 
 ## Why can't I do that everywhere?
 
