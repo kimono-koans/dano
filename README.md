@@ -6,7 +6,7 @@
 
 * Non-media path filtering (which can be disabled)
 * Highly concurrent hashing (select # of threads)
-* Several useful modes: WRITE, TEST, COMPARE, PRINT or DUMP
+* Several useful modes: WRITE, TEST, PRINT or DUMP
 * Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32, SHA160, SHA256, SHA512)
 * Option to decode the stream before executing hash function
 * Write to xattrs or to hash file (and always read back and operate on both)
