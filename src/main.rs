@@ -96,7 +96,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(4))
         .arg(
             Arg::new("TEST")
-                .help("verify the recorded file information.  Prints the pass/fail status, exits with a non-zero code if failed, and, potentially, perform write operations, like --write-new or --overwrite.")
+                .help("verify the recorded file information.  Prints the pass/fail status, exits with a non-zero code if failed, and, potentially, performs write operations, like --write-new or --overwrite.")
                 .short('t')
                 .long("test")
                 .alias("compare")
