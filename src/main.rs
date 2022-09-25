@@ -253,6 +253,7 @@ pub struct Config {
     opt_decode: bool,
     opt_xattr: bool,
     opt_dry_run: bool,
+    is_single_path: bool,
     opt_num_threads: Option<usize>,
     selected_streams: SelectedStreams,
     selected_hash_algo: Box<str>,
@@ -369,6 +370,8 @@ impl Config {
             parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
+        let is_single_path = paths.len() <= 1;
+
         if paths.is_empty() && !matches!(exec_mode, ExecMode::Test(_)) {
             return Err(DanoError::new("No valid paths to search.").into());
         }
@@ -380,6 +383,7 @@ impl Config {
             opt_decode,
             opt_xattr,
             opt_dry_run,
+            is_single_path,
             selected_streams,
             selected_hash_algo,
             pwd,
@@ -433,7 +437,7 @@ fn main() {
         Ok(status) => {
             // only print information about inconsistent/disorder in test mode,
             // but always exit with disorder exit status if necessary
-            if matches!(status.exec_mode, ExecMode::Test(_)) && !status.is_single_file {
+            if matches!(status.exec_mode, ExecMode::Test(_)) && !status.is_single_path {
                 if status.exit_code == DANO_CLEAN_EXIT_CODE {
                     let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
                 } else if status.exit_code == DANO_DISORDER_EXIT_CODE {
@@ -454,7 +458,7 @@ fn main() {
 struct ExecExitStatus {
     exec_mode: ExecMode,
     exit_code: i32,
-    is_single_file: bool,
+    is_single_path: bool,
 }
 
 fn exec() -> DanoResult<ExecExitStatus> {
@@ -569,7 +573,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
     Ok(ExecExitStatus {
         exec_mode: config.exec_mode,
         exit_code,
-        is_single_file: { config.paths.len() <= 1 },
+        is_single_path: config.is_single_path,
     })
 }
 

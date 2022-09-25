@@ -125,19 +125,21 @@ fn print_bundle_empty(config: &Config, bundle_type: &BundleType) {
             BundleType::NewFiles => {
                 if test_config.opt_write_new {
                     eprintln!("No new file paths to write.");
-                } else {
+                } else if !config.is_single_path {
                     eprintln!("No new file paths to write, and --write-new was not specified");
                 }
             }
             BundleType::NewFileNames => {
                 if test_config.opt_overwrite_old {
                     eprintln!("No old file data to overwrite.");
-                } else {
-                    eprintln!("No old file data to overwrite, and --overwrite was not specified.");
+                } else if !config.is_single_path {
+                    eprintln!(
+                        "No old file data to overwrite, and --overwrite was not specified."
+                    );
                 }
             }
         }
-    } else {
+    } else if !config.is_single_path {
         match bundle_type {
             BundleType::NewFiles => {
                 eprintln!("No new file paths to write.");
