@@ -472,7 +472,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_res = ProcessingRemainder {
+            let processing_remainder = ProcessingRemainder {
                 file_bundle: vec![
                     RemainderFilesBundle {
                         files: recorded_file_info,
@@ -486,8 +486,8 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 exit_code: DANO_CLEAN_EXIT_CODE,
             };
 
-            write_file_info_bundle(&config, &processed_res.file_bundle)?;
-            processed_res.exit_code
+            write_file_info_bundle(&config, &processing_remainder.file_bundle)?;
+            processing_remainder.exit_code
         }
         ExecMode::Write(write_config) if write_config.opt_rewrite => {
             // here we print_file_info because we don't run these opts through verify_file_info,
@@ -496,7 +496,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_res = ProcessingRemainder {
+            let processing_remainder = ProcessingRemainder {
                 file_bundle: vec![
                     RemainderFilesBundle {
                         files: Vec::new(),
@@ -510,8 +510,8 @@ fn exec() -> DanoResult<ExecExitStatus> {
                 exit_code: DANO_CLEAN_EXIT_CODE,
             };
 
-            write_file_info_bundle(&config, &processed_res.file_bundle)?;
-            processed_res.exit_code
+            write_file_info_bundle(&config, &processing_remainder.file_bundle)?;
+            processing_remainder.exit_code
         }
         ExecMode::Write(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
