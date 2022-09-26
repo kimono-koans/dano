@@ -448,49 +448,45 @@ fn exec() -> DanoResult<i32> {
     let recorded_file_info = get_recorded_file_info(&config)?;
 
     let exit_code = match &config.exec_mode {
-        ExecMode::Write(write_config) if write_config.opt_import_flac => {
+        ExecMode::Write(write_config)
+            if write_config.opt_rewrite || write_config.opt_import_flac =>
+        {
             // here we print_file_info because we don't run these opts through verify_file_info,
             // which would ordinary print this information
             recorded_file_info
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processing_remainder = ProcessingRemainder {
-                file_bundle: vec![
-                    RemainderFilesBundle {
-                        files: recorded_file_info,
-                        remainder_type: RemainderType::NewFile,
-                    },
-                    RemainderFilesBundle {
-                        files: Vec::new(),
-                        remainder_type: RemainderType::ModifiedFilename,
-                    },
-                ],
-                exit_code: DANO_CLEAN_EXIT_CODE,
-            };
-
-            write_file_info_bundle(&config, &processing_remainder.file_bundle)?;
-            processing_remainder.exit_code
-        }
-        ExecMode::Write(write_config) if write_config.opt_rewrite => {
-            // here we print_file_info because we don't run these opts through verify_file_info,
-            // which would ordinary print this information
-            recorded_file_info
-                .iter()
-                .try_for_each(|file_info| print_file_info(&config, file_info))?;
-
-            let processing_remainder = ProcessingRemainder {
-                file_bundle: vec![
-                    RemainderFilesBundle {
-                        files: Vec::new(),
-                        remainder_type: RemainderType::NewFile,
-                    },
-                    RemainderFilesBundle {
-                        files: recorded_file_info,
-                        remainder_type: RemainderType::ModifiedFilename,
-                    },
-                ],
-                exit_code: DANO_CLEAN_EXIT_CODE,
+            let processing_remainder = if write_config.opt_rewrite {
+                ProcessingRemainder {
+                    file_bundle: vec![
+                        RemainderFilesBundle {
+                            files: Vec::new(),
+                            remainder_type: RemainderType::NewFile,
+                        },
+                        RemainderFilesBundle {
+                            files: recorded_file_info,
+                            remainder_type: RemainderType::ModifiedFilename,
+                        },
+                    ],
+                    exit_code: DANO_CLEAN_EXIT_CODE,
+                }
+            } else if write_config.opt_import_flac {
+                ProcessingRemainder {
+                    file_bundle: vec![
+                        RemainderFilesBundle {
+                            files: recorded_file_info,
+                            remainder_type: RemainderType::NewFile,
+                        },
+                        RemainderFilesBundle {
+                            files: Vec::new(),
+                            remainder_type: RemainderType::ModifiedFilename,
+                        },
+                    ],
+                    exit_code: DANO_CLEAN_EXIT_CODE,
+                }
+            } else {
+                unreachable!()
             };
 
             write_file_info_bundle(&config, &processing_remainder.file_bundle)?;
