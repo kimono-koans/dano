@@ -92,7 +92,8 @@ pub fn write_non_file(file_info: &FileInfo) -> DanoResult<()> {
 }
 
 fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
-    // this is a relatively large xattr(?), may need to change later
+    // always remove and reset when writing xattrs
+    xattr::remove(&file_info.path, DANO_XATTR_KEY_NAME)?;
     xattr::set(&file_info.path, DANO_XATTR_KEY_NAME, out_string.as_bytes())
         .map_err(|err| err.into())
 }
