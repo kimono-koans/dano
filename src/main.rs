@@ -432,18 +432,7 @@ fn parse_paths(
 
 fn main() {
     let exit_code = match exec() {
-        Ok(status) => {
-            // only print information about inconsistent/disorder in test mode,
-            // but always exit with disorder exit status if necessary
-            if matches!(status.exec_mode, ExecMode::Test(_)) && !status.is_single_path {
-                if status.exit_code == DANO_CLEAN_EXIT_CODE {
-                    let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
-                } else if status.exit_code == DANO_DISORDER_EXIT_CODE {
-                    let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
-                }
-            }
-            status.exit_code
-        }
+        Ok(exit_code) => exit_code,
         Err(error) => {
             eprintln!("Error: {}", error);
             DANO_ERROR_EXIT_CODE
@@ -453,13 +442,7 @@ fn main() {
     std::process::exit(exit_code)
 }
 
-struct ExecExitStatus {
-    exec_mode: ExecMode,
-    exit_code: i32,
-    is_single_path: bool,
-}
-
-fn exec() -> DanoResult<ExecExitStatus> {
+fn exec() -> DanoResult<i32> {
     let config = Config::new()?;
 
     let recorded_file_info = get_recorded_file_info(&config)?;
@@ -529,7 +512,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
             processed_res.exit_code
         }
-        ExecMode::Test(_) => {
+        ExecMode::Test(test_config) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
@@ -537,6 +520,17 @@ fn exec() -> DanoResult<ExecExitStatus> {
             let processed_res = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
 
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
+
+            if !config.is_single_path
+                && (test_config.opt_write_new || test_config.opt_overwrite_old)
+            {
+                if processed_res.exit_code == DANO_CLEAN_EXIT_CODE {
+                    let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
+                } else if processed_res.exit_code == DANO_DISORDER_EXIT_CODE {
+                    let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
+                }
+            }
+
             processed_res.exit_code
         }
         ExecMode::Print => {
@@ -575,11 +569,7 @@ fn exec() -> DanoResult<ExecExitStatus> {
         }
     };
 
-    Ok(ExecExitStatus {
-        exec_mode: config.exec_mode,
-        exit_code,
-        is_single_path: config.is_single_path,
-    })
+    Ok(exit_code)
 }
 
 fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
