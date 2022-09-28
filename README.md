@@ -24,9 +24,7 @@ Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 
 The question is -- why don't we have this functionality for video and other media streams?  The answer is, of course, we do, (because `ffmpeg` is incredible!) we just never use it.  `dano` aims to make what `ffmpeg` provides easier to use.
 
-*For lossless files*, this means we can confirm that a lossless file decodes to the same to the exact bitstream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container into another.
-
-So -- when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
+*For lossless files*, this means we can confirm that a lossless file decodes to the exact bitstream we encoded, but, *for all files*, this means our checksums are stable against metadata changes, file name changes, and/or moving a bitstream, or many bitstreams, from one media container into another.  For example:
 
 ```bash
 % dano -w 'Sample.mkv'
