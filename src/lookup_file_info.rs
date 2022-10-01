@@ -242,8 +242,9 @@ pub fn exec_lookup_file_info(
                 let config_clone = config_arc.clone();
                 file_info_scope.spawn(move |_| {
                     if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                        // probably want to see the error, but not exit the process
+                        // when there is an error in a single thread
                         eprintln!("Error: {}", err);
-                        std::process::exit(1)
                     }
                 })
             });
