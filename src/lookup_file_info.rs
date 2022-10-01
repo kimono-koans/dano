@@ -125,18 +125,23 @@ impl FileInfo {
         let process_output = ExecProcess::new(ffmpeg_command)
             .args(&process_args)
             .output()?;
-        let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
-        let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
-        if stderr_string.contains("incorrect codec parameters") {
-            let msg = format!(
-                "Error: Invalid hash algorithm specified.  \
-            This version of ffmpeg does not support: {} .  \
-            Upgrade or specify another hash algorithm.",
-                config.selected_hash_algo
-            );
-            return Err(DanoError::new(&msg).into());
-        }
+        let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
+
+        match std::str::from_utf8(&process_output.stderr) {
+            Ok(stderr_string) if stderr_string.trim().contains("incorrect codec parameters") => {
+                let msg = format!(
+                    "Error: Invalid hash algorithm specified.  \
+                This version of ffmpeg does not support: {} .  \
+                Upgrade or specify another hash algorithm.",
+                    config.selected_hash_algo
+                );
+                return Err(DanoError::new(&msg).into());
+            }
+            // ffmpeg stderr can produce invalid UTF8 sequences which cause dano to
+            // error out in a very confusing way.  Better just to flatten that error here.
+            _ => (),
+        };
 
         Ok(stdout_string.into())
     }
