@@ -406,7 +406,14 @@ fn parse_paths(
             if path.exists() {
                 true
             } else {
-                eprintln!("Path {:?} does not exist", path);
+                eprintln!("Error: Path does not exist: {:?}", path);
+                false
+            }
+        })
+        .filter(|path| match path.to_str() {
+            Some(_) => true,
+            None => {
+                eprintln!("Error: Path cannot be serialized to string: {:?}", path);
                 false
             }
         })

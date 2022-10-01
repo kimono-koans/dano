@@ -150,6 +150,11 @@ impl FileInfo {
     ) -> DanoResult<()> {
         let timestamp = SystemTime::now();
 
+        if request.path.to_str().is_none() {
+            let msg = format!("Requested path failed UTF validation: {:?}", request.path);
+            return Err(DanoError::new(&msg).into());
+        }
+
         let phantom_file_info = FileInfo {
             path: request.path.to_owned(),
             version: DANO_FILE_INFO_VERSION,
