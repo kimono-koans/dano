@@ -169,7 +169,6 @@ fn verify_file_info(
                 _ => unreachable!(),
             }
         }
-        test_exit_code = 2;
         Some(Either::Right(file_info))
     } else if is_same_filename && is_same_hash {
         if !config.opt_silent {
@@ -207,7 +206,6 @@ fn verify_file_info(
             }
             _ => unreachable!(),
         }
-        test_exit_code = 2;
         Some(Either::Left(file_info))
     } else if is_same_filename {
         // always print, even in silent
@@ -223,7 +221,7 @@ fn verify_file_info(
             }
             _ => unreachable!(),
         }
-        test_exit_code = 2;
+        test_exit_code = 3;
         None
     } else {
         unreachable!()
