@@ -39,6 +39,9 @@ const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
+const NEW_FILES_EMPTY: &str = "No new file paths to write.";
+const MODIFIED_FILE_NAMES_EMPTY: &str = "No old file data to overwrite.";
+
 pub enum WriteType {
     Append,
     OverwriteAll,
@@ -127,22 +130,20 @@ fn print_bundle_empty(config: &Config, remainder_type: &RemainderType) {
             {
                 match remainder_type {
                     RemainderType::NewFile if !test_config.opt_write_new => {
-                        eprintln!("No new file paths to write, and --write-new was not specified");
+                        eprintln!("{}{}", NEW_FILES_EMPTY, NOT_WRITE_NEW_SUFFIX);
                     }
                     RemainderType::ModifiedFilename if !test_config.opt_overwrite_old => {
-                        eprintln!(
-                            "No old file data to overwrite, and --overwrite was not specified."
-                        );
+                        eprintln!("{}{}", MODIFIED_FILE_NAMES_EMPTY, NOT_OVERWRITE_OLD_SUFFIX);
                     }
                     _ => unreachable!(),
                 }
             }
             _ => match remainder_type {
                 RemainderType::NewFile => {
-                    eprintln!("No new file paths to write.");
+                    eprintln!("{}", NEW_FILES_EMPTY);
                 }
                 RemainderType::ModifiedFilename => {
-                    eprintln!("No old file data to overwrite.");
+                    eprintln!("{}", MODIFIED_FILE_NAMES_EMPTY);
                 }
             },
         }
