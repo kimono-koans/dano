@@ -165,7 +165,8 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("XATTR")
                 .help("try to write (dano will always try to read) hash to/from file's extended attributes.  \
-                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.")
+                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.  \
+                When XATTR is enabled, if a write is requested, XATTR will always overwrite extended attributes previously written.")
                 .short('x')
                 .long("xattr")
                 .display_order(15),
