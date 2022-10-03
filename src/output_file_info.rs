@@ -120,31 +120,31 @@ fn write_file_info(
 }
 
 fn print_bundle_empty(config: &Config, remainder_type: &RemainderType) {
-    if let ExecMode::Test(test_config) = &config.exec_mode {
-        match remainder_type {
-            RemainderType::NewFile => {
-                if test_config.opt_write_new {
+    if !config.is_single_path {
+        match &config.exec_mode {
+            ExecMode::Test(test_config)
+                if !test_config.opt_write_new || !test_config.opt_overwrite_old =>
+            {
+                match remainder_type {
+                    RemainderType::NewFile if !test_config.opt_write_new => {
+                        eprintln!("No new file paths to write, and --write-new was not specified");
+                    }
+                    RemainderType::ModifiedFilename if !test_config.opt_overwrite_old => {
+                        eprintln!(
+                            "No old file data to overwrite, and --overwrite was not specified."
+                        );
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => match remainder_type {
+                RemainderType::NewFile => {
                     eprintln!("No new file paths to write.");
-                } else if !config.is_single_path {
-                    eprintln!("No new file paths to write, and --write-new was not specified");
                 }
-            }
-            RemainderType::ModifiedFilename => {
-                if test_config.opt_overwrite_old {
+                RemainderType::ModifiedFilename => {
                     eprintln!("No old file data to overwrite.");
-                } else if !config.is_single_path {
-                    eprintln!("No old file data to overwrite, and --overwrite was not specified.");
                 }
-            }
-        }
-    } else if !config.is_single_path {
-        match remainder_type {
-            RemainderType::NewFile => {
-                eprintln!("No new file paths to write.");
-            }
-            RemainderType::ModifiedFilename => {
-                eprintln!("No old file data to overwrite.");
-            }
+            },
         }
     }
 }
