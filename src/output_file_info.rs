@@ -156,6 +156,7 @@ fn exec_write_action(
     wet_prefix: &str,
     remainder_type: &RemainderType,
 ) -> DanoResult<()> {
+    //  notice the fn print_write_action() parameters are different for write/dry run
     if config.opt_dry_run {
         print_write_action(dry_prefix, EMPTY_STR, files_bundle)
     } else {
