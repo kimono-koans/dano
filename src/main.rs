@@ -515,7 +515,7 @@ fn exec() -> DanoResult<i32> {
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
             processed_res.exit_code
         }
-        ExecMode::Test(test_config) => {
+        ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
@@ -524,9 +524,7 @@ fn exec() -> DanoResult<i32> {
 
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
 
-            if !config.is_single_path
-                && (test_config.opt_write_new || test_config.opt_overwrite_old)
-            {
+            if !config.is_single_path {
                 if processed_res.exit_code == DANO_CLEAN_EXIT_CODE {
                     let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
                 } else if processed_res.exit_code == DANO_DISORDER_EXIT_CODE {
