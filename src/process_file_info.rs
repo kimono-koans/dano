@@ -158,16 +158,15 @@ fn verify_file_info(
         test_exit_code = 2;
         None
     } else if !is_same_filename && !is_same_hash {
-        if !config.opt_silent {
-            match config.exec_mode {
-                ExecMode::Test(_) => {
-                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
-                }
-                ExecMode::Write(_) => {
-                    print_file_info(config, &file_info)?;
-                }
-                _ => unreachable!(),
+        // always print, even in silent
+        match config.exec_mode {
+            ExecMode::Test(_) => {
+                print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
             }
+            ExecMode::Write(_) => {
+                print_file_info(config, &file_info)?;
+            }
+            _ => unreachable!(),
         }
         Some(Either::Right(file_info))
     } else if is_same_filename && is_same_hash {
@@ -184,6 +183,7 @@ fn verify_file_info(
         }
         None
     } else if is_same_hash {
+        // always print, even in silent
         match &config.exec_mode {
             ExecMode::Test(test_config) => {
                 if test_config.opt_write_new && test_config.opt_overwrite_old {
