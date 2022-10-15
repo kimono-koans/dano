@@ -20,7 +20,6 @@ use std::{
     path::{Path, PathBuf},
     process::Command as ExecProcess,
     sync::Arc,
-    thread,
     time::SystemTime,
 };
 
@@ -235,19 +234,17 @@ pub fn exec_lookup_file_info(
     let config_arc = Arc::new(config.clone());
 
     // exec threads to hash files
-    thread::spawn(move || {
-        thread_pool.in_place_scope(|file_info_scope| {
-            requested_paths_clone.iter().for_each(|request| {
-                let tx_item_clone = tx_item.clone();
-                let config_clone = config_arc.clone();
-                file_info_scope.spawn(move |_| {
-                    if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
-                        // probably want to see the error, but not exit the process
-                        // when there is an error in a single thread
-                        eprintln!("Error: {}", err);
-                    }
-                })
-            });
+    thread_pool.scope(|file_info_scope| {
+        requested_paths_clone.iter().for_each(|request| {
+            let tx_item_clone = tx_item.clone();
+            let config_clone = config_arc.clone();
+            file_info_scope.spawn(move |_| {
+                if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                    // probably want to see the error, but not exit the process
+                    // when there is an error in a single thread
+                    eprintln!("Error: {}", err);
+                }
+            })
         });
     });
 
