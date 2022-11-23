@@ -90,6 +90,8 @@ Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`.
 
 ## Install via Native Packages
 
+For Debian-based distributions (like Ubuntu), I maintain a personal package archive, or PPA.  See the [linked repository](https://github.com/kimono-koans/ppa) for instructions on how to use.
+
 For Debian-based and Redhat-based Linux distributions (like, Ubuntu or Fedora, etc.), check the [tagged releases](https://github.com/kimono-koans/dano/tags) for native packages for your distribution.  
 
 You may also create and install your own native package from the latest sources, like so:
