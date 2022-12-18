@@ -238,7 +238,7 @@ impl FileInfoLookup {
 
         let config_arc = Arc::new(config.clone());
 
-        let _ = std::thread::spawn(move || {
+        std::thread::spawn(move || {
             // exec threads to hash files
             thread_pool.in_place_scope(|file_info_scope| {
                 requested_paths_clone.iter().for_each(|request| {
