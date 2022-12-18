@@ -15,8 +15,8 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::time::SystemTime;
 use std::ops::Deref;
+use std::time::SystemTime;
 
 use itertools::Itertools;
 use rug::Integer;
@@ -68,10 +68,7 @@ impl Deref for PrintBundle {
 }
 
 impl PrintBundle {
-    pub fn write_out(
-        self,
-        config: &Config,
-    ) -> DanoResult<()> {
+    pub fn write_out(self, config: &Config) -> DanoResult<()> {
         self.inner.into_iter().try_for_each(|file_bundle| {
             if !file_bundle.files.is_empty() {
                 file_bundle.write_out(config)
@@ -112,46 +109,31 @@ impl PrintBundle {
 }
 
 impl RemainderFilesBundle {
-    fn write_out(
-        self,
-        config: &Config,
-    ) -> DanoResult<()> {
+    fn write_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
             ExecMode::Write(_) => match &self.remainder_type {
-                RemainderType::NewFile => self.exec_write_action(
-                    config,
-                    NOT_WRITE_NEW_PREFIX,
-                    WRITE_NEW_PREFIX,
-                )?,
-                &RemainderType::ModifiedFilename => self.exec_write_action(
-                    config,
-                    NOT_OVERWRITE_OLD_PREFIX,
-                    OVERWRITE_OLD_PREFIX,
-                )?,
+                RemainderType::NewFile => {
+                    self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
+                }
+                &RemainderType::ModifiedFilename => {
+                    self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
+                }
             },
             ExecMode::Test(test_config) => {
-                if test_config.opt_write_new && matches!(self.remainder_type, RemainderType::NewFile) {
-                    self.exec_write_action(
-                        config,
-                        NOT_WRITE_NEW_PREFIX,
-                        WRITE_NEW_PREFIX,
-                    )?
+                if test_config.opt_write_new
+                    && matches!(self.remainder_type, RemainderType::NewFile)
+                {
+                    self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
                 } else if test_config.opt_overwrite_old
                     && matches!(&self.remainder_type, RemainderType::ModifiedFilename)
                 {
-                    self.exec_write_action(
-                        config,
-                        NOT_OVERWRITE_OLD_PREFIX,
-                        OVERWRITE_OLD_PREFIX,
-                    )?
+                    self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
                 } else {
                     let recorded_file_info: RecordedFileInfo = self.clone().files.into();
 
                     match &self.remainder_type {
-                        RemainderType::NewFile => recorded_file_info.print_write_action(
-                            NOT_WRITE_NEW_PREFIX,
-                            NOT_WRITE_NEW_SUFFIX,
-                        )?,
+                        RemainderType::NewFile => recorded_file_info
+                            .print_write_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?,
                         RemainderType::ModifiedFilename => recorded_file_info.print_write_action(
                             NOT_OVERWRITE_OLD_PREFIX,
                             NOT_OVERWRITE_OLD_SUFFIX,
@@ -172,15 +154,17 @@ impl RemainderFilesBundle {
     ) -> DanoResult<()> {
         //  notice the fn print_write_action() parameters are different for write/dry run
         let file_info_set: PrintedFileInfo = self.files.into();
-        
+
         if config.opt_dry_run {
             file_info_set.print_write_action(dry_prefix, EMPTY_STR)
         } else {
             file_info_set.print_write_action(wet_prefix, EMPTY_STR)?;
-    
+
             match self.remainder_type {
                 RemainderType::ModifiedFilename => file_info_set.overwrite_all(config),
-                RemainderType::NewFile => write_new(config, file_info_set.deref(), WriteType::Append),
+                RemainderType::NewFile => {
+                    write_new(config, file_info_set.deref(), WriteType::Append)
+                }
             }
         }
     }
@@ -197,17 +181,18 @@ impl PrintedFileInfo {
 
     pub fn overwrite_all(&self, config: &Config) -> DanoResult<()> {
         // append new paths
-        write_new(config, &self.deref(), WriteType::Append)?;
+        write_new(config, self.deref(), WriteType::Append)?;
 
         // overwrite all paths if in non-xattr/file write mode
         match &config.exec_mode {
             ExecMode::Write(_) if !config.opt_xattr => {
                 // read back
-                let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
-                    read_file_info_from_file(config)?
-                } else {
-                    return Err(DanoError::new("No valid output file exists").into());
-                };
+                let recorded_file_info_with_duplicates: Vec<FileInfo> =
+                    if config.output_file.exists() {
+                        read_file_info_from_file(config)?
+                    } else {
+                        return Err(DanoError::new("No valid output file exists").into());
+                    };
 
                 // then dedup
                 let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
@@ -218,12 +203,12 @@ impl PrintedFileInfo {
                     })
                     .into_iter()
                     .flat_map(|(_hash, group_file_info)| {
-                        group_file_info
-                            .into_iter()
-                            .max_by_key(|file_info| match &file_info.metadata {
+                        group_file_info.into_iter().max_by_key(|file_info| {
+                            match &file_info.metadata {
                                 Some(metadata) => metadata.last_written,
                                 None => SystemTime::UNIX_EPOCH,
-                            })
+                            }
+                        })
                     })
                     .cloned()
                     .collect();

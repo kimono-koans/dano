@@ -118,9 +118,7 @@ pub fn print_err_buf(err_buf: &str) -> DanoResult<()> {
     let err = std::io::stderr();
     let mut err_locked = err.lock();
     err_locked.write_all(err_buf.as_bytes())?;
-    err_locked.flush()?;
-
-    Ok(())
+    err_locked.flush().map_err(|err| err.into())
 }
 
 pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
@@ -128,9 +126,7 @@ pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
     let out = std::io::stdout();
     let mut out_locked = out.lock();
     out_locked.write_all(output_buf.as_bytes())?;
-    out_locked.flush()?;
-
-    Ok(())
+    out_locked.flush().map_err(|err| err.into())
 }
 
 pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
