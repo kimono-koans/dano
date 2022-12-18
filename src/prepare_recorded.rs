@@ -19,7 +19,6 @@ use std::ops::Deref;
 
 use rayon::prelude::*;
 
-use crate::flac_import::get_info_from_flac_import;
 use crate::lookup_file_info::FileInfo;
 use crate::utility::{deserialize, read_file_info_from_file};
 use crate::{Config, DanoError, DanoResult, ExecMode, DANO_XATTR_KEY_NAME};
@@ -46,7 +45,7 @@ impl RecordedFileInfo {
     pub fn new(config: &Config) -> DanoResult<Self> {
         let mut recorded_file_info: Vec<FileInfo> = match &config.exec_mode {
             ExecMode::Write(write_config) if write_config.opt_import_flac => {
-                get_info_from_flac_import(config)?
+                Self::from_flac(config)?
             }
             _ => Self::from_recorded(config)?,
         };
