@@ -17,6 +17,7 @@
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
+    ops::Deref,
     path::{Path, PathBuf},
     process::Command as ExecProcess,
     sync::Arc,
@@ -29,8 +30,9 @@ use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::utility::DanoError;
-use crate::{Config, DanoResult, FileInfoRequest, SelectedStreams, DANO_FILE_INFO_VERSION};
+use crate::config::{FileInfoRequest, SelectedStreams};
+use crate::{prepare_requests::FileInfoRequestBundle, utility::DanoError};
+use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileInfo {
@@ -226,7 +228,7 @@ pub struct FileInfoLookup;
 impl FileInfoLookup {
     pub fn exec(
         config: &Config,
-        requested_paths: &[FileInfoRequest],
+        requested_paths: &FileInfoRequestBundle,
         thread_pool: ThreadPool,
     ) -> DanoResult<Receiver<FileInfo>> {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
@@ -238,7 +240,7 @@ impl FileInfoLookup {
 
         // exec threads to hash files
         thread_pool.scope(|file_info_scope| {
-            requested_paths_clone.iter().for_each(|request| {
+            requested_paths_clone.deref().iter().for_each(|request| {
                 let tx_item_clone = tx_item.clone();
                 let config_clone = config_arc.clone();
                 file_info_scope.spawn(move |_| {

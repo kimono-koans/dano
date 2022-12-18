@@ -21,8 +21,9 @@ use rayon::prelude::*;
 use rug::Integer;
 use which::which;
 
+use crate::config::SelectedStreams;
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::{Config, DanoError, DanoResult, SelectedStreams, DANO_FILE_INFO_VERSION};
+use crate::{Config, DanoError, DanoResult, DANO_FILE_INFO_VERSION};
 
 const FLAC_HASH_ALGO: &str = "MD5";
 const FLAC_DECODED: bool = true;
