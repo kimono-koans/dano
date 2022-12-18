@@ -23,7 +23,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rayon::prelude::*;
+use rayon::{prelude::*, ThreadPool};
 use serde_json::Value;
 
 use crate::lookup_file_info::FileInfo;
@@ -35,6 +35,21 @@ use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY
 // this is one of those things one can't make a const function
 const HASH_VALUE_MIN_WIDTH: usize = 32;
 const TMP_SUFFIX: &str = ".tmp";
+
+pub fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
+    let num_threads = if let Some(num_threads) = config.opt_num_threads {
+        num_threads
+    } else {
+        num_cpus::get()
+    };
+
+    let thread_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .expect("Could not initialize rayon thread pool");
+
+    Ok(thread_pool)
+}
 
 #[derive(Debug, Clone)]
 pub struct DanoError {

@@ -17,8 +17,6 @@
 
 use std::ops::Deref;
 
-use rayon::ThreadPool;
-
 mod config;
 mod flac_import;
 mod lookup_file_info;
@@ -35,7 +33,7 @@ use output_file_info::{write_file_info_bundle, write_new, WriteType};
 use prepare_recorded::RecordedFileInfo;
 use prepare_requests::FileInfoRequestBundle;
 use process_file_info::{ProcessedFiles, RemainderFilesBundle, RemainderType};
-use utility::{print_err_buf, print_file_info, DanoError};
+use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -183,19 +181,4 @@ fn exec() -> DanoResult<i32> {
     };
 
     Ok(exit_code)
-}
-
-fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
-    let num_threads = if let Some(num_threads) = config.opt_num_threads {
-        num_threads
-    } else {
-        num_cpus::get() * 2usize
-    };
-
-    let thread_pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .build()
-        .expect("Could not initialize rayon thread pool");
-
-    Ok(thread_pool)
 }

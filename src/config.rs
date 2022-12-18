@@ -96,7 +96,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(8))
         .arg(
             Arg::new("NUM_THREADS")
-                .help("requested number of threads to use for file processing.  Default is twice the number of logical cores.")
+                .help("requested number of threads to use for file processing.  Default is the number of logical cores.")
                 .short('j')
                 .long("threads")
                 .takes_value(true)
