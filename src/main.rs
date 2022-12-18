@@ -37,10 +37,8 @@ use lookup_file_info::exec_lookup_file_info;
 use output_file_info::{write_file_info_bundle, write_new, WriteType};
 use prepare_recorded::get_recorded_file_info;
 use prepare_requests::get_file_info_requests;
-use process_file_info::{process_file_info_exec, RemainderFilesBundle, RemainderType};
+use process_file_info::{ProcessedFiles, RemainderFilesBundle, RemainderType};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
-
-use crate::process_file_info::ProcessingRemainder;
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -466,7 +464,7 @@ fn exec() -> DanoResult<i32> {
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
             let processing_remainder = if write_config.opt_rewrite {
-                ProcessingRemainder {
+                ProcessedFiles {
                     file_bundle: vec![
                         RemainderFilesBundle {
                             files: Vec::new(),
@@ -480,7 +478,7 @@ fn exec() -> DanoResult<i32> {
                     exit_code: DANO_CLEAN_EXIT_CODE,
                 }
             } else if write_config.opt_import_flac {
-                ProcessingRemainder {
+                ProcessedFiles {
                     file_bundle: vec![
                         RemainderFilesBundle {
                             files: recorded_file_info,
@@ -511,7 +509,7 @@ fn exec() -> DanoResult<i32> {
                 .collect();
 
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let processed_res = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
+            let processed_res = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
             processed_res.exit_code
@@ -521,7 +519,7 @@ fn exec() -> DanoResult<i32> {
 
             let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
             let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
-            let processed_res = process_file_info_exec(&config, &recorded_file_info, rx_item)?;
+            let processed_res = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
 
