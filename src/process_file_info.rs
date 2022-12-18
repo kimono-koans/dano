@@ -60,7 +60,7 @@ impl ProcessedFiles {
         // loop while recv from channel
         while let Ok(file_info) = rx_item.recv() {
             if let (Some(new_files_partitioned), test_exit_code) =
-                file_info.verify(config, file_map.as_ref())?
+                file_info.verify(config, file_map.clone())?
             {
                 match new_files_partitioned {
                     Either::Left(file_info) => new_filenames.push(file_info),
@@ -124,10 +124,10 @@ impl FileInfo {
     fn verify(
         self,
         config: &Config,
-        file_map: &FileMap,
+        file_map: Arc<FileMap>,
     ) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
-        let is_same_hash = self.is_same_hash(file_map);
-        let is_same_filename = self.is_same_filename(file_map);
+        let is_same_hash = self.is_same_hash(file_map.clone());
+        let is_same_filename = self.is_same_filename(file_map.clone());
         let mut test_exit_code = 0;
 
         // must check whether metadata is none first
@@ -220,11 +220,11 @@ impl FileInfo {
         Ok((opt_file_info, test_exit_code))
     }
 
-    fn is_same_filename(&self, file_map: &FileMap) -> bool {
+    fn is_same_filename(&self, file_map: Arc<FileMap>) -> bool {
         file_map.inner.contains_key(&self.path)
     }
 
-    fn is_same_hash(&self, file_map: &FileMap) -> bool {
+    fn is_same_hash(&self, file_map: Arc<FileMap>) -> bool {
         match &self.metadata {
             Some(path_metadata) => {
                 // fast path
@@ -237,7 +237,7 @@ impl FileInfo {
                 // slow path
                 file_map
                     .deref()
-                    .into_par_iter()
+                    .par_iter()
                     .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
                     .any(|file_map_metadata| {
                         path_metadata.hash_value == file_map_metadata.hash_value
