@@ -1,6 +1,6 @@
 [package]
 name = "dano"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 keywords = ["checksum", "verify", "media", "cli-utility", "storage"]
 description = "A CLI tool for generating checksums of media bitstreams"
@@ -16,19 +16,18 @@ maintenance = { status = "actively-developed" }
 [profile.release]
 strip = true
 opt-level = "z"  # Aggressively optimize for size.
-lto = true
 
 [dependencies]
 clap = { version = "3.2.8", features = ["cargo"] }
-rayon = { version = "1.5.1", default-features = false }
-which = { version = "4.2.4", default-features = false }
-serde = { version = "1.0.143", features = ["derive"] }
-serde_json = { version = "1.0.83" } # need alloc or std
-itertools = { version = "0.10.3" } # use_std, use_alloc for into_group_map_by()
+rayon = { version = "1.6.1", default-features = false }
+which = { version = "4.3.0", default-features = false }
+serde = { version = "1.0.151", features = ["derive"] }
+serde_json = { version = "1.0.91" } # need alloc or std
+itertools = { version = "0.10.5" } # use_std, use_alloc for into_group_map_by()
 crossbeam = { version = "0.8.2" } # default features includes channels
-num_cpus = { version = "1.0", default-features = false }
-xattr = { version = "0.2.3", default-features = false }
-rug = { version = "1.17.0", features = ["serde"]  }
+num_cpus = { version = "1.14", default-features = false }
+xattr = { version = "1.0.0", default-features = false }
+rug = { version = "1.18.0", features = ["serde"]  }
 
 
 [package.metadata.deb]
