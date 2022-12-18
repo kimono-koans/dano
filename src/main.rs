@@ -29,7 +29,7 @@ mod versions;
 
 use config::{Config, ExecMode, FileInfoRequest};
 use lookup_file_info::FileInfoLookup;
-use output_file_info::{write_file_info_bundle, write_new, WriteType};
+use output_file_info::{write_new, PrintBundle, WriteType};
 use prepare_recorded::RecordedFileInfo;
 use prepare_requests::FileInfoRequestBundle;
 use process_file_info::{ProcessedFiles, RemainderFilesBundle, RemainderType};
@@ -73,7 +73,7 @@ fn exec() -> DanoResult<i32> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processing_remainder = if write_config.opt_rewrite {
+            let processed_files = if write_config.opt_rewrite {
                 ProcessedFiles {
                     file_bundle: vec![
                         RemainderFilesBundle {
@@ -105,8 +105,9 @@ fn exec() -> DanoResult<i32> {
                 unreachable!()
             };
 
-            write_file_info_bundle(&config, &processing_remainder.file_bundle)?;
-            processing_remainder.exit_code
+            let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
+            new_files_bundle.write_out(&config)?;
+            processed_files.exit_code
         }
         ExecMode::Write(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
@@ -120,29 +121,31 @@ fn exec() -> DanoResult<i32> {
                 .collect();
 
             let rx_item = FileInfoLookup::exec(&config, &file_info_requests.into(), thread_pool)?;
-            let processed_res = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
+            let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_bundle(&config, &processed_res.file_bundle)?;
-            processed_res.exit_code
+            let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
+            new_files_bundle.write_out(&config)?;
+            processed_files.exit_code
         }
         ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = FileInfoRequestBundle::new(&config, &recorded_file_info)?;
             let rx_item = FileInfoLookup::exec(&config, &file_info_requests, thread_pool)?;
-            let processed_res = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
+            let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
-            write_file_info_bundle(&config, &processed_res.file_bundle)?;
+            let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
+            new_files_bundle.write_out(&config)?;
 
             if !config.is_single_path {
-                if processed_res.exit_code == DANO_CLEAN_EXIT_CODE {
+                if processed_files.exit_code == DANO_CLEAN_EXIT_CODE {
                     let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
-                } else if processed_res.exit_code == DANO_DISORDER_EXIT_CODE {
+                } else if processed_files.exit_code == DANO_DISORDER_EXIT_CODE {
                     let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
                 }
             }
 
-            processed_res.exit_code
+            processed_files.exit_code
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
