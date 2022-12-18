@@ -234,22 +234,24 @@ impl FileInfoLookup {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
             crossbeam::channel::unbounded();
 
-        let requested_paths_clone = requested_paths.to_owned();
+        let requested_paths_clone = requested_paths.deref().to_owned();
 
         let config_arc = Arc::new(config.clone());
 
-        // exec threads to hash files
-        thread_pool.scope(|file_info_scope| {
-            requested_paths_clone.deref().iter().for_each(|request| {
-                let tx_item_clone = tx_item.clone();
-                let config_clone = config_arc.clone();
-                file_info_scope.spawn(move |_| {
-                    if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
-                        // probably want to see the error, but not exit the process
-                        // when there is an error in a single thread
-                        eprintln!("Error: {}", err);
-                    }
-                })
+        let _ = std::thread::spawn(move || {
+            // exec threads to hash files
+            thread_pool.in_place_scope(|file_info_scope| {
+                requested_paths_clone.iter().for_each(|request| {
+                    let tx_item_clone = tx_item.clone();
+                    let config_clone = config_arc.clone();
+                    file_info_scope.spawn(move |_| {
+                        if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                            // probably want to see the error, but not exit the process
+                            // when there is an error in a single thread
+                            eprintln!("Error: {}", err);
+                        }
+                    })
+                });
             });
         });
 

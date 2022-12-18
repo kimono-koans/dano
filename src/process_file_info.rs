@@ -127,7 +127,7 @@ impl FileInfo {
         file_map: Arc<FileMap>,
     ) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
         let is_same_hash = self.is_same_hash(file_map.clone());
-        let is_same_filename = self.is_same_filename(file_map.clone());
+        let is_same_filename = self.is_same_filename(file_map);
         let mut test_exit_code = 0;
 
         // must check whether metadata is none first
