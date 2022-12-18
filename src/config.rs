@@ -343,7 +343,7 @@ impl Config {
                     _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                 }
             };
-            parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
+            Self::parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
         };
 
         if paths.is_empty() && !matches!(exec_mode, ExecMode::Test(_)) {
@@ -366,49 +366,49 @@ impl Config {
             paths,
         })
     }
-}
 
-fn parse_paths(
-    raw_paths: &[PathBuf],
-    opt_disable_filter: bool,
-    opt_canonical_paths: bool,
-    hash_file: &Path,
-) -> Vec<PathBuf> {
-    let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
+    fn parse_paths(
+        raw_paths: &[PathBuf],
+        opt_disable_filter: bool,
+        opt_canonical_paths: bool,
+        hash_file: &Path,
+    ) -> Vec<PathBuf> {
+        let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
 
-    raw_paths
-        .into_par_iter()
-        .filter(|path| {
-            if path.exists() {
-                true
-            } else {
-                eprintln!("Error: Path does not exist: {:?}", path);
-                false
-            }
-        })
-        .filter(|path| match path.to_str() {
-            Some(_) => true,
-            None => {
-                eprintln!("Error: Path cannot be serialized to string: {:?}", path);
-                false
-            }
-        })
-        .filter(|path| path.file_name() != Some(OsStr::new(hash_file)))
-        .filter(|path| {
-            if !opt_disable_filter {
-                auto_extension_filter
-                    .lines()
-                    .any(|extension| path.extension() == Some(OsStr::new(extension)))
-            } else {
-                true
-            }
-        })
-        .map(|path| {
-            if opt_canonical_paths {
-                path.canonicalize().unwrap_or_else(|_| path.to_owned())
-            } else {
-                path.to_owned()
-            }
-        })
-        .collect()
+        raw_paths
+            .into_par_iter()
+            .filter(|path| {
+                if path.exists() {
+                    true
+                } else {
+                    eprintln!("Error: Path does not exist: {:?}", path);
+                    false
+                }
+            })
+            .filter(|path| match path.to_str() {
+                Some(_) => true,
+                None => {
+                    eprintln!("Error: Path cannot be serialized to string: {:?}", path);
+                    false
+                }
+            })
+            .filter(|path| path.file_name() != Some(OsStr::new(hash_file)))
+            .filter(|path| {
+                if !opt_disable_filter {
+                    auto_extension_filter
+                        .lines()
+                        .any(|extension| path.extension() == Some(OsStr::new(extension)))
+                } else {
+                    true
+                }
+            })
+            .map(|path| {
+                if opt_canonical_paths {
+                    path.canonicalize().unwrap_or_else(|_| path.to_owned())
+                } else {
+                    path.to_owned()
+                }
+            })
+            .collect()
+    }
 }
