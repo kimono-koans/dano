@@ -98,12 +98,6 @@ struct FileMap {
     inner: BTreeMap<PathBuf, Option<FileMetadata>>,
 }
 
-impl From<BTreeMap<PathBuf, Option<FileMetadata>>> for FileMap {
-    fn from(map: BTreeMap<PathBuf, Option<FileMetadata>>) -> Self {
-        Self { inner: map }
-    }
-}
-
 impl Deref for FileMap {
     type Target = BTreeMap<PathBuf, Option<FileMetadata>>;
 

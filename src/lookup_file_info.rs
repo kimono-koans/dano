@@ -221,34 +221,38 @@ impl FileInfo {
     }
 }
 
-pub fn exec_lookup_file_info(
-    config: &Config,
-    requested_paths: &[FileInfoRequest],
-    thread_pool: ThreadPool,
-) -> DanoResult<Receiver<FileInfo>> {
-    let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
-        crossbeam::channel::unbounded();
+pub struct FileInfoLookup;
 
-    let requested_paths_clone = requested_paths.to_owned();
+impl FileInfoLookup {
+    pub fn exec(
+        config: &Config,
+        requested_paths: &[FileInfoRequest],
+        thread_pool: ThreadPool,
+    ) -> DanoResult<Receiver<FileInfo>> {
+        let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
+            crossbeam::channel::unbounded();
 
-    let config_arc = Arc::new(config.clone());
+        let requested_paths_clone = requested_paths.to_owned();
 
-    // exec threads to hash files
-    thread_pool.scope(|file_info_scope| {
-        requested_paths_clone.iter().for_each(|request| {
-            let tx_item_clone = tx_item.clone();
-            let config_clone = config_arc.clone();
-            file_info_scope.spawn(move |_| {
-                if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
-                    // probably want to see the error, but not exit the process
-                    // when there is an error in a single thread
-                    eprintln!("Error: {}", err);
-                }
-            })
+        let config_arc = Arc::new(config.clone());
+
+        // exec threads to hash files
+        thread_pool.scope(|file_info_scope| {
+            requested_paths_clone.iter().for_each(|request| {
+                let tx_item_clone = tx_item.clone();
+                let config_clone = config_arc.clone();
+                file_info_scope.spawn(move |_| {
+                    if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                        // probably want to see the error, but not exit the process
+                        // when there is an error in a single thread
+                        eprintln!("Error: {}", err);
+                    }
+                })
+            });
         });
-    });
 
-    // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
-    // explicit drop is: drop(tx_item);
-    Ok(rx_item)
+        // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
+        // explicit drop is: drop(tx_item);
+        Ok(rx_item)
+    }
 }

@@ -17,6 +17,7 @@
 
 use std::{
     ffi::OsStr,
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
@@ -33,10 +34,10 @@ mod process_file_info;
 mod utility;
 mod versions;
 
-use lookup_file_info::exec_lookup_file_info;
+use lookup_file_info::FileInfoLookup;
 use output_file_info::{write_file_info_bundle, write_new, WriteType};
-use prepare_recorded::get_recorded_file_info;
-use prepare_requests::get_file_info_requests;
+use prepare_recorded::RecordedFileInfo;
+use prepare_requests::FileInfoRequestBundle;
 use process_file_info::{ProcessedFiles, RemainderFilesBundle, RemainderType};
 use utility::{print_err_buf, print_file_info, read_stdin, DanoError};
 
@@ -451,7 +452,7 @@ fn main() {
 fn exec() -> DanoResult<i32> {
     let config = Config::new()?;
 
-    let recorded_file_info = get_recorded_file_info(&config)?;
+    let recorded_file_info = RecordedFileInfo::new(&config)?;
 
     let exit_code = match &config.exec_mode {
         ExecMode::Write(write_config)
@@ -460,6 +461,7 @@ fn exec() -> DanoResult<i32> {
             // here we print_file_info because we don't run these opts through verify_file_info,
             // which would ordinary print this information
             recorded_file_info
+                .deref()
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
@@ -471,7 +473,7 @@ fn exec() -> DanoResult<i32> {
                             remainder_type: RemainderType::NewFile,
                         },
                         RemainderFilesBundle {
-                            files: recorded_file_info,
+                            files: recorded_file_info.into_inner(),
                             remainder_type: RemainderType::ModifiedFilename,
                         },
                     ],
@@ -481,7 +483,7 @@ fn exec() -> DanoResult<i32> {
                 ProcessedFiles {
                     file_bundle: vec![
                         RemainderFilesBundle {
-                            files: recorded_file_info,
+                            files: recorded_file_info.into_inner(),
                             remainder_type: RemainderType::NewFile,
                         },
                         RemainderFilesBundle {
@@ -501,14 +503,15 @@ fn exec() -> DanoResult<i32> {
         ExecMode::Write(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
-            let raw_file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
+            let raw_file_info_requests = FileInfoRequestBundle::new(&config, &recorded_file_info)?;
             // filter out files for which we already have a hash, only do requests on new files
             let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
+                .into_inner()
                 .into_iter()
                 .filter(|request| request.hash_algo.is_none())
                 .collect();
 
-            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
+            let rx_item = FileInfoLookup::exec(&config, &file_info_requests, thread_pool)?;
             let processed_res = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
@@ -517,8 +520,8 @@ fn exec() -> DanoResult<i32> {
         ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
-            let file_info_requests = get_file_info_requests(&config, &recorded_file_info)?;
-            let rx_item = exec_lookup_file_info(&config, &file_info_requests, thread_pool)?;
+            let file_info_requests = FileInfoRequestBundle::new(&config, &recorded_file_info)?;
+            let rx_item = FileInfoLookup::exec(&config, &file_info_requests, thread_pool)?;
             let processed_res = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             write_file_info_bundle(&config, &processed_res.file_bundle)?;
