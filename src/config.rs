@@ -187,14 +187,6 @@ fn parse_args() -> ArgMatches {
         .get_matches()
 }
 
-#[derive(Debug, Clone)]
-pub struct FileInfoRequest {
-    pub path: PathBuf,
-    pub hash_algo: Option<Box<str>>,
-    pub decoded: Option<bool>,
-    pub selected_streams: Option<SelectedStreams>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WriteModeConfig {
     pub opt_rewrite: bool,

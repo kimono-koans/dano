@@ -19,8 +19,17 @@ use std::{collections::BTreeMap, ops::Deref, path::PathBuf};
 
 use rayon::prelude::*;
 
+use crate::config::SelectedStreams;
 use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::{Config, DanoResult, FileInfoRequest};
+use crate::{Config, DanoResult};
+
+#[derive(Debug, Clone)]
+pub struct FileInfoRequest {
+    pub path: PathBuf,
+    pub hash_algo: Option<Box<str>>,
+    pub decoded: Option<bool>,
+    pub selected_streams: Option<SelectedStreams>,
+}
 
 pub struct RequestBundle {
     inner: Vec<FileInfoRequest>,

@@ -27,11 +27,11 @@ mod process_file_info;
 mod utility;
 mod versions;
 
-use config::{Config, ExecMode, FileInfoRequest};
+use config::{Config, ExecMode};
 use lookup_file_info::FileInfoLookup;
 use output_file_info::{write_new, PrintBundle, WriteType};
 use prepare_recorded::RecordedFileInfo;
-use prepare_requests::RequestBundle;
+use prepare_requests::{FileInfoRequest, RequestBundle};
 use process_file_info::{ProcessedFiles, RemainderBundle, RemainderType};
 use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError};
 

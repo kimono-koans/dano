@@ -30,8 +30,9 @@ use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::config::{FileInfoRequest, SelectedStreams};
-use crate::{prepare_requests::RequestBundle, utility::DanoError};
+use crate::config::SelectedStreams;
+use crate::prepare_requests::{FileInfoRequest, RequestBundle};
+use crate::utility::DanoError;
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
