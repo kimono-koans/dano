@@ -106,7 +106,7 @@ fn exec() -> DanoResult<i32> {
             };
 
             let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
-            new_files_bundle.write_out(&config)?;
+            new_files_bundle.print_out(&config)?;
             processed_files.exit_code
         }
         ExecMode::Write(_) => {
@@ -124,7 +124,7 @@ fn exec() -> DanoResult<i32> {
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
-            new_files_bundle.write_out(&config)?;
+            new_files_bundle.print_out(&config)?;
             processed_files.exit_code
         }
         ExecMode::Test(_) => {
@@ -135,7 +135,7 @@ fn exec() -> DanoResult<i32> {
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
-            new_files_bundle.write_out(&config)?;
+            new_files_bundle.print_out(&config)?;
 
             if !config.is_single_path {
                 if processed_files.exit_code == DANO_CLEAN_EXIT_CODE {

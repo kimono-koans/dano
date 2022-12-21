@@ -68,12 +68,12 @@ impl Deref for PrintBundle {
 }
 
 impl PrintBundle {
-    pub fn write_out(self, config: &Config) -> DanoResult<()> {
-        self.inner.into_iter().try_for_each(|file_bundle| {
-            if !file_bundle.files.is_empty() {
-                file_bundle.write_out(config)
+    pub fn print_out(self, config: &Config) -> DanoResult<()> {
+        self.inner.into_iter().try_for_each(|remainder_bundle| {
+            if !remainder_bundle.files.is_empty() {
+                remainder_bundle.print_out(config)
             } else {
-                Self::print_bundle_empty(config, &file_bundle.remainder_type);
+                Self::print_bundle_empty(config, &remainder_bundle.remainder_type);
                 Ok(())
             }
         })
@@ -109,7 +109,7 @@ impl PrintBundle {
 }
 
 impl RemainderBundle {
-    fn write_out(self, config: &Config) -> DanoResult<()> {
+    fn print_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
             ExecMode::Write(_) => match &self.remainder_type {
                 RemainderType::NewFile => {
