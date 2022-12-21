@@ -30,7 +30,7 @@ pub enum LegacyVersion {
 }
 
 impl LegacyVersion {
-    pub fn convert_to_latest(line: &str) -> DanoResult<FileInfo> {
+    pub fn into_latest(line: &str) -> DanoResult<FileInfo> {
         let root: Value = serde_json::from_str(line)?;
         let value = root
             .get("version")

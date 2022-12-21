@@ -222,7 +222,7 @@ pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
     if version == DANO_FILE_INFO_VERSION {
         serde_json::from_str(line).map_err(|err| err.into())
     } else {
-        LegacyVersion::convert_to_latest(line)
+        LegacyVersion::into_latest(line)
     }
 }
 
