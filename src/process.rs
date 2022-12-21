@@ -21,10 +21,10 @@ use crossbeam::channel::Receiver;
 use itertools::Either;
 use rayon::prelude::*;
 
-use crate::{Config, DanoResult, ExecMode};
+use crate::{Config, ExecMode};
 
-use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::utility::{print_file_info, print_out_buf};
+use crate::lookup::{FileInfo, FileMetadata};
+use crate::utility::{print_file_info, print_out_buf, DanoResult};
 
 #[derive(Debug, Clone)]
 pub enum RemainderType {

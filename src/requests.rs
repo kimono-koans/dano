@@ -24,8 +24,9 @@ use std::{
 use rayon::prelude::*;
 
 use crate::config::SelectedStreams;
-use crate::lookup_file_info::{FileInfo, FileMetadata};
-use crate::{Config, DanoResult};
+use crate::lookup::{FileInfo, FileMetadata};
+use crate::utility::DanoResult;
+use crate::Config;
 
 #[derive(Debug, Clone)]
 pub struct FileInfoRequest {

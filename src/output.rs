@@ -21,14 +21,14 @@ use std::time::SystemTime;
 use itertools::Itertools;
 use rug::Integer;
 
-use crate::prepare_recorded::RecordedFileInfo;
-use crate::{Config, DanoResult, ExecMode};
+use crate::ingest::RecordedFileInfo;
+use crate::{Config, ExecMode};
 
-use crate::lookup_file_info::FileInfo;
-use crate::process_file_info::{RemainderBundle, RemainderType};
+use crate::lookup::FileInfo;
+use crate::process::{RemainderBundle, RemainderType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
-    write_non_file, DanoError,
+    write_non_file, DanoError, DanoResult,
 };
 
 const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";

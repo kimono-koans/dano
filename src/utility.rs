@@ -26,10 +26,12 @@ use std::{
 use rayon::{prelude::*, ThreadPool};
 use serde_json::Value;
 
-use crate::lookup_file_info::FileInfo;
-use crate::output_file_info::WriteType;
+use crate::lookup::FileInfo;
+use crate::output::WriteType;
 use crate::versions::LegacyVersion;
-use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
+use crate::{Config, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
+
+pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 // u128::MAX to LowerHex to String len is 32usize
 // this is one of those things one can't make a const function

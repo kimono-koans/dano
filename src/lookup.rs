@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::config::SelectedStreams;
-use crate::prepare_requests::{FileInfoRequest, RequestBundle};
+use crate::requests::{FileInfoRequest, RequestBundle};
 use crate::utility::DanoError;
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION};
 

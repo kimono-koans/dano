@@ -22,7 +22,7 @@ use rug::Integer;
 use which::which;
 
 use crate::config::SelectedStreams;
-use crate::lookup_file_info::{FileInfo, FileMetadata};
+use crate::lookup::{FileInfo, FileMetadata};
 use crate::{Config, DanoError, DanoResult, RecordedFileInfo, DANO_FILE_INFO_VERSION};
 
 const FLAC_HASH_ALGO: &str = "MD5";

@@ -15,27 +15,25 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::ops::Deref;
-
 mod config;
-mod flac_import;
-mod lookup_file_info;
-mod output_file_info;
-mod prepare_recorded;
-mod prepare_requests;
-mod process_file_info;
+mod flac;
+mod ingest;
+mod lookup;
+mod output;
+mod process;
+mod requests;
 mod utility;
 mod versions;
 
-use config::{Config, ExecMode};
-use lookup_file_info::FileInfoLookup;
-use output_file_info::{WriteOutBundle, WriteType};
-use prepare_recorded::RecordedFileInfo;
-use prepare_requests::{FileInfoRequest, RequestBundle};
-use process_file_info::{ProcessedFiles, RemainderBundle, RemainderType};
-use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError};
+use std::ops::Deref;
 
-pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
+use config::{Config, ExecMode};
+use ingest::RecordedFileInfo;
+use lookup::FileInfoLookup;
+use output::{WriteOutBundle, WriteType};
+use process::{ProcessedFiles, RemainderBundle, RemainderType};
+use requests::{FileInfoRequest, RequestBundle};
+use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError, DanoResult};
 
 const DANO_FILE_INFO_VERSION: usize = 3;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
