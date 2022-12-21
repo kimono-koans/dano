@@ -29,7 +29,7 @@ mod versions;
 
 use config::{Config, ExecMode};
 use lookup_file_info::FileInfoLookup;
-use output_file_info::{PrintBundle, WriteType};
+use output_file_info::{WriteOutBundle, WriteType};
 use prepare_recorded::RecordedFileInfo;
 use prepare_requests::{FileInfoRequest, RequestBundle};
 use process_file_info::{ProcessedFiles, RemainderBundle, RemainderType};
@@ -105,8 +105,8 @@ fn exec() -> DanoResult<i32> {
                 unreachable!()
             };
 
-            let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
-            new_files_bundle.print_out(&config)?;
+            let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
+            new_files_bundle.write_out(&config)?;
             processed_files.exit_code
         }
         ExecMode::Write(_) => {
@@ -123,8 +123,8 @@ fn exec() -> DanoResult<i32> {
             let rx_item = FileInfoLookup::exec(&config, &file_info_requests.into(), thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
-            let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
-            new_files_bundle.print_out(&config)?;
+            let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
+            new_files_bundle.write_out(&config)?;
             processed_files.exit_code
         }
         ExecMode::Test(_) => {
@@ -134,8 +134,8 @@ fn exec() -> DanoResult<i32> {
             let rx_item = FileInfoLookup::exec(&config, &file_info_requests, thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
-            let new_files_bundle: PrintBundle = processed_files.file_bundle.into();
-            new_files_bundle.print_out(&config)?;
+            let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
+            new_files_bundle.write_out(&config)?;
 
             if !config.is_single_path {
                 if processed_files.exit_code == DANO_CLEAN_EXIT_CODE {
