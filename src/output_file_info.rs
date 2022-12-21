@@ -153,7 +153,7 @@ impl RemainderBundle {
         wet_prefix: &str,
     ) -> DanoResult<()> {
         //  notice the fn print_write_action() parameters are different for write/dry run
-        let file_info_set: PrintedFileInfo = self.files.into();
+        let file_info_set: PrintableFileInfo = self.files.into();
 
         if config.opt_dry_run {
             file_info_set.print_write_action(dry_prefix, EMPTY_STR)
@@ -168,9 +168,9 @@ impl RemainderBundle {
     }
 }
 
-pub type PrintedFileInfo = RecordedFileInfo;
+pub type PrintableFileInfo = RecordedFileInfo;
 
-impl PrintedFileInfo {
+impl PrintableFileInfo {
     pub fn write_new(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
         // ExecMode::Dump is about writing to a file always want to skip xattrs
         // can always be enabled by env var so ad hoc debugging can be tricky
@@ -237,7 +237,7 @@ impl PrintedFileInfo {
                     .cloned()
                     .collect();
 
-                let printed_info: PrintedFileInfo = unique_paths.into();
+                let printed_info: PrintableFileInfo = unique_paths.into();
 
                 // and overwrite
                 printed_info.write_new(config, WriteType::OverwriteAll)
