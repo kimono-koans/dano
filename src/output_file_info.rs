@@ -25,7 +25,7 @@ use crate::prepare_recorded::RecordedFileInfo;
 use crate::{Config, DanoResult, ExecMode};
 
 use crate::lookup_file_info::FileInfo;
-use crate::process_file_info::{RemainderFilesBundle, RemainderType};
+use crate::process_file_info::{RemainderBundle, RemainderType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError,
@@ -50,17 +50,17 @@ pub enum WriteType {
 }
 
 pub struct PrintBundle {
-    inner: Vec<RemainderFilesBundle>,
+    inner: Vec<RemainderBundle>,
 }
 
-impl From<Vec<RemainderFilesBundle>> for PrintBundle {
-    fn from(vec: Vec<RemainderFilesBundle>) -> Self {
+impl From<Vec<RemainderBundle>> for PrintBundle {
+    fn from(vec: Vec<RemainderBundle>) -> Self {
         Self { inner: vec }
     }
 }
 
 impl Deref for PrintBundle {
-    type Target = Vec<RemainderFilesBundle>;
+    type Target = Vec<RemainderBundle>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -108,7 +108,7 @@ impl PrintBundle {
     }
 }
 
-impl RemainderFilesBundle {
+impl RemainderBundle {
     fn write_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
             ExecMode::Write(_) => match &self.remainder_type {

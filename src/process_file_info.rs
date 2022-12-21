@@ -33,13 +33,13 @@ pub enum RemainderType {
 }
 
 #[derive(Debug, Clone)]
-pub struct RemainderFilesBundle {
+pub struct RemainderBundle {
     pub files: Vec<FileInfo>,
     pub remainder_type: RemainderType,
 }
 
 pub struct ProcessedFiles {
-    pub file_bundle: Vec<RemainderFilesBundle>,
+    pub file_bundle: Vec<RemainderBundle>,
     pub exit_code: i32,
 }
 
@@ -77,11 +77,11 @@ impl ProcessedFiles {
         new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
         let file_bundle = vec![
-            RemainderFilesBundle {
+            RemainderBundle {
                 files: new_files,
                 remainder_type: RemainderType::NewFile,
             },
-            RemainderFilesBundle {
+            RemainderBundle {
                 files: new_filenames,
                 remainder_type: RemainderType::ModifiedFilename,
             },

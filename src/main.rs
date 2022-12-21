@@ -32,7 +32,7 @@ use lookup_file_info::FileInfoLookup;
 use output_file_info::{write_new, PrintBundle, WriteType};
 use prepare_recorded::RecordedFileInfo;
 use prepare_requests::RequestBundle;
-use process_file_info::{ProcessedFiles, RemainderFilesBundle, RemainderType};
+use process_file_info::{ProcessedFiles, RemainderBundle, RemainderType};
 use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError};
 
 pub type DanoResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -76,11 +76,11 @@ fn exec() -> DanoResult<i32> {
             let processed_files = if write_config.opt_rewrite {
                 ProcessedFiles {
                     file_bundle: vec![
-                        RemainderFilesBundle {
+                        RemainderBundle {
                             files: Vec::new(),
                             remainder_type: RemainderType::NewFile,
                         },
-                        RemainderFilesBundle {
+                        RemainderBundle {
                             files: recorded_file_info.into_inner(),
                             remainder_type: RemainderType::ModifiedFilename,
                         },
@@ -90,11 +90,11 @@ fn exec() -> DanoResult<i32> {
             } else if write_config.opt_import_flac {
                 ProcessedFiles {
                     file_bundle: vec![
-                        RemainderFilesBundle {
+                        RemainderBundle {
                             files: recorded_file_info.into_inner(),
                             remainder_type: RemainderType::NewFile,
                         },
-                        RemainderFilesBundle {
+                        RemainderBundle {
                             files: Vec::new(),
                             remainder_type: RemainderType::ModifiedFilename,
                         },
