@@ -75,7 +75,7 @@ impl RequestBundle {
     }
 
     // new requests
-    fn new_request(path: &Path) -> FileInfoRequest {
+    fn as_new_request(path: &Path) -> FileInfoRequest {
         FileInfoRequest {
             path: path.to_owned(),
             hash_algo: None,
@@ -93,7 +93,10 @@ impl RequestBundle {
                         file_info.path.clone(),
                         Self::from_recorded_request(&file_info.path, metadata),
                     ),
-                    None => (file_info.path.clone(), Self::new_request(&file_info.path)),
+                    None => (
+                        file_info.path.clone(),
+                        Self::as_new_request(&file_info.path),
+                    ),
                 })
                 .collect();
 
@@ -102,7 +105,7 @@ impl RequestBundle {
             .par_iter()
             .map(|path| match recorded_file_info_requests.get(path) {
                 Some(value) => value.to_owned(),
-                None => Self::new_request(path),
+                None => Self::as_new_request(path),
             })
             .collect();
 
