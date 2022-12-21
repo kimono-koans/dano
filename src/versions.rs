@@ -24,26 +24,26 @@ use crate::{DanoError, DanoResult, DANO_FILE_INFO_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub fn convert_version(line: &str) -> DanoResult<FileInfo> {
-    let root: Value = serde_json::from_str(line)?;
-    let value = root
-        .get("version")
-        .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
-        .to_owned();
-
-    let version_number: usize = serde_json::from_value(value)?;
-    let legacy_version: LegacyVersion = LegacyVersion::number_to_version(version_number)?;
-    let file_info = legacy_version.convert(line)?;
-
-    Ok(file_info)
-}
-
-enum LegacyVersion {
+pub enum LegacyVersion {
     Version1,
     Version2,
 }
 
 impl LegacyVersion {
+    pub fn convert_to_latest(line: &str) -> DanoResult<FileInfo> {
+        let root: Value = serde_json::from_str(line)?;
+        let value = root
+            .get("version")
+            .ok_or_else(|| DanoError::new("Could not get version value from JSON."))?
+            .to_owned();
+
+        let version_number: usize = serde_json::from_value(value)?;
+        let legacy_version: LegacyVersion = LegacyVersion::number_to_version(version_number)?;
+        let file_info = legacy_version.convert(line)?;
+
+        Ok(file_info)
+    }
+
     fn number_to_version(version_number: usize) -> DanoResult<LegacyVersion> {
         let res = match version_number {
             1 => LegacyVersion::Version1,

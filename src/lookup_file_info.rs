@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::config::{FileInfoRequest, SelectedStreams};
-use crate::{prepare_requests::FileInfoRequestBundle, utility::DanoError};
+use crate::{prepare_requests::RequestBundle, utility::DanoError};
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -228,7 +228,7 @@ pub struct FileInfoLookup;
 impl FileInfoLookup {
     pub fn exec(
         config: &Config,
-        requested_paths: &FileInfoRequestBundle,
+        requested_paths: &RequestBundle,
         thread_pool: ThreadPool,
     ) -> DanoResult<Receiver<FileInfo>> {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =

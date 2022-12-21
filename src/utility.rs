@@ -28,7 +28,7 @@ use serde_json::Value;
 
 use crate::lookup_file_info::FileInfo;
 use crate::output_file_info::WriteType;
-use crate::versions::convert_version;
+use crate::versions::LegacyVersion;
 use crate::{Config, DanoResult, ExecMode, DANO_FILE_INFO_VERSION, DANO_XATTR_KEY_NAME};
 
 // u128::MAX to LowerHex to String len is 32usize
@@ -222,7 +222,7 @@ pub fn deserialize(line: &str) -> DanoResult<FileInfo> {
     if version == DANO_FILE_INFO_VERSION {
         serde_json::from_str(line).map_err(|err| err.into())
     } else {
-        convert_version(line)
+        LegacyVersion::convert_to_latest(line)
     }
 }
 

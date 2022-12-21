@@ -22,17 +22,17 @@ use rayon::prelude::*;
 use crate::lookup_file_info::{FileInfo, FileMetadata};
 use crate::{Config, DanoResult, FileInfoRequest};
 
-pub struct FileInfoRequestBundle {
+pub struct RequestBundle {
     inner: Vec<FileInfoRequest>,
 }
 
-impl From<Vec<FileInfoRequest>> for FileInfoRequestBundle {
+impl From<Vec<FileInfoRequest>> for RequestBundle {
     fn from(vec: Vec<FileInfoRequest>) -> Self {
         Self { inner: vec }
     }
 }
 
-impl Deref for FileInfoRequestBundle {
+impl Deref for RequestBundle {
     type Target = Vec<FileInfoRequest>;
 
     fn deref(&self) -> &Self::Target {
@@ -40,7 +40,7 @@ impl Deref for FileInfoRequestBundle {
     }
 }
 
-impl FileInfoRequestBundle {
+impl RequestBundle {
     pub fn into_inner(self) -> Vec<FileInfoRequest> {
         self.inner
     }

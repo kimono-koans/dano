@@ -31,7 +31,7 @@ use config::{Config, ExecMode, FileInfoRequest};
 use lookup_file_info::FileInfoLookup;
 use output_file_info::{write_new, PrintBundle, WriteType};
 use prepare_recorded::RecordedFileInfo;
-use prepare_requests::FileInfoRequestBundle;
+use prepare_requests::RequestBundle;
 use process_file_info::{ProcessedFiles, RemainderFilesBundle, RemainderType};
 use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError};
 
@@ -112,7 +112,7 @@ fn exec() -> DanoResult<i32> {
         ExecMode::Write(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
-            let raw_file_info_requests = FileInfoRequestBundle::new(&config, &recorded_file_info)?;
+            let raw_file_info_requests = RequestBundle::new(&config, &recorded_file_info)?;
             // filter out files for which we already have a hash, only do requests on new files
             let file_info_requests: Vec<FileInfoRequest> = raw_file_info_requests
                 .into_inner()
@@ -130,7 +130,7 @@ fn exec() -> DanoResult<i32> {
         ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
 
-            let file_info_requests = FileInfoRequestBundle::new(&config, &recorded_file_info)?;
+            let file_info_requests = RequestBundle::new(&config, &recorded_file_info)?;
             let rx_item = FileInfoLookup::exec(&config, &file_info_requests, thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
