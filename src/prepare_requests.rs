@@ -15,7 +15,11 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::{collections::BTreeMap, ops::Deref, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    ops::Deref,
+    path::{Path, PathBuf},
+};
 
 use rayon::prelude::*;
 
@@ -54,42 +58,42 @@ impl RequestBundle {
         self.inner
     }
 
+    // here we generate a file info request because we need more than
+    // the path name when the user has specified a different hash algo
+
+    // first, we generate a map of the recorded file info to test against
+    // map will allow
+
+    // on disk
+    fn from_recorded_request(path: &Path, metadata: &FileMetadata) -> FileInfoRequest {
+        FileInfoRequest {
+            path: path.to_owned(),
+            hash_algo: Some(metadata.hash_algo.clone()),
+            decoded: Some(metadata.decoded),
+            selected_streams: Some(metadata.selected_streams.to_owned()),
+        }
+    }
+
+    // new requests
+    fn new_request(path: &Path) -> FileInfoRequest {
+        FileInfoRequest {
+            path: path.to_owned(),
+            hash_algo: None,
+            decoded: None,
+            selected_streams: None,
+        }
+    }
+
     pub fn new(config: &Config, recorded_file_info: &[FileInfo]) -> DanoResult<Self> {
-        // here we generate a file info request because we need more than
-        // the path name when the user has specified a different hash algo
-
-        // first, we generate a map of the recorded file info to test against
-        // map will allow
-
-        // on disk
-        let from_recorded_request = |path: &PathBuf, metadata: &FileMetadata| -> FileInfoRequest {
-            FileInfoRequest {
-                path: path.clone(),
-                hash_algo: Some(metadata.hash_algo.clone()),
-                decoded: Some(metadata.decoded),
-                selected_streams: Some(metadata.selected_streams.to_owned()),
-            }
-        };
-
-        // new requests
-        let new_request = |path: &PathBuf| -> FileInfoRequest {
-            FileInfoRequest {
-                path: path.clone(),
-                hash_algo: None,
-                decoded: None,
-                selected_streams: None,
-            }
-        };
-
         let mut recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> =
             recorded_file_info
                 .par_iter()
                 .map(|file_info| match &file_info.metadata {
                     Some(metadata) => (
                         file_info.path.clone(),
-                        from_recorded_request(&file_info.path, metadata),
+                        Self::from_recorded_request(&file_info.path, metadata),
                     ),
-                    None => (file_info.path.clone(), new_request(&file_info.path)),
+                    None => (file_info.path.clone(), Self::new_request(&file_info.path)),
                 })
                 .collect();
 
@@ -98,7 +102,7 @@ impl RequestBundle {
             .par_iter()
             .map(|path| match recorded_file_info_requests.get(path) {
                 Some(value) => value.to_owned(),
-                None => new_request(path),
+                None => Self::new_request(path),
             })
             .collect();
 

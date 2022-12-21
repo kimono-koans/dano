@@ -42,6 +42,10 @@ impl Deref for RecordedFileInfo {
 }
 
 impl RecordedFileInfo {
+    pub fn into_inner(self) -> Vec<FileInfo> {
+        self.inner
+    }
+
     pub fn new(config: &Config) -> DanoResult<Self> {
         let mut recorded_file_info: Vec<FileInfo> = match &config.exec_mode {
             ExecMode::Write(write_config) if write_config.opt_import_flac => {
@@ -64,10 +68,6 @@ impl RecordedFileInfo {
         Ok(Self {
             inner: recorded_file_info,
         })
-    }
-
-    pub fn into_inner(self) -> Vec<FileInfo> {
-        self.inner
     }
 
     fn from_recorded(config: &Config) -> DanoResult<Vec<FileInfo>> {
