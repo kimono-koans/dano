@@ -29,7 +29,7 @@ mod versions;
 
 use config::{Config, ExecMode};
 use lookup_file_info::FileInfoLookup;
-use output_file_info::{write_new, PrintBundle, WriteType};
+use output_file_info::{PrintBundle, WriteType};
 use prepare_recorded::RecordedFileInfo;
 use prepare_requests::{FileInfoRequest, RequestBundle};
 use process_file_info::{ProcessedFiles, RemainderBundle, RemainderType};
@@ -169,11 +169,7 @@ fn exec() -> DanoResult<i32> {
                 )
                 .into());
             } else {
-                write_new(
-                    &config,
-                    recorded_file_info.as_slice(),
-                    WriteType::OverwriteAll,
-                )?;
+                recorded_file_info.write_new(&config, WriteType::OverwriteAll)?;
                 if !config.opt_silent {
                     print_err_buf("Dump to dano output file was successful.\n")?
                 }

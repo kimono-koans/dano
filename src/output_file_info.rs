@@ -162,9 +162,7 @@ impl RemainderBundle {
 
             match self.remainder_type {
                 RemainderType::ModifiedFilename => file_info_set.overwrite_all(config),
-                RemainderType::NewFile => {
-                    write_new(config, file_info_set.deref(), WriteType::Append)
-                }
+                RemainderType::NewFile => file_info_set.write_new(config, WriteType::Append),
             }
         }
     }
@@ -173,15 +171,41 @@ impl RemainderBundle {
 pub type PrintedFileInfo = RecordedFileInfo;
 
 impl PrintedFileInfo {
-    fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
-        self.iter().try_for_each(|file_info| {
-            print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
-        })
+    pub fn write_new(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
+        // ExecMode::Dump is about writing to a file always want to skip xattrs
+        // can always be enabled by env var so ad hoc debugging can be tricky
+        if !config.opt_dry_run {
+            if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
+                self.iter().try_for_each(write_non_file)
+            } else {
+                match write_type {
+                    WriteType::Append => {
+                        let mut output_file = get_output_file(config, WriteType::Append)?;
+                        self.iter()
+                            .try_for_each(|file_info| write_file(file_info, &mut output_file))
+                    }
+                    WriteType::OverwriteAll => {
+                        let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
+
+                        self.iter()
+                            .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
+
+                        std::fs::rename(
+                            make_tmp_file(config.output_file.as_path()),
+                            config.output_file.clone(),
+                        )
+                        .map_err(|err| err.into())
+                    }
+                }
+            }
+        } else {
+            Ok(())
+        }
     }
 
     pub fn overwrite_all(&self, config: &Config) -> DanoResult<()> {
         // append new paths
-        write_new(config, self.deref(), WriteType::Append)?;
+        self.write_new(config, WriteType::Append)?;
 
         // overwrite all paths if in non-xattr/file write mode
         match &config.exec_mode {
@@ -213,44 +237,18 @@ impl PrintedFileInfo {
                     .cloned()
                     .collect();
 
+                let printed_info: PrintedFileInfo = unique_paths.into();
+
                 // and overwrite
-                write_new(config, &unique_paths, WriteType::OverwriteAll)
+                printed_info.write_new(config, WriteType::OverwriteAll)
             }
             _ => Ok(()),
         }
     }
-}
 
-pub fn write_new(config: &Config, new_files: &[FileInfo], write_type: WriteType) -> DanoResult<()> {
-    // ExecMode::Dump is about writing to a file always want to skip xattrs
-    // can always be enabled by env var so ad hoc debugging can be tricky
-    if !config.opt_dry_run {
-        if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
-            new_files.iter().try_for_each(write_non_file)
-        } else {
-            match write_type {
-                WriteType::Append => {
-                    let mut output_file = get_output_file(config, WriteType::Append)?;
-                    new_files
-                        .iter()
-                        .try_for_each(|file_info| write_file(file_info, &mut output_file))
-                }
-                WriteType::OverwriteAll => {
-                    let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
-
-                    new_files
-                        .iter()
-                        .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
-
-                    std::fs::rename(
-                        make_tmp_file(config.output_file.as_path()),
-                        config.output_file.clone(),
-                    )
-                    .map_err(|err| err.into())
-                }
-            }
-        }
-    } else {
-        Ok(())
+    fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
+        self.iter().try_for_each(|file_info| {
+            print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
+        })
     }
 }
