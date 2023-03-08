@@ -48,4 +48,6 @@ assets = [
     ["target/release/dano", "usr/bin/", "755"],
     ["dano.1", "usr/share/man/man1/", "644"],
     ["README.md", "usr/share/doc/dano/README", "644"],
+    ["LICENSE", "usr/share/doc/dano/LICENSE", "644"],
+    ["third_party/LICENSES_THIRD_PARTY.html", "usr/share/doc/dano/LICENSES_THIRD_PARTY.html", "644"],
 ]
