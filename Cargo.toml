@@ -1,6 +1,6 @@
 [package]
 name = "dano"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 keywords = ["checksum", "verify", "media", "cli-utility", "storage"]
 description = "A CLI tool for generating checksums of media bitstreams"
@@ -45,8 +45,8 @@ suggests = "flac (>=1.3.3)"
 section = "utility"
 priority = "optional"
 assets = [
-    ["target/release/dano", "usr/bin/", "755"],
-    ["dano.1", "usr/share/man/man1/", "644"],
+    ["target/release/dano", "usr/bin/dano", "755"],
+    ["dano.1", "usr/share/man/man1/dano.1", "644"],
     ["README.md", "usr/share/doc/dano/README", "644"],
     ["LICENSE", "usr/share/doc/dano/LICENSE", "644"],
     ["third_party/LICENSES_THIRD_PARTY.html", "usr/share/doc/dano/LICENSES_THIRD_PARTY.html", "644"],
