@@ -26,7 +26,6 @@ use std::{
 
 use crossbeam::channel::{Receiver, Sender};
 use rayon::ThreadPool;
-use rug::Integer;
 use serde::{Deserialize, Serialize};
 use which::which;
 
@@ -56,10 +55,16 @@ impl Ord for FileInfo {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct HashValue {
+    pub radix: i32,
+    pub value: Box<str>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileMetadata {
     pub hash_algo: Box<str>,
-    pub hash_value: rug::Integer,
+    pub hash_value: HashValue,
     pub last_written: SystemTime,
     pub modify_time: SystemTime,
     pub decoded: bool,
@@ -177,18 +182,33 @@ impl FileInfo {
             Ok(())
         } else {
             let res = match stdout_string.split_once('=') {
-                Some((first, last)) => FileInfo {
-                    path: request.path.to_owned(),
-                    version: DANO_FILE_INFO_VERSION,
-                    metadata: Some(FileMetadata {
-                        last_written: timestamp,
-                        hash_algo: first.into(),
-                        hash_value: { Integer::from_str_radix(last, 16)? },
-                        modify_time: request.path.metadata()?.modified()?,
-                        selected_streams: selected_streams.to_owned(),
-                        decoded,
-                    }),
-                },
+                Some((first, last)) => {
+                    let hash_value = if let Ok(_parsed) =
+                        primitive_types::U256::from_str_radix(last, 16)
+                    {
+                        HashValue {
+                            radix: 16,
+                            value: last.into(),
+                        }
+                    } else {
+                        return Err(
+                            DanoError::new("Could not parse integer from ffmpeg output.").into(),
+                        );
+                    };
+
+                    FileInfo {
+                        path: request.path.to_owned(),
+                        version: DANO_FILE_INFO_VERSION,
+                        metadata: Some(FileMetadata {
+                            last_written: timestamp,
+                            hash_algo: first.into(),
+                            hash_value,
+                            modify_time: request.path.metadata()?.modified()?,
+                            selected_streams: selected_streams.to_owned(),
+                            decoded,
+                        }),
+                    }
+                }
                 None => phantom_file_info,
             };
 

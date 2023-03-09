@@ -19,12 +19,11 @@ use std::ops::Deref;
 use std::time::SystemTime;
 
 use itertools::Itertools;
-use rug::Integer;
 
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
-use crate::lookup::FileInfo;
+use crate::lookup::{FileInfo, HashValue};
 use crate::process::{RemainderBundle, RemainderType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
@@ -233,7 +232,10 @@ impl WriteableFileInfo {
                     .iter()
                     .into_group_map_by(|file_info| match &file_info.metadata {
                         Some(metadata) => metadata.hash_value.clone(),
-                        None => Integer::ZERO,
+                        None => HashValue {
+                            radix: 16,
+                            value: "0".into(),
+                        },
                     })
                     .into_iter()
                     .flat_map(|(_hash, group_file_info)| {

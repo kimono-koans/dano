@@ -18,10 +18,10 @@
 use std::{path::Path, process::Command as ExecProcess, time::SystemTime};
 
 use rayon::prelude::*;
-use rug::Integer;
 use which::which;
 
 use crate::config::SelectedStreams;
+use crate::lookup::HashValue;
 use crate::lookup::{FileInfo, FileMetadata};
 use crate::{Config, DanoError, DanoResult, RecordedFileInfo, DANO_FILE_INFO_VERSION};
 
@@ -59,7 +59,7 @@ impl RecordedFileInfo {
             .collect()
     }
 
-    fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<Integer> {
+    fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<HashValue> {
         // all snapshots should have the same timestamp
         let path_string = path.to_string_lossy();
 
@@ -76,16 +76,15 @@ impl RecordedFileInfo {
             return Err(DanoError::new(&msg).into());
         }
 
-        let hash_value = match Integer::from_str_radix(stdout_string, 16) {
-            Ok(hash_value) => hash_value,
-            Err(err) => {
-                let msg = format!(
-                    "Error: Could not parse hash for FLAC file: {}\n",
-                    path_string
-                );
-                return Err(DanoError::with_context(&msg, err.into()).into());
-            }
-        };
+        let hash_value =
+            if let Ok(_parsed) = primitive_types::U256::from_str_radix(stdout_string, 16) {
+                HashValue {
+                    radix: 16,
+                    value: stdout_string.into(),
+                }
+            } else {
+                return Err(DanoError::new("Could not parse integer from ffmpeg output.").into());
+            };
 
         if stdout_string.is_empty() {
             // likely file DNE?, except we have already check when we parsed input files
@@ -100,7 +99,7 @@ impl RecordedFileInfo {
         Ok(hash_value)
     }
 
-    fn generate_flac_file_info(path: &Path, hash_value: Integer) -> DanoResult<FileInfo> {
+    fn generate_flac_file_info(path: &Path, hash_value: HashValue) -> DanoResult<FileInfo> {
         Ok(FileInfo {
             path: path.to_owned(),
             version: DANO_FILE_INFO_VERSION,

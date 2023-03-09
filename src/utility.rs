@@ -64,6 +64,7 @@ impl DanoError {
             details: msg.to_owned(),
         }
     }
+    #[allow(dead_code)]
     pub fn with_context(msg: &str, err: Box<dyn Error + Send + Sync>) -> Self {
         let msg_plus_context = format!("{} : {:?}", msg, err);
         DanoError {
@@ -134,7 +135,7 @@ pub fn print_out_buf(output_buf: &str) -> DanoResult<()> {
 pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> {
     let buffer = match &file_info.metadata {
         Some(metadata) => {
-            let hash_value_as_hex = format!("{:x}", metadata.hash_value);
+            let hash_value_as_hex = format!("{}", metadata.hash_value.value);
 
             format!(
                 "{}={:<width$} : {:?}\n",
@@ -243,7 +244,7 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
 
     let buffer_string = std::str::from_utf8(&buffer)?;
 
-    let broken_string: Vec<String> = if buffer_string.contains(&['\n', '\0']) {
+    let broken_string: Vec<String> = if buffer_string.contains(['\n', '\0']) {
         // always split on newline or null char, if available
         buffer_string
             .split(&['\n', '\0'])
