@@ -25,8 +25,6 @@ mod requests;
 mod utility;
 mod versions;
 
-use std::ops::Deref;
-
 use config::{Config, ExecMode};
 use ingest::RecordedFileInfo;
 use lookup::FileInfoLookup;
@@ -67,7 +65,6 @@ fn exec() -> DanoResult<i32> {
             // here we print_file_info because we don't run these opts through verify_file_info,
             // which would ordinary print this information
             recorded_file_info
-                .deref()
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 

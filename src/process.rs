@@ -236,7 +236,6 @@ impl FileInfo {
 
                 // slow path
                 file_map
-                    .deref()
                     .par_iter()
                     .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
                     .any(|file_map_metadata| {
