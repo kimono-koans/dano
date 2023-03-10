@@ -188,7 +188,7 @@ impl FileInfo {
                     {
                         HashValue {
                             radix: 16,
-                            value: last.into(),
+                            value: last.trim_start_matches('0').into(),
                         }
                     } else {
                         return Err(
