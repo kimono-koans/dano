@@ -80,7 +80,7 @@ impl RecordedFileInfo {
             if let Ok(_parsed) = primitive_types::U512::from_str_radix(stdout_string, 16) {
                 HashValue {
                     radix: 16,
-                    value: stdout_string.into(),
+                    value: stdout_string.trim_start_matches('0').into(),
                 }
             } else {
                 return Err(DanoError::new("Could not parse integer from ffmpeg output.").into());
