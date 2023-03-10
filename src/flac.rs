@@ -77,7 +77,7 @@ impl RecordedFileInfo {
         }
 
         let hash_value =
-            if let Ok(_parsed) = primitive_types::U256::from_str_radix(stdout_string, 16) {
+            if let Ok(_parsed) = primitive_types::U512::from_str_radix(stdout_string, 16) {
                 HashValue {
                     radix: 16,
                     value: stdout_string.into(),

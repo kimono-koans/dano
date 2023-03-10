@@ -184,7 +184,7 @@ impl FileInfo {
             let res = match stdout_string.split_once('=') {
                 Some((first, last)) => {
                     let hash_value = if let Ok(_parsed) =
-                        primitive_types::U256::from_str_radix(last, 16)
+                        primitive_types::U512::from_str_radix(last, 16)
                     {
                         HashValue {
                             radix: 16,
