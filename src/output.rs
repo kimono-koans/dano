@@ -21,7 +21,7 @@ use std::time::SystemTime;
 use itertools::Itertools;
 
 use crate::ingest::RecordedFileInfo;
-use crate::{Config, ExecMode};
+use crate::{Config, ExecMode, HEXADECIMAL_RADIX};
 
 use crate::lookup::{FileInfo, HashValue};
 use crate::process::{RemainderBundle, RemainderType};
@@ -233,7 +233,7 @@ impl WriteableFileInfo {
                     .into_group_map_by(|file_info| match &file_info.metadata {
                         Some(metadata) => metadata.hash_value.clone(),
                         None => HashValue {
-                            radix: 16,
+                            radix: HEXADECIMAL_RADIX,
                             value: "0".into(),
                         },
                     })

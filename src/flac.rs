@@ -23,7 +23,9 @@ use which::which;
 use crate::config::SelectedStreams;
 use crate::lookup::HashValue;
 use crate::lookup::{FileInfo, FileMetadata};
-use crate::{Config, DanoError, DanoResult, RecordedFileInfo, DANO_FILE_INFO_VERSION};
+use crate::{
+    Config, DanoError, DanoResult, RecordedFileInfo, DANO_FILE_INFO_VERSION, HEXADECIMAL_RADIX,
+};
 
 const FLAC_HASH_ALGO: &str = "MD5";
 const FLAC_DECODED: bool = true;
@@ -76,15 +78,16 @@ impl RecordedFileInfo {
             return Err(DanoError::new(&msg).into());
         }
 
-        let hash_value =
-            if let Ok(_parsed) = primitive_types::U512::from_str_radix(stdout_string, 16) {
-                HashValue {
-                    radix: 16,
-                    value: stdout_string.trim_start_matches('0').into(),
-                }
-            } else {
-                return Err(DanoError::new("Could not parse integer from ffmpeg output.").into());
-            };
+        let hash_value = if let Ok(_parsed) =
+            primitive_types::U512::from_str_radix(stdout_string, HEXADECIMAL_RADIX)
+        {
+            HashValue {
+                radix: HEXADECIMAL_RADIX,
+                value: stdout_string.trim_start_matches('0').into(),
+            }
+        } else {
+            return Err(DanoError::new("Could not parse integer from ffmpeg output.").into());
+        };
 
         if stdout_string.is_empty() {
             // likely file DNE?, except we have already check when we parsed input files

@@ -32,7 +32,7 @@ use which::which;
 use crate::config::SelectedStreams;
 use crate::requests::{FileInfoRequest, RequestBundle};
 use crate::utility::DanoError;
-use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION};
+use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION, HEXADECIMAL_RADIX};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileInfo {
@@ -57,7 +57,7 @@ impl Ord for FileInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HashValue {
-    pub radix: i32,
+    pub radix: u32,
     pub value: Box<str>,
 }
 
@@ -184,10 +184,10 @@ impl FileInfo {
             let res = match stdout_string.split_once('=') {
                 Some((first, last)) => {
                     let hash_value = if let Ok(_parsed) =
-                        primitive_types::U512::from_str_radix(last, 16)
+                        primitive_types::U512::from_str_radix(last, HEXADECIMAL_RADIX)
                     {
                         HashValue {
-                            radix: 16,
+                            radix: HEXADECIMAL_RADIX,
                             value: last.trim_start_matches('0').into(),
                         }
                     } else {
