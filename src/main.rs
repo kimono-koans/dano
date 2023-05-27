@@ -164,20 +164,20 @@ fn exec() -> DanoResult<i32> {
                 let mut res: Vec<FileInfo> = recorded_file_info
                     .into_inner()
                     .into_iter()
-                    .filter(|value| {
-                        value.metadata.is_some()
-                    })
+                    .filter(|value| value.metadata.is_some())
                     .into_group_map_by(|value| {
                         value.metadata.as_ref().unwrap().hash_value.value.clone()
                     })
                     .into_iter()
-                    .filter_map(|(_key, value)| {
-                        if value.len() <= 1 {
-                            None
-                        } else {
-                            Some(value)
-                        }
-                    })
+                    .filter_map(
+                        |(_key, value)| {
+                            if value.len() <= 1 {
+                                None
+                            } else {
+                                Some(value)
+                            }
+                        },
+                    )
                     .flatten()
                     .collect();
 
