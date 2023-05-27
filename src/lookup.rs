@@ -25,7 +25,7 @@ use std::{
 };
 
 use crossbeam::channel::{Receiver, Sender};
-use rayon::ThreadPool;
+use rayon::{prelude::*, ThreadPool};
 use serde::{Deserialize, Serialize};
 use which::which;
 
@@ -259,19 +259,17 @@ impl FileInfoLookup {
 
         let config_arc = Arc::new(config.clone());
 
-        std::thread::spawn(move || {
+        let _handle = std::thread::spawn(move || {
             // exec threads to hash files
-            thread_pool.in_place_scope(|file_info_scope| {
-                requested_paths_clone.iter().for_each(|request| {
+            thread_pool.install(|| {
+                requested_paths_clone.par_iter().for_each(|request| {
                     let tx_item_clone = tx_item.clone();
                     let config_clone = config_arc.clone();
-                    file_info_scope.spawn(move |_| {
-                        if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
-                            // probably want to see the error, but not exit the process
-                            // when there is an error in a single thread
-                            eprintln!("Error: {}", err);
-                        }
-                    })
+                    if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                        // probably want to see the error, but not exit the process
+                        // when there is an error in a single thread
+                        eprintln!("Error: {}", err);
+                    }
                 });
             });
         });
