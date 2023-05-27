@@ -25,7 +25,7 @@ mod requests;
 mod utility;
 mod versions;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::lookup::FileInfo;
 use config::{Config, ExecMode};
@@ -162,18 +162,17 @@ fn exec() -> DanoResult<i32> {
                 return Err(DanoError::new("No recorded file info is available to print.").into());
             } else {
                 let mut res: Vec<FileInfo> = Vec::new();
-                let mut map: HashMap<Box<str>, FileInfo> = HashMap::new();
+                let mut map: BTreeMap<Box<str>, FileInfo> = BTreeMap::new();
 
                 recorded_file_info
                     .into_inner()
                     .into_iter()
                     .filter_map(|value| {
-                        let key = value
+                        value
                             .metadata
                             .as_ref()
-                            .map(|metadata| metadata.hash_value.value.clone());
-
-                        key.map(|key| (key, value))
+                            .map(|metadata| metadata.hash_value.value.clone())
+                            .map(|key| (key, value))
                     })
                     .for_each(|(key, value)| match map.get(&key) {
                         Some(from_map) => {
