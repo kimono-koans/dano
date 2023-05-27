@@ -25,6 +25,9 @@ mod requests;
 mod utility;
 mod versions;
 
+use std::collections::HashMap;
+
+use crate::lookup::FileInfo;
 use config::{Config, ExecMode};
 use ingest::RecordedFileInfo;
 use lookup::FileInfoLookup;
@@ -153,6 +156,44 @@ fn exec() -> DanoResult<i32> {
             }
 
             DANO_CLEAN_EXIT_CODE
+        }
+        ExecMode::Duplicates => {
+            if recorded_file_info.is_empty() {
+                return Err(DanoError::new("No recorded file info is available to print.").into());
+            } else {
+                let mut res: Vec<FileInfo> = Vec::new();
+                let mut map: HashMap<Box<str>, FileInfo> = HashMap::new();
+
+                recorded_file_info
+                    .into_inner()
+                    .into_iter()
+                    .filter_map(|value| {
+                        let key = value
+                            .metadata
+                            .as_ref()
+                            .map(|metadata| metadata.hash_value.value.clone());
+
+                        key.map(|key| (key, value))
+                    })
+                    .for_each(|(key, value)| match map.get(&key) {
+                        Some(from_map) => {
+                            res.push(from_map.clone());
+                            res.push(value)
+                        }
+                        None => {
+                            let _ = map.insert(key, value);
+                        }
+                    });
+
+                if res.is_empty() {
+                    eprintln!("INFO: No duplicates found.");
+                    DANO_CLEAN_EXIT_CODE
+                } else {
+                    res.iter()
+                        .try_for_each(|file_info| print_file_info(&config, file_info))?;
+                    DANO_DISORDER_EXIT_CODE
+                }
+            }
         }
         ExecMode::Dump => {
             if recorded_file_info.is_empty() {

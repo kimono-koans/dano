@@ -89,11 +89,17 @@ fn parse_args() -> ArgMatches {
                 .long("dump")
                 .display_order(7))
         .arg(
+            Arg::new("DUPLICATES")
+                .help("show any hash value duplicates discovered when reading back recorded file information (in hash file and xattrs).")
+                .long("duplicates")
+                .aliases(&["dupes"])
+                .display_order(8))
+        .arg(
             Arg::new("IMPORT_FLAC")
                 .help("import flac checksums and write as dano recorded file information.")
                 .long("import-flac")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
-                .display_order(8))
+                .display_order(9))
         .arg(
             Arg::new("NUM_THREADS")
                 .help("requested number of threads to use for file processing.  Default is the number of logical cores.")
@@ -103,39 +109,39 @@ fn parse_args() -> ArgMatches {
                 .min_values(1)
                 .require_equals(true)
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(9))
+                .display_order(10))
         .arg(
             Arg::new("SILENT")
                 .help("quiet many informational messages (like \"OK\").")
                 .short('s')
                 .long("silent")
-                .display_order(10),
+                .display_order(11),
         )
         .arg(
             Arg::new("WRITE_NEW")
                 .help("if new files are present in TEST mode, append such file info.")
                 .long("write-new")
                 .requires("TEST")
-                .display_order(11),
+                .display_order(12),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
                 .long("overwrite")
                 .conflicts_with_all(&["PRINT", "DUMP"])
-                .display_order(12),
+                .display_order(13),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
                 .help("by default, file extensions not recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
                 .long("disable-filter")
-                .display_order(13),
+                .display_order(14),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
                 .help("use canonical paths (instead of potentially relative paths).")
                 .long("canonical-paths")
-                .display_order(14),
+                .display_order(15),
         )
         .arg(
             Arg::new("XATTR")
@@ -144,7 +150,7 @@ fn parse_args() -> ArgMatches {
                 When XATTR is enabled, if a write is requested, dano will always overwrite extended attributes previously written.")
                 .short('x')
                 .long("xattr")
-                .display_order(15),
+                .display_order(16),
         )
         .arg(
             Arg::new("HASH_ALGO")
@@ -155,19 +161,19 @@ fn parse_args() -> ArgMatches {
                 .require_equals(true)
                 .possible_values(["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(16))
+                .display_order(17))
         .arg(
             Arg::new("DECODE")
                 .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
                 .long("decode")
                 .conflicts_with_all(&["PRINT", "DUMP"])
-                .display_order(17))
+                .display_order(18))
         .arg(
             Arg::new("REWRITE_ALL")
                 .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
                 .long("rewrite")
                 .requires("WRITE")
-                .display_order(18))
+                .display_order(19))
         .arg(
             Arg::new("ONLY")
                 .help("hash selected stream only")
@@ -177,13 +183,13 @@ fn parse_args() -> ArgMatches {
                 .possible_values(["audio", "video"])
                 .value_parser(clap::builder::ValueParser::os_string())
                 .requires("WRITE")
-                .display_order(19))
+                .display_order(20))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .conflicts_with_all(&["PRINT", "DUMP"])
-            .display_order(20))
+            .display_order(21))
         .get_matches()
 }
 
@@ -205,6 +211,7 @@ pub enum ExecMode {
     Write(WriteModeConfig),
     Print,
     Dump,
+    Duplicates,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -285,6 +292,8 @@ impl Config {
             ExecMode::Dump
         } else if matches.is_present("PRINT") {
             ExecMode::Print
+        } else if matches.is_present("DUPLICATES") {
+            ExecMode::Duplicates
         } else {
             return Err(DanoError::new(
                 "You must specify an execution mode: TEST, WRITE, PRINT or DUMP",
