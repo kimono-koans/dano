@@ -25,7 +25,7 @@ mod requests;
 mod utility;
 mod versions;
 
-use std::collections::BTreeMap;
+use itertools::Itertools;
 
 use crate::lookup::FileInfo;
 use config::{Config, ExecMode};
@@ -161,33 +161,31 @@ fn exec() -> DanoResult<i32> {
             if recorded_file_info.is_empty() {
                 return Err(DanoError::new("No recorded file info is available to print.").into());
             } else {
-                let mut res: Vec<FileInfo> = Vec::new();
-                let mut map: BTreeMap<Box<str>, FileInfo> = BTreeMap::new();
-
-                recorded_file_info
+                let mut res: Vec<FileInfo> = recorded_file_info
                     .into_inner()
                     .into_iter()
-                    .filter_map(|value| {
-                        value
-                            .metadata
-                            .as_ref()
-                            .map(|metadata| metadata.hash_value.value.clone())
-                            .map(|key| (key, value))
+                    .filter(|value| {
+                        value.metadata.is_some()
                     })
-                    .for_each(|(key, value)| match map.get(&key) {
-                        Some(from_map) => {
-                            res.push(from_map.clone());
-                            res.push(value)
+                    .into_group_map_by(|value| {
+                        value.metadata.as_ref().unwrap().hash_value.value.clone()
+                    })
+                    .into_iter()
+                    .filter_map(|(_key, value)| {
+                        if value.len() <= 1 {
+                            None
+                        } else {
+                            Some(value)
                         }
-                        None => {
-                            let _ = map.insert(key, value);
-                        }
-                    });
+                    })
+                    .flatten()
+                    .collect();
 
                 if res.is_empty() {
                     eprintln!("INFO: No duplicates found.");
                     DANO_CLEAN_EXIT_CODE
                 } else {
+                    res.sort_by_key(|item| item.path.clone());
                     res.iter()
                         .try_for_each(|file_info| print_file_info(&config, file_info))?;
                     eprintln!("WARNING: Duplicates found.");
