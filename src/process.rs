@@ -17,7 +17,7 @@
 
 use std::{collections::BTreeMap, ops::Deref, path::PathBuf, sync::Arc};
 
-use crossbeam::channel::Receiver;
+use crossbeam_channel::Receiver;
 use itertools::Either;
 use rayon::prelude::*;
 

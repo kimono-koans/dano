@@ -24,7 +24,7 @@ use std::{
     time::SystemTime,
 };
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
 use which::which;
@@ -253,7 +253,7 @@ impl FileInfoLookup {
         thread_pool: ThreadPool,
     ) -> DanoResult<Receiver<FileInfo>> {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
-            crossbeam::channel::unbounded();
+            crossbeam_channel::unbounded();
 
         let requested_paths_clone = requested_paths.deref().to_owned();
 
