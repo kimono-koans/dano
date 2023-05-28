@@ -84,6 +84,24 @@ fed8052012fb6d0523ef3980a0f6f7bd
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
 ```
 
+## Can I use `dano` to find duplicate files?
+
+If you've ever used `fdupes`, you know how cool it is.  `fdupes` can recursively search a file tree to discover duplicate files.  The only issue is -- what if some of your media files have the same internal bitstreams, but distinct file checksums?  Perhaps they are simply contained within different/distinct containers, and/or have different file metadata/tags attached?
+
+`dano` makes it easy to find those duplicate media files, based upon their internal bitstreams:
+
+```bash
+➜ cp 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac'
+➜ dano -w -x ./*
+murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
+No new file paths to write.
+Overwriting dano hash for: "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
+➜ find . -type f | dano --dupes
+murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
+murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
+WARNING: Duplicates found.
+```
+
 ## Shout outs! Yo, yo, yo!
 
 Inspired by `hashdeep`, `md5tree`, `flac`, and, of course, `ffmpeg`.
