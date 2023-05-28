@@ -6,9 +6,9 @@
 
 * Non-media path filtering (which can be disabled)
 * Highly concurrent hashing (select # of threads)
-* Several useful modes: WRITE, TEST, PRINT or DUMP
+* Several useful modes: WRITE, TEST, PRINT, DUMP, or DUPLICATES
 * Select from multiple checksum algorithms (default: murmur3, MD5, adler32, CRC32, SHA160, SHA256, SHA512)
-* Option to decode the stream before executing hash function
+* Option to decode the stream before executing the hash function
 * Write to xattrs or to hash file (and always read back and operate on both)
 
 ## Why `dano`? Because FLAC is really clever
@@ -93,7 +93,7 @@ If you've ever used `fdupes`, you know how cool it is.  `fdupes` can recursively
 ```bash
 # To test, create a copy
 ➜ cp 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac'
-# Copy will not contain the a hash, so we will create one
+# Copy will not contain a hash, so we will create one
 ➜ dano -w -x ./*
 murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
 No new file paths to write.
