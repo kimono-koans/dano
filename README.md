@@ -86,9 +86,9 @@ fed8052012fb6d0523ef3980a0f6f7bd
 
 ## Can I use `dano` to find duplicate files?
 
-If you've ever used `fdupes`, you know how cool it is.  `fdupes` can recursively search a file tree to discover duplicate files.  The only issue is -- what if some of your media files have the same internal bitstreams, but distinct file checksums?  Perhaps they are simply contained within different/distinct containers, and/or have different file metadata/tags attached?
+If you've ever used `fdupes`, you know how cool it is.  `fdupes` can recursively search a file tree to discover duplicate files.  The only issue is -- what if some of your media files have the same internal bitstreams, but distinct file checksums?  Perhaps such bitstreams are contained within different/distinct containers, and/or have different file metadata/tags attached?
 
-`dano` makes it easy to find those duplicate media files, based upon their internal bitstreams:
+`dano` makes it easy to find such duplicate media, based upon their internal bitstreams:
 
 ```bash
 ➜ cp 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac'
