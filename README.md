@@ -16,7 +16,7 @@
 To me, first class checksums are one thing that sets the FLAC music format apart.  FLAC supports the writing and checking of the streams held within its container.  When I ask whether the FLAC audio stream has the same checksum as the stream I originally wrote to disk, the `flac` command tells me whether the checksum matches:
 
 ```bash
-% flac -t 'Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac'
+➜ flac -t 'Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac'
 Link Wray - Rumble! The Best of Link Wray - 01-01 - 02 - The Swag.flac: ok
 ```
 
@@ -29,19 +29,19 @@ The question is -- why don't we have this functionality for video and other medi
 So, for example, when I ask whether a media stream has the same checksum as when I originally wrote it to disk, `dano` tells me whether the checksum matches:
 
 ```bash
-% dano -w 'Sample.mkv'
+➜ dano -w 'Sample.mkv'
 murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "Sample.mkv"
-% dano -t 'Sample.mkv'
+➜ dano -t 'Sample.mkv'
 "Sample": OK
 # Now change our file's name and our checksum still verifies,
 # because the checksum is stored in a xattr
-% mv 'Sample.mkv' 'test1.mkv'
-% dano -t 'test2.mkv'
+➜ mv 'Sample.mkv' 'test1.mkv'
+➜ dano -t 'test2.mkv'
 "test1.mkv": OK
 # Now change our file's metadata and *write a new file in a 
 # new container* and our checksum is the *same*
-% ffmpeg -i 'test1.mkv' -metadata author="Kimono" 'test2.mp4'
-% dano -w 'test2.mp4'
+➜ ffmpeg -i 'test1.mkv' -metadata author="Kimono" 'test2.mp4'
+➜ dano -w 'test2.mp4'
 murmur3=2f23cebfe8969a8e11cd3919ce9c9067 : "test2.mkv"
 ```
 ## Can I use `dano` with my FLAC files?
@@ -50,15 +50,15 @@ Of course you can.  `dano` will even import your FLAC file's checksums directly:
 
 ```bash
 # Import dano checksum from FLAC and write to an xattr
-% dano --import-flac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+➜ dano --import-flac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
 MD5=fed8052012fb6d0523ef3980a0f6f7bd : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 No old file data to overwrite.
 # Verify checksum is the same as the checksum embedded in the FLAC container
-% metaflac --show-md5sum 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+➜ metaflac --show-md5sum 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
 fed8052012fb6d0523ef3980a0f6f7bd
 # Verify the decoded FLAC audio stream is the same as the xattr checksum
-% dano -t 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
+➜ dano -t 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac'
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac": OK
 ```
 
@@ -72,15 +72,15 @@ I get it!  For serious collectors, if you can't verify your checksums later when
 # To test, this we will create an ALAC copy of a FLAC file
 ffmpeg -i 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' -acodec alac 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
 # Write dano checksum to an xattr
-% dano -w --only=audio --decode --hash-algo=md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
+➜ dano -w --only=audio --decode --hash-algo=md5 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a'
 MD5=fed8052012fb6d0523ef3980a0f6f7bd : "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 Writing dano hash for: "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 No old file data to overwrite.
 # Verify checksum is the same as the decoded FLAC audio stream
-% metaflac --show-md5sum "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
+➜ metaflac --show-md5sum "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
 fed8052012fb6d0523ef3980a0f6f7bd
 # Verify the decoded ALAC audio stream is the same as the xattr checksum
-% dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
+➜ dano -t "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a"
 "Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.m4a": OK
 ```
 
@@ -91,11 +91,14 @@ If you've ever used `fdupes`, you know how cool it is.  `fdupes` can recursively
 `dano` makes it easy to find such duplicate media, based upon their internal bitstreams:
 
 ```bash
+# To test, create a copy
 ➜ cp 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac' 'Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac'
+# Copy will not contain the a hash, so we will create one
 ➜ dano -w -x ./*
 murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
 No new file paths to write.
 Overwriting dano hash for: "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
+# Now, find duplicates
 ➜ find . -type f | dano --dupes
 murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
 murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
@@ -115,16 +118,16 @@ For Debian-based and Redhat-based Linux distributions (like, Ubuntu or Fedora, e
 You may also create and install your own native package from the latest sources, like so:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-cargo install cargo-deb 
-git clone https://github.com/kimono-koans/dano.git
-cd ./dano/; cargo deb
+➜ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+➜ cargo install cargo-deb 
+➜ git clone https://github.com/kimono-koans/dano.git
+➜ cd ./dano/; cargo deb
 # to install on a Debian/Ubuntu-based system
-dpkg -i ./target/debian/dano_*.deb
+➜ dpkg -i ./target/debian/dano_*.deb
 # or convert to RPM 
-alien -r ./target/debian/dano_*.deb
+➜ alien -r ./target/debian/dano_*.deb
 # and install on a Redhat-based system
-rpm -i --replacefiles ./dano*.rpm
+➜ rpm -i --replacefiles ./dano*.rpm
 ```
 
 ## Installation from Source
@@ -134,8 +137,8 @@ For now, `dano` depends on `ffmpeg` and `metaflac` if you want to import FLAC fi
 You may install `rustup` and build `dano` like so:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
-cargo install dano
+➜ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
+➜ cargo install dano
 ```
 
 Note: In addition to what your package manager or OS may provide (for instance, `apt install rustc cargo`, security-minded users may be interested to know that there are [alternative methods](https://rust-lang.github.io/rustup/installation/other.html) for installing the `rustc` compiler and `cargo` besides the method described above, which allow you to verify the `rustup` before install.
