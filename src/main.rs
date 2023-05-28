@@ -161,13 +161,19 @@ fn exec() -> DanoResult<i32> {
             if recorded_file_info.is_empty() {
                 return Err(DanoError::new("No recorded file info is available to print.").into());
             } else {
-                let mut res: Vec<FileInfo> = recorded_file_info
+                let mut tmp: Vec<(Box<str>, Vec<FileInfo>)> = recorded_file_info
                     .into_inner()
                     .into_iter()
                     .filter(|value| value.metadata.is_some())
                     .into_group_map_by(|value| {
                         value.metadata.as_ref().unwrap().hash_value.value.clone()
                     })
+                    .drain()
+                    .collect();
+
+                tmp.sort_by_key(|(key, _values)| key.clone());
+
+                let res: Vec<FileInfo> = tmp
                     .into_iter()
                     .filter_map(
                         |(_key, value)| {
@@ -185,7 +191,6 @@ fn exec() -> DanoResult<i32> {
                     eprintln!("INFO: No duplicates found.");
                     DANO_CLEAN_EXIT_CODE
                 } else {
-                    res.sort_by_key(|item| item.path.clone());
                     res.iter()
                         .try_for_each(|file_info| print_file_info(&config, file_info))?;
                     eprintln!("WARNING: Duplicates found.");
