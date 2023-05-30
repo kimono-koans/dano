@@ -396,12 +396,17 @@ impl Config {
             .filter(|path| path.file_name() != Some(OsStr::new(hash_file)))
             .filter(|path| {
                 if !opt_disable_filter {
-                    auto_extension_filter
+                    if auto_extension_filter
                         .lines()
-                        .any(|extension| path.extension() == Some(OsStr::new(extension)))
-                } else {
-                    true
+                        .any(|extension| path.extension() == Some(OsStr::new(extension))) {
+                            return true
+                        }
+
+                    eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
+                    return false
                 }
+
+                true
             })
             .map(|path| {
                 if opt_canonical_paths {

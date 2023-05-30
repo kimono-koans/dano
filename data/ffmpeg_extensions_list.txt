@@ -152,6 +152,7 @@ ogg
 okt
 oma
 omg
+opus
 paf
 pjs
 plm
