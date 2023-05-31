@@ -32,13 +32,13 @@ use crate::{DanoError, DanoResult, DANO_DEFAULT_HASH_FILE_NAME};
 
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
-        .about("dano is a wrapper for ffmpeg that checksums the internal file streams of certain media files, \
+        .about("dano is a wrapper for ffmpeg that checksums the internal bitstreams of held within certain media files/containers, \
         and stores them in a format which can be used to verify such checksums later.  This is handy, because, \
         should you choose to change metadata tags, or change file names, the media checksums should remain the same.")
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("input files to be hashed or verified.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.  \
+                .help("select the input files to be hashed or verified, etc.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.  \
                 By default, files which don't appear to be valid extensions for ffmpeg are filtered with a warning message, unless the SILENT flag is enabled.  \
                 Hidden files (so-called dot files), files with no name, or no extension are silently ignored.  The default behavior can be disabled with the DISABLE_FILTER flag.")
                 .takes_value(true)
@@ -59,7 +59,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("HASH_FILE")
-                .help("file from which to read recorded file information.  If not specified, the output file will be used (or if not specified, 'dano_hashes.txt' in the current working directory will be used).")
+                .help("select the file from which to read recorded file information.  If not specified, the output file will be used (or if not specified, 'dano_hashes.txt' in the current working directory will be used).")
                 .short('k')
                 .long("hash-file")
                 .takes_value(true)
@@ -138,7 +138,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("DISABLE_FILTER")
-                .help("by default, file extensions which may not be recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
+                .help("disable the default filtering of file extensions which ffmpeg lists as \"common\" extensions for supported file formats.")
                 .long("disable-filter")
                 .display_order(14),
         )
@@ -151,7 +151,7 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("XATTR")
                 .help("try to write (dano will always try to read) hash to any input file's extended attributes.  \
-                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value (such as, export DANO_XATTR_WRITES=enabled).  \
+                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value (such as: export DANO_XATTR_WRITES=enabled).  \
                 When XATTR is enabled, if a write is requested, dano will always overwrite extended attributes previously written.")
                 .short('x')
                 .long("xattr")
