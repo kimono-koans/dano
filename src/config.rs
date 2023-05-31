@@ -179,7 +179,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(19))
         .arg(
             Arg::new("ONLY")
-                .help("hash selected stream only")
+                .help("hash the first audio or video stream only")
                 .long("only")
                 .takes_value(true)
                 .require_equals(true)
