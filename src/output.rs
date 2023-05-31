@@ -35,10 +35,10 @@ const EMPTY_STR: &str = "";
 const OVERWRITE_OLD_PREFIX: &str = "INFO: Overwriting dano hash for: ";
 
 const NOT_WRITE_NEW_PREFIX: &str =
-    "WARN: Not writing dano hash for (as writing in this mode is not specified): ";
+    "WARN: Not writing dano hash for (as writing is not specified): ";
 const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 
-const NOT_OVERWRITE_OLD_PREFIX: &str = "WARN: Not overwriting dano hash for: ";
+const NOT_OVERWRITE_OLD_PREFIX: &str = "WARN: Not overwriting dano hash for (as overwriting is not specified): ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
 const NEW_FILES_EMPTY: &str = "INFO: No new file paths to write.";
