@@ -102,7 +102,7 @@ Overwriting dano hash for: "./Pavement - Wowee Zowee_ Sordid Sentinels Edition -
 ➜ find . -type f | dano --dupes
 murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance-copy1.flac"
 murmur3=ff95fc73a64ace424964f30af3ed932  : "./Pavement - Wowee Zowee_ Sordid Sentinels Edition - 02-02 - 50 - We Dance.flac"
-WARNING: Duplicates found.
+WARN: Duplicates found.
 ```
 
 ## Shout outs! Yo, yo, yo!

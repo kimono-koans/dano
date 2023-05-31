@@ -39,7 +39,7 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("INPUT_FILES")
                 .help("select the input files to be hashed or verified, etc.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.  \
-                By default, files which don't appear to be valid extensions for ffmpeg are filtered with a warning message, unless the SILENT flag is enabled.  \
+                By default, files which don't appear to be valid extensions for ffmpeg are filtered with a WARN message, unless the SILENT flag is enabled.  \
                 Hidden files (so-called dot files), files with no name, or no extension are silently ignored.  The default behavior can be disabled with the DISABLE_FILTER flag.")
                 .takes_value(true)
                 .multiple_values(true)
@@ -459,7 +459,7 @@ impl Config {
                 buffer.push(' ');
             });
 
-            eprintln!("WARNING: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
+            eprintln!("WARN: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
         }
 
         valid_paths
