@@ -221,7 +221,7 @@ impl FileInfo {
     }
 
     fn is_same_filename(&self, file_map: Arc<FileMap>) -> bool {
-        file_map.inner.contains_key(&self.path)
+        file_map.deref().contains_key(&self.path)
     }
 
     fn is_same_hash(&self, file_map: Arc<FileMap>) -> bool {

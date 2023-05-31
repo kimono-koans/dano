@@ -58,6 +58,12 @@ pub struct WriteOutBundle {
     inner: Vec<RemainderBundle>,
 }
 
+impl WriteOutBundle {
+    fn into_inner(self) -> Vec<RemainderBundle> {
+        self.inner
+    }
+}
+
 impl From<Vec<RemainderBundle>> for WriteOutBundle {
     fn from(vec: Vec<RemainderBundle>) -> Self {
         Self { inner: vec }
@@ -74,7 +80,7 @@ impl Deref for WriteOutBundle {
 
 impl WriteOutBundle {
     pub fn write_out(self, config: &Config) -> DanoResult<()> {
-        self.inner.into_iter().try_for_each(|remainder_bundle| {
+        self.into_inner().into_iter().try_for_each(|remainder_bundle| {
             if !remainder_bundle.files.is_empty() {
                 remainder_bundle.write_out(config)
             } else {
