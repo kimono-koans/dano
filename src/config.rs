@@ -17,10 +17,11 @@
 
 use std::{
     ffi::OsStr,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, collections::HashSet, borrow::Cow,
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
+use itertools::Either;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -383,11 +384,11 @@ impl Config {
     ) -> Vec<PathBuf> {
         let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
 
-        raw_paths
+        let (bad_extensions, valid_paths): (Vec<_>, Vec<_>) = raw_paths
             .into_par_iter()
             .filter(|path| {
                 if path.exists() {
-                    return true
+                    return true;
                 }
 
                 eprintln!("Error: Path does not exist: {:?}", path);
@@ -395,46 +396,64 @@ impl Config {
             })
             .filter(|path| {
                 if path.is_file() {
-                    return true
+                    return true;
                 }
 
                 eprintln!("Error: Path is not a file: {:?}", path);
                 false
             })
-            .filter(|path| match path.to_str() {
-                Some(_) => true,
-                None => {
-                    eprintln!("Error: Path cannot be serialized to string: {:?}", path);
-                    false
+            .filter(|path| {
+                if path.to_str().is_some() {
+                    return true;
                 }
+
+                eprintln!("Error: Path cannot be serialized to string: {:?}", path);
+                false
             })
             .filter(|path| path.file_name() != Some(OsStr::new(hash_file)))
-            .filter(|path| {
+            .filter_map(|path| {
                 if !opt_disable_filter {
+                    let opt_extension = path.extension();
+
                     if auto_extension_filter
                         .lines()
-                        .any(|extension| {
-                            path.extension() == Some(OsStr::new(extension))
-                        }) {
-                            return true
-                        }
-
-                    if !opt_silent && path.extension().is_some() {
-                        eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
+                        .any(|extension| opt_extension == Some(OsStr::new(extension)))
+                    {
+                        return Some(Either::Right(path.as_path()));
                     }
 
-                    return false
+                    if let Some(ext) = opt_extension {
+                        return Some(Either::Left(ext.to_string_lossy()));
+                    }
+
+                    return None;
                 }
 
-                true
-            })
-            .map(|path| {
-                if opt_canonical_paths {
-                    path.canonicalize().unwrap_or_else(|_| path.to_owned())
-                } else {
-                    path.to_owned()
-                }
-            })
-            .collect()
+                Some(Either::Right(path.as_path()))
+            }).partition_map(|item|{
+                item
+            });
+
+        if !opt_silent && !bad_extensions.is_empty() {
+            let unique: HashSet<Cow<str>> = bad_extensions.into_iter().collect();
+
+            let mut buffer = String::new();
+
+            unique.iter().for_each(|ext| {
+                buffer.push_str(ext);
+                buffer.push_str(" ");
+            });
+
+            eprintln!("WARNING: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", buffer.trim());
+        }
+
+        valid_paths.iter().map(|path| {
+            if opt_canonical_paths {
+                path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+            } else {
+                path.to_path_buf()
+            }
+        })
+        .collect()
     }
 }

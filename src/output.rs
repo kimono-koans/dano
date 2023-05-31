@@ -80,14 +80,16 @@ impl Deref for WriteOutBundle {
 
 impl WriteOutBundle {
     pub fn write_out(self, config: &Config) -> DanoResult<()> {
-        self.into_inner().into_iter().try_for_each(|remainder_bundle| {
-            if !remainder_bundle.files.is_empty() {
-                remainder_bundle.write_out(config)
-            } else {
-                Self::print_bundle_empty(config, &remainder_bundle.remainder_type);
-                Ok(())
-            }
-        })
+        self.into_inner()
+            .into_iter()
+            .try_for_each(|remainder_bundle| {
+                if !remainder_bundle.files.is_empty() {
+                    remainder_bundle.write_out(config)
+                } else {
+                    Self::print_bundle_empty(config, &remainder_bundle.remainder_type);
+                    Ok(())
+                }
+            })
     }
 
     fn print_bundle_empty(config: &Config, remainder_type: &RemainderType) {

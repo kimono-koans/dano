@@ -146,15 +146,12 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
             )
         }
         None => {
-            let msg = format!(
-                "Could not find file metadata for: {:?}\n",
-                file_info.path
-            );
+            let msg = format!("Could not find file metadata for: {:?}\n", file_info.path);
             return Err(DanoError::new(&msg).into());
         }
     };
 
-    // why?  b/c the writing of the file is the thing in write and dump mode and 
+    // why?  b/c the writing of the file is the thing in write and dump mode and
     // this fn used then is just to print info about the hash.  we may wish to send to dev null
     match config.exec_mode {
         ExecMode::Print | ExecMode::Duplicates | ExecMode::Test(_) => print_out_buf(&buffer),
