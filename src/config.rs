@@ -470,7 +470,7 @@ impl Config {
                         return canonical
                     }
 
-                    eprintln!("WARN: Unable path to canonical path: {:?}", path);
+                    eprintln!("WARN: Unable convert relative path to canonical path: {:?}", path);
                 }
 
                 path.to_path_buf()
