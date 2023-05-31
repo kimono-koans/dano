@@ -48,7 +48,7 @@ impl RecordedFileInfo {
             .flat_map(|path| match path.extension() {
                 Some(extension) if extension.to_ascii_lowercase() == "flac" => Some(path),
                 _ => {
-                    eprintln!("Error: {:?} does not have a valid FLAC extension", path);
+                    eprintln!("ERROR: {:?} does not have a valid FLAC extension", path);
                     None
                 }
             })

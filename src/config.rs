@@ -395,7 +395,7 @@ impl Config {
                     return true;
                 }
 
-                eprintln!("Error: Path does not exist: {:?}", path);
+                eprintln!("ERROR: Path does not exist: {:?}", path);
                 false
             })
             .filter(|path| {
@@ -403,7 +403,7 @@ impl Config {
                     return true;
                 }
 
-                eprintln!("Error: Path is not a regular file: {:?}", path);
+                eprintln!("ERROR: Path is not a regular file: {:?}", path);
                 false
             })
             .filter(|path| {
@@ -411,13 +411,13 @@ impl Config {
                     return true;
                 }
 
-                eprintln!("Error: Path cannot be serialized to string: {:?}", path);
+                eprintln!("ERROR: Path cannot be serialized to string: {:?}", path);
                 false
             })
             .filter(|path| {
                 if path.file_name() == Some(OsStr::new(hash_file)) {
                     eprintln!(
-                        "Error: File name is the name of a dano hash file: {:?}",
+                        "ERROR: File name is the name of a dano hash file: {:?}",
                         path
                     );
                     return false;
