@@ -173,19 +173,19 @@ fn exec() -> DanoResult<i32> {
                     .drain()
                     .collect();
 
-                let res: Vec<FileInfo> = sorted_group_map
+                let duplicates: Vec<FileInfo> = sorted_group_map
                     .into_values()
                     .filter(|value| value.len() > 1)
                     .flatten()
                     .collect();
 
-                if res.is_empty() {
+                if duplicates.is_empty() {
                     if !config.opt_silent {
                         eprintln!("No duplicates found.");
                     }
                     DANO_CLEAN_EXIT_CODE
                 } else {
-                    res.iter()
+                    duplicates.iter()
                         .try_for_each(|file_info| print_file_info(&config, file_info))?;
                     if !config.opt_silent {
                         eprintln!("WARN: Duplicates found.");
