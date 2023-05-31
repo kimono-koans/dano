@@ -15,7 +15,7 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::{collections::BTreeMap, ops::Deref, path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, ops::Deref, path::PathBuf};
 
 use crossbeam_channel::Receiver;
 use itertools::Either;
@@ -50,7 +50,7 @@ impl ProcessedFiles {
         rx_item: Receiver<FileInfo>,
     ) -> DanoResult<ProcessedFiles> {
         // prepare for loop
-        let file_map = Arc::new(FileMap::new(recorded_file_info)?);
+        let file_map = FileMap::new(recorded_file_info)?;
         let mut exit_code = 0;
         // L
         let mut new_filenames = Vec::new();
@@ -59,12 +59,13 @@ impl ProcessedFiles {
 
         // loop while recv from channel
         while let Ok(file_info) = rx_item.recv() {
+            let fm_ref = &file_map;
             if let (Some(new_files_partitioned), test_exit_code) =
-                file_info.verify(config, file_map.clone())?
+                fm_ref.verify(config, file_info)?
             {
                 match new_files_partitioned {
-                    Either::Left(file_info) => new_filenames.push(file_info),
-                    Either::Right(file_info) => new_files.push(file_info),
+                    Either::Left(file_info) => new_filenames.push(file_info.clone()),
+                    Either::Right(file_info) => new_files.push(file_info.clone()),
                 }
                 if test_exit_code != 0 {
                     exit_code = test_exit_code
@@ -118,30 +119,28 @@ impl FileMap {
             inner: recorded_file_info_map,
         })
     }
-}
 
-impl FileInfo {
     fn verify(
-        self,
+        &self,
         config: &Config,
-        file_map: Arc<FileMap>,
+        file_info: FileInfo,
     ) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
-        let is_same_hash = self.is_same_hash(file_map.clone());
-        let is_same_filename = self.is_same_filename(file_map);
+        let is_same_hash = self.is_same_hash(&file_info);
+        let is_same_filename = self.is_same_filename(&file_info);
         let mut test_exit_code = 0;
 
         // must check whether metadata is none first
-        let opt_file_info = if self.metadata.is_none() {
+        let opt_file_info = if file_info.metadata.is_none() {
             // always print, even in silent
             match config.exec_mode {
                 ExecMode::Test(_) => {
                     print_out_buf(&format!(
                         "{:?}: WARNING, path does not exist.\n",
-                        &self.path
+                        &file_info.path
                     ))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &self)?;
+                    print_file_info(config, &file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -151,22 +150,22 @@ impl FileInfo {
             // always print, even in silent
             match config.exec_mode {
                 ExecMode::Test(_) => {
-                    print_out_buf(&format!("{:?}: Path is a new file.\n", self.path))?;
+                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &self)?;
+                    print_file_info(config, &file_info)?;
                 }
                 _ => unreachable!(),
             }
-            Some(Either::Right(self))
+            Some(Either::Right(file_info.to_owned()))
         } else if is_same_filename && is_same_hash {
             if !config.opt_silent {
                 match config.exec_mode {
                     ExecMode::Test(_) => {
-                        print_out_buf(&format!("{:?}: OK\n", &self.path))?;
+                        print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                     }
                     ExecMode::Write(_) => {
-                        print_file_info(config, &self)?;
+                        print_file_info(config, &file_info)?;
                     }
                     _ => unreachable!(),
                 }
@@ -179,35 +178,35 @@ impl FileInfo {
                     if test_config.opt_write_new && test_config.opt_overwrite_old {
                         print_out_buf(format!(
                             "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
-                            self.path
+                            file_info.path
                         ).as_ref())?;
                     } else {
                         print_out_buf(
                             format!(
                                 "{:?}: OK, but path has same hash for new filename.\n",
-                                self.path
+                                file_info.path
                             )
                             .as_ref(),
                         )?;
                     }
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &self)?;
+                    print_file_info(config, &file_info)?;
                 }
                 _ => unreachable!(),
             }
-            Some(Either::Left(self))
+            Some(Either::Left(file_info.to_owned()))
         } else if is_same_filename {
             // always print, even in silent
             match config.exec_mode {
                 ExecMode::Test(_) => {
                     print_out_buf(&format!(
                         "{:?}: WARNING, path has new hash for same filename.\n",
-                        self.path
+                        file_info.path
                     ))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &self)?;
+                    print_file_info(config, &file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -220,22 +219,22 @@ impl FileInfo {
         Ok((opt_file_info, test_exit_code))
     }
 
-    fn is_same_filename(&self, file_map: Arc<FileMap>) -> bool {
-        file_map.deref().contains_key(&self.path)
+    fn is_same_filename(&self, file_info: &FileInfo) -> bool {
+        self.deref().contains_key(&file_info.path)
     }
 
-    fn is_same_hash(&self, file_map: Arc<FileMap>) -> bool {
-        match &self.metadata {
+    fn is_same_hash(&self, file_info: &FileInfo) -> bool {
+        match &file_info.metadata {
             Some(path_metadata) => {
                 // fast path
-                if let Some(Some(fast_path_metadata)) = file_map.get(&self.path) {
+                if let Some(Some(fast_path_metadata)) = self.get(&file_info.path) {
                     if fast_path_metadata.hash_value == path_metadata.hash_value {
                         return true;
                     }
                 }
 
                 // slow path
-                file_map
+                self
                     .par_iter()
                     .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
                     .any(|file_map_metadata| {
@@ -246,3 +245,5 @@ impl FileInfo {
         }
     }
 }
+
+    
