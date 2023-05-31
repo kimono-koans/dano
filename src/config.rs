@@ -38,7 +38,9 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .arg(
             Arg::new("INPUT_FILES")
-                .help("input files to be hashed or verified.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.")
+                .help("input files to be hashed or verified.  INPUT_FILES can also be read from stdin for NULL or NEWLINE delimited inputs.  \
+                By default, files which don't appear to be valid extensions for ffmpeg are filtered with a warning message, unless the SILENT flag is enabled.  \
+                Hidden files (so-called dot files), files with no name, or no extension are silently ignored.  The default behavior can be disabled with the DISABLE_FILTER flag.")
                 .takes_value(true)
                 .multiple_values(true)
                 .value_parser(clap::builder::ValueParser::os_string())
@@ -46,7 +48,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("OUTPUT_FILE")
-                .help("output file which will contain the recorded file information. If not specified, 'dano_hashes.txt' in the current working directory will be used.")
+                .help("select the output file to record the file information. If not specified, 'dano_hashes.txt' in the current working directory will be used.")
                 .short('o')
                 .long("output-file")
                 .takes_value(true)
@@ -57,7 +59,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("HASH_FILE")
-                .help("file from which to read recorded file information.  If not specified, the output file will be used (or if not specified 'dano_hashes.txt' in the current working directory).")
+                .help("file from which to read recorded file information.  If not specified, the output file will be used (or if not specified, 'dano_hashes.txt' in the current working directory will be used).")
                 .short('k')
                 .long("hash-file")
                 .takes_value(true)
@@ -68,13 +70,13 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE")
-                .help("write the new input files' hash information (and ignore files that already have file hashes).")
+                .help("write the new input files' hash information.  If no other flags are specified, dano will ignore files which already have file hashes.")
                 .short('w')
                 .long("write")
                 .display_order(4))
         .arg(
             Arg::new("TEST")
-                .help("verify the recorded file information.  Prints the pass/fail status, exits with a non-zero code if failed, and, potentially, performs write operations, like --write-new or --overwrite.")
+                .help("verify the recorded file information.  Prints the pass/fail status, and exits with a non-zero code, if failed, and can, potentially, performs write operations when specified, by the WRITE_NEW and OVERWRITE_OLD flags.")
                 .short('t')
                 .long("test")
                 .alias("compare")
@@ -82,7 +84,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(5))
         .arg(
             Arg::new("PRINT")
-                .help("pretty print all recorded file information (in hash file and xattrs).")
+                .help("pretty print all recorded file information (discovered within both the hash file and any xattrs).")
                 .short('p')
                 .long("print")
                 .display_order(6))
@@ -99,7 +101,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(8))
         .arg(
             Arg::new("IMPORT_FLAC")
-                .help("import flac checksums and write as dano recorded file information.")
+                .help("import flac checksums and write such information as dano recorded file information.")
                 .long("import-flac")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
                 .display_order(9))
@@ -115,7 +117,7 @@ fn parse_args() -> ArgMatches {
                 .display_order(10))
         .arg(
             Arg::new("SILENT")
-                .help("quiet many informational messages (like \"OK\").")
+                .help("quiet many informational messages (such as \"OK\").")
                 .short('s')
                 .long("silent")
                 .display_order(11),
@@ -136,7 +138,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("DISABLE_FILTER")
-                .help("by default, file extensions not recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
+                .help("by default, file extensions which may not be recognized by ffmpeg are filtered.  Here, you may disable such filtering.")
                 .long("disable-filter")
                 .display_order(14),
         )
@@ -148,8 +150,8 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("XATTR")
-                .help("try to write (dano will always try to read) hash to/from file's extended attributes.  \
-                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value.  \
+                .help("try to write (dano will always try to read) hash to any input file's extended attributes.  \
+                Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value (such as, export DANO_XATTR_WRITES=enabled).  \
                 When XATTR is enabled, if a write is requested, dano will always overwrite extended attributes previously written.")
                 .short('x')
                 .long("xattr")
@@ -167,19 +169,19 @@ fn parse_args() -> ArgMatches {
                 .display_order(17))
         .arg(
             Arg::new("DECODE")
-                .help("decode stream before hashing.  Much slower, but potentially useful for lossless formats.")
+                .help("decode internal bitstream before hashing.  This option makes testing and writes much slower, but this option is potentially useful for lossless formats.")
                 .long("decode")
                 .conflicts_with_all(&["PRINT", "DUMP"])
                 .display_order(18))
         .arg(
             Arg::new("REWRITE_ALL")
-                .help("rewrite all recorded hashes to the latest and greatest format version.  dano will ignore input files without recorded hashes.")
+                .help("rewrite all recorded hashes to the latest and greatest format version.  When specified, dano will silently ignore any input files without recorded hashes.")
                 .long("rewrite")
                 .requires("WRITE")
                 .display_order(19))
         .arg(
             Arg::new("ONLY")
-                .help("hash the first audio or video stream only")
+                .help("hash the an input file container's first audio or video stream only")
                 .long("only")
                 .takes_value(true)
                 .require_equals(true)
@@ -438,6 +440,8 @@ impl Config {
                         return Some(Either::Left(ext.to_string_lossy()));
                     }
 
+                    // what are these None cases: hidden files (dot files),
+                    // no file name, no extension
                     return None;
                 }
 
