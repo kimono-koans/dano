@@ -193,7 +193,9 @@ fn exec() -> DanoResult<i32> {
                 } else {
                     res.iter()
                         .try_for_each(|file_info| print_file_info(&config, file_info))?;
-                    eprintln!("WARNING: Duplicates found.");
+                    if !config.opt_silent {
+                        eprintln!("WARNING: Duplicates found.");
+                    }
                     DANO_DISORDER_EXIT_CODE
                 }
             }

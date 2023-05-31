@@ -344,11 +344,17 @@ impl Config {
                     _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                 }
             };
-            Self::parse_paths(&res, opt_disable_filter, opt_canonical_paths, opt_silent, &hash_file)
+            Self::parse_paths(
+                &res,
+                opt_disable_filter,
+                opt_canonical_paths,
+                opt_silent,
+                &hash_file,
+            )
         };
 
-        if paths.is_empty() && !matches!(exec_mode, ExecMode::Test(_)) {
-            return Err(DanoError::new("No valid paths to search.").into());
+        if paths.is_empty() {
+            return Err(DanoError::new("No valid paths given.  Exiting.").into());
         }
 
         Ok(Config {
@@ -391,7 +397,7 @@ impl Config {
                 if path.is_file() {
                     return true
                 }
-                
+
                 eprintln!("Error: Path is not a file: {:?}", path);
                 false
             })
@@ -412,7 +418,7 @@ impl Config {
                         }) {
                             return true
                         }
-                    
+
                     if !opt_silent && path.extension().is_some() {
                         eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
                     }

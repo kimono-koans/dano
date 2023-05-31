@@ -146,15 +146,16 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
             )
         }
         None => {
-            format!(
-                "WARNING: Could not generate checksum for: {:?}\n",
+            let msg = format!(
+                "Could not find file metadata for: {:?}\n",
                 file_info.path
-            )
+            );
+            return Err(DanoError::new(&msg).into());
         }
     };
 
     match config.exec_mode {
-        ExecMode::Print | ExecMode::Duplicates => print_out_buf(&buffer),
+        ExecMode::Print | ExecMode::Duplicates | ExecMode::Test(_) => print_out_buf(&buffer),
         _ => print_err_buf(&buffer),
     }
 }
