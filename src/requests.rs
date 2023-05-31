@@ -86,27 +86,27 @@ impl RequestBundle {
     }
 
     pub fn new(config: &Config, recorded_file_info: &[FileInfo]) -> DanoResult<Self> {
-        let mut recorded_file_info_requests: BTreeMap<PathBuf, FileInfoRequest> =
+        let mut recorded_file_info_requests: BTreeMap<&Path, FileInfoRequest> =
             recorded_file_info
                 .par_iter()
                 .map(|file_info| match &file_info.metadata {
                     Some(metadata) => (
-                        file_info.path.clone(),
+                        file_info.path.as_path(),
                         Self::from_recorded_request(&file_info.path, metadata),
                     ),
                     None => (
-                        file_info.path.clone(),
+                        file_info.path.as_path(),
                         Self::as_new_request(&file_info.path),
                     ),
                 })
                 .collect();
 
-        let paths_requests: Vec<(PathBuf, FileInfoRequest)> = config
+        let paths_requests: Vec<(&Path, FileInfoRequest)> = config
             .paths
             .par_iter()
-            .map(|path| match recorded_file_info_requests.get(path) {
-                Some(value) => (path.to_owned(), value.to_owned()),
-                None => (path.to_owned(), Self::as_new_request(path)),
+            .map(|path| match recorded_file_info_requests.get(path.as_path()) {
+                Some(value) => (path.as_path(), value.to_owned()),
+                None => (path.as_path(), Self::as_new_request(path)),
             })
             .collect();
 
