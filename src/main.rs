@@ -49,7 +49,7 @@ fn main() {
     let exit_code = match exec() {
         Ok(exit_code) => exit_code,
         Err(error) => {
-            eprintln!("Error: {}", error);
+            eprintln!("ERROR: {}", error);
             DANO_ERROR_EXIT_CODE
         }
     };
