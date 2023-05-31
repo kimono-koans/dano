@@ -59,16 +59,15 @@ impl ProcessedFiles {
 
         // loop while recv from channel
         while let Ok(file_info) = rx_item.recv() {
-            let fm_ref = &file_map;
             if let (Some(new_files_partitioned), test_exit_code) =
-                fm_ref.verify(config, file_info)?
+                &file_map.verify(config, file_info)?
             {
                 match new_files_partitioned {
                     Either::Left(file_info) => new_filenames.push(file_info.clone()),
                     Either::Right(file_info) => new_files.push(file_info.clone()),
                 }
-                if test_exit_code != 0 {
-                    exit_code = test_exit_code
+                if test_exit_code != &0 {
+                    exit_code = *test_exit_code
                 }
             }
         }
