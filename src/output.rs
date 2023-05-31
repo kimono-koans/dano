@@ -111,10 +111,10 @@ impl WriteOutBundle {
                 }
                 _ => match remainder_type {
                     RemainderType::NewFile => {
-                        eprintln!("{}.", NEW_FILES_EMPTY);
+                        eprintln!("{}", NEW_FILES_EMPTY);
                     }
                     RemainderType::ModifiedFilename => {
-                        eprintln!("{}.", MODIFIED_FILE_NAMES_EMPTY);
+                        eprintln!("{}", MODIFIED_FILE_NAMES_EMPTY);
                     }
                 },
             }
