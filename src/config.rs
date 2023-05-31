@@ -399,7 +399,7 @@ impl Config {
                     return true;
                 }
 
-                eprintln!("Error: Path is not a file: {:?}", path);
+                eprintln!("Error: Path is not a regular file: {:?}", path);
                 false
             })
             .filter(|path| {
@@ -410,7 +410,14 @@ impl Config {
                 eprintln!("Error: Path cannot be serialized to string: {:?}", path);
                 false
             })
-            .filter(|path| path.file_name() != Some(OsStr::new(hash_file)))
+            .filter(|path| {
+                if path.file_name() == Some(OsStr::new(hash_file)) {
+                    eprintln!("Error: File name is the name of a dano hash file: {:?}", path);
+                    return false
+                }
+
+                true
+            })
             .filter_map(|path| {
                 if !opt_disable_filter {
                     let opt_extension = path.extension();
@@ -444,7 +451,7 @@ impl Config {
                 buffer.push_str(" ");
             });
 
-            eprintln!("WARNING: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", buffer.trim());
+            eprintln!("WARNING: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
         }
 
         valid_paths.iter().map(|path| {
