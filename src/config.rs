@@ -398,11 +398,13 @@ impl Config {
                 if !opt_disable_filter {
                     if auto_extension_filter
                         .lines()
-                        .any(|extension| path.extension() == Some(OsStr::new(extension))) {
+                        .any(|extension| {
+                            let opt_extension = path.extension();
+                            opt_extension.is_some() && opt_extension == Some(OsStr::new(extension))
+                        }) {
                             return true
                         }
 
-                    eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
                     return false
                 }
 
