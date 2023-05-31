@@ -23,25 +23,26 @@ use itertools::Itertools;
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
-use crate::lookup::{FileInfo};
+use crate::lookup::FileInfo;
 use crate::process::{RemainderBundle, RemainderType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError, DanoResult,
 };
 
-const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";
+const WRITE_NEW_PREFIX: &str = "INFO: Writing dano hash for: ";
 const EMPTY_STR: &str = "";
-const OVERWRITE_OLD_PREFIX: &str = "Overwriting dano hash for: ";
+const OVERWRITE_OLD_PREFIX: &str = "INFO: Overwriting dano hash for: ";
 
-const NOT_WRITE_NEW_PREFIX: &str = "Not writing dano hash for: ";
+const NOT_WRITE_NEW_PREFIX: &str =
+    "WARN: Not writing dano hash for (as writing in this mode is not specified): ";
 const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 
-const NOT_OVERWRITE_OLD_PREFIX: &str = "Not overwriting dano hash for: ";
+const NOT_OVERWRITE_OLD_PREFIX: &str = "WARN: Not overwriting dano hash for: ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
-const NEW_FILES_EMPTY: &str = "No new file paths to write";
-const MODIFIED_FILE_NAMES_EMPTY: &str = "No old file data to overwrite";
+const NEW_FILES_EMPTY: &str = "INFO: No new file paths to write.";
+const MODIFIED_FILE_NAMES_EMPTY: &str = "INFO: No old file data to overwrite.";
 
 // in this mod "write" refers to writing to file or xattr
 // and "print" refers to printing out to stdout or stderr
