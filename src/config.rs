@@ -381,11 +381,19 @@ impl Config {
             .into_par_iter()
             .filter(|path| {
                 if path.exists() {
-                    true
-                } else {
-                    eprintln!("Error: Path does not exist: {:?}", path);
-                    false
+                    return true
                 }
+
+                eprintln!("Error: Path does not exist: {:?}", path);
+                false
+            })
+            .filter(|path| {
+                if path.is_file() {
+                    return true
+                }
+                
+                eprintln!("Error: Path is not a file: {:?}", path);
+                false
             })
             .filter(|path| match path.to_str() {
                 Some(_) => true,
@@ -405,7 +413,7 @@ impl Config {
                             return true
                         }
                     
-                    if !opt_silent && path.extension().is_some() && path.is_file() {
+                    if !opt_silent && path.extension().is_some() {
                         eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
                     }
 
