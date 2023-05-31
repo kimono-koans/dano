@@ -157,7 +157,7 @@ impl FileMap {
                 }
                 _ => unreachable!(),
             }
-            Some(Either::Right(file_info.to_owned()))
+            Some(Either::Right(file_info))
         } else if is_same_filename && is_same_hash {
             if !config.opt_silent {
                 match config.exec_mode {
@@ -195,7 +195,7 @@ impl FileMap {
                 }
                 _ => unreachable!(),
             }
-            Some(Either::Left(file_info.to_owned()))
+            Some(Either::Left(file_info))
         } else if is_same_filename {
             // always print, even in silent
             match config.exec_mode {
@@ -234,8 +234,7 @@ impl FileMap {
                 }
 
                 // slow path
-                self
-                    .par_iter()
+                self.par_iter()
                     .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
                     .any(|file_map_metadata| {
                         path_metadata.hash_value == file_map_metadata.hash_value
@@ -245,5 +244,3 @@ impl FileMap {
         }
     }
 }
-
-    
