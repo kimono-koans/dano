@@ -78,8 +78,8 @@ impl RecordedFileInfo {
             return Err(DanoError::new(&msg).into());
         }
 
-        let hash_value = if let Ok(_parsed) =
-            primitive_types::U512::from_str_radix(stdout_string, HEXADECIMAL_RADIX)
+        let hash_value = if
+            primitive_types::U512::from_str_radix(stdout_string, HEXADECIMAL_RADIX).is_ok()
         {
             HashValue {
                 radix: HEXADECIMAL_RADIX,
