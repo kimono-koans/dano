@@ -452,12 +452,9 @@ impl Config {
         if !opt_silent && !bad_extensions.is_empty() {
             let unique: HashSet<Cow<str>> = bad_extensions.into_iter().collect();
 
-            let mut buffer = String::new();
-
-            unique.iter().for_each(|ext| {
-                buffer.push_str(ext);
-                buffer.push(' ');
-            });
+            let buffer: String = unique.iter().map(|ext| {
+                format!("{} ", ext)
+            }).collect();
 
             eprintln!("WARN: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
         }
