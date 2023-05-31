@@ -466,10 +466,14 @@ impl Config {
             .iter()
             .map(|path| {
                 if opt_canonical_paths {
-                    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
-                } else {
-                    path.to_path_buf()
+                    if let Ok(canonical) = path.canonicalize() {
+                        return canonical
+                    }
+
+                    eprintln!("WARN: Unable path to canonical path: {:?}", path);
                 }
+
+                path.to_path_buf()
             })
             .collect()
     }
