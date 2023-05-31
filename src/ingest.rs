@@ -94,14 +94,12 @@ impl RecordedFileInfo {
                 .collect()
         };
 
-        let file_info_from_file = if config.hash_file.exists() {
-            read_file_info_from_file(config)?
-        } else {
-            Vec::new()
-        };
+        if config.hash_file.exists() {
+            let file_info_from_file = read_file_info_from_file(config)?;
+            file_info_from_xattrs.extend(file_info_from_file);
+        }
 
         // combine
-        file_info_from_xattrs.extend(file_info_from_file);
         Ok(file_info_from_xattrs)
     }
 }
