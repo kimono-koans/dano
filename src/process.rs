@@ -150,7 +150,7 @@ impl FileMap {
             match config.exec_mode {
                 ExecMode::Test(_) => {
                     print_out_buf(&format!(
-                        "INFO: {:?}: Path is a new file.\n",
+                        "{:?}: Path is a new file.\n",
                         file_info.path
                     ))?;
                 }
@@ -164,7 +164,7 @@ impl FileMap {
             if !config.opt_silent {
                 match config.exec_mode {
                     ExecMode::Test(_) => {
-                        print_out_buf(&format!("INFO: {:?}: OK\n", &file_info.path))?;
+                        print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                     }
                     ExecMode::Write(_) => {
                         print_file_info(config, &file_info)?;
@@ -179,13 +179,13 @@ impl FileMap {
                 ExecMode::Test(test_config) => {
                     if test_config.opt_write_new && test_config.opt_overwrite_old {
                         print_out_buf(format!(
-                            "INFO: {:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
+                            "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
                             file_info.path
                         ).as_ref())?;
                     } else {
                         print_out_buf(
                             format!(
-                                "INFO: {:?}: OK, but path has same hash for new filename.\n",
+                                "{:?}: OK, but path has same hash for new filename.\n",
                                 file_info.path
                             )
                             .as_ref(),

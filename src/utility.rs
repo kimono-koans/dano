@@ -138,7 +138,7 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
             let hash_value_as_hex = format!("{}", metadata.hash_value.value);
 
             format!(
-                "INFO: {}={:<width$} : {:?}\n",
+                "{}={:<width$} : {:?}\n",
                 metadata.hash_algo,
                 hash_value_as_hex,
                 file_info.path,

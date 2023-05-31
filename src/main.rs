@@ -189,7 +189,7 @@ fn exec() -> DanoResult<i32> {
 
                 if res.is_empty() {
                     if !config.opt_silent {
-                        eprintln!("INFO: No duplicates found.");
+                        eprintln!("No duplicates found.");
                     }
                     DANO_CLEAN_EXIT_CODE
                 } else {

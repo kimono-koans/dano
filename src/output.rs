@@ -30,9 +30,9 @@ use crate::utility::{
     write_non_file, DanoError, DanoResult,
 };
 
-const WRITE_NEW_PREFIX: &str = "INFO: Writing dano hash for: ";
+const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";
 const EMPTY_STR: &str = "";
-const OVERWRITE_OLD_PREFIX: &str = "INFO: Overwriting dano hash for: ";
+const OVERWRITE_OLD_PREFIX: &str = "Overwriting dano hash for: ";
 
 const NOT_WRITE_NEW_PREFIX: &str =
     "WARN: Not writing dano hash for (as writing is not specified): ";
@@ -41,8 +41,8 @@ const NOT_WRITE_NEW_SUFFIX: &str = ", --write-new was not specified.";
 const NOT_OVERWRITE_OLD_PREFIX: &str = "WARN: Not overwriting dano hash for (as overwriting is not specified): ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
-const NEW_FILES_EMPTY: &str = "INFO: No new file paths to write.";
-const MODIFIED_FILE_NAMES_EMPTY: &str = "INFO: No old file data to overwrite.";
+const NEW_FILES_EMPTY: &str = "No new file paths to write.";
+const MODIFIED_FILE_NAMES_EMPTY: &str = "No old file data to overwrite.";
 
 // in this mod "write" refers to writing to file or xattr
 // and "print" refers to printing out to stdout or stderr
