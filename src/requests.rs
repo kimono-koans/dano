@@ -101,22 +101,19 @@ impl RequestBundle {
                 })
                 .collect();
 
-        let paths_requests: Vec<FileInfoRequest> = config
+        let paths_requests: Vec<(PathBuf, FileInfoRequest)> = config
             .paths
             .par_iter()
             .map(|path| match recorded_file_info_requests.get(path) {
-                Some(value) => value.to_owned(),
-                None => Self::as_new_request(path),
+                Some(value) => (path.to_owned(), value.to_owned()),
+                None => (path.to_owned(), Self::as_new_request(path)),
             })
             .collect();
 
-        paths_requests.into_iter().for_each(|request| {
-            // don't care about the Option returned
-            let _ = recorded_file_info_requests.insert(request.path.clone(), request);
-        });
+        recorded_file_info_requests.extend(paths_requests);
 
-        let combined = recorded_file_info_requests.into_values().collect();
+        let requests = recorded_file_info_requests.into_values().collect();
 
-        Ok(Self { inner: combined })
+        Ok(Self { inner: requests })
     }
 }
