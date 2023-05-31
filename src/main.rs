@@ -25,6 +25,8 @@ mod requests;
 mod utility;
 mod versions;
 
+use std::collections::BTreeMap;
+
 use itertools::Itertools;
 
 use crate::lookup::FileInfo;
@@ -161,7 +163,7 @@ fn exec() -> DanoResult<i32> {
             if recorded_file_info.is_empty() {
                 return Err(DanoError::new("No recorded file info is available to print.").into());
             } else {
-                let mut tmp: Vec<(Box<str>, Vec<FileInfo>)> = recorded_file_info
+                let sorted_group_map: BTreeMap<Box<str>, Vec<FileInfo>> = recorded_file_info
                     .into_inner()
                     .into_iter()
                     .filter(|value| value.metadata.is_some())
@@ -171,19 +173,9 @@ fn exec() -> DanoResult<i32> {
                     .drain()
                     .collect();
 
-                tmp.sort_by_key(|(key, _values)| key.clone());
-
-                let res: Vec<FileInfo> = tmp
-                    .into_iter()
-                    .filter_map(
-                        |(_key, value)| {
-                            if value.len() <= 1 {
-                                None
-                            } else {
-                                Some(value)
-                            }
-                        },
-                    )
+                let res: Vec<FileInfo> = sorted_group_map
+                    .into_values()
+                    .filter(|value| value.len() > 1)
                     .flatten()
                     .collect();
 
