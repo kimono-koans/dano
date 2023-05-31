@@ -16,8 +16,10 @@
 // that was distributed with this source code.
 
 use std::{
+    borrow::Cow,
+    collections::HashSet,
     ffi::OsStr,
-    path::{Path, PathBuf}, collections::HashSet, borrow::Cow,
+    path::{Path, PathBuf},
 };
 
 use clap::{crate_name, crate_version, Arg, ArgMatches};
@@ -412,8 +414,11 @@ impl Config {
             })
             .filter(|path| {
                 if path.file_name() == Some(OsStr::new(hash_file)) {
-                    eprintln!("Error: File name is the name of a dano hash file: {:?}", path);
-                    return false
+                    eprintln!(
+                        "Error: File name is the name of a dano hash file: {:?}",
+                        path
+                    );
+                    return false;
                 }
 
                 true
@@ -437,9 +442,8 @@ impl Config {
                 }
 
                 Some(Either::Right(path.as_path()))
-            }).partition_map(|item|{
-                item
-            });
+            })
+            .partition_map(|item| item);
 
         if !opt_silent && !bad_extensions.is_empty() {
             let unique: HashSet<Cow<str>> = bad_extensions.into_iter().collect();
@@ -448,19 +452,21 @@ impl Config {
 
             unique.iter().for_each(|ext| {
                 buffer.push_str(ext);
-                buffer.push_str(" ");
+                buffer.push(' ');
             });
 
             eprintln!("WARNING: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
         }
 
-        valid_paths.iter().map(|path| {
-            if opt_canonical_paths {
-                path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
-            } else {
-                path.to_path_buf()
-            }
-        })
-        .collect()
+        valid_paths
+            .iter()
+            .map(|path| {
+                if opt_canonical_paths {
+                    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+                } else {
+                    path.to_path_buf()
+                }
+            })
+            .collect()
     }
 }
