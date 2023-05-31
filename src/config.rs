@@ -405,6 +405,8 @@ impl Config {
                             return true
                         }
 
+                    eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
+
                     return false
                 }
 
