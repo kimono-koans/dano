@@ -154,7 +154,7 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
     };
 
     match config.exec_mode {
-        ExecMode::Print => print_out_buf(&buffer),
+        ExecMode::Print | ExecMode::Duplicates => print_out_buf(&buffer),
         _ => print_err_buf(&buffer),
     }
 }

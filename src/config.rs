@@ -344,7 +344,7 @@ impl Config {
                     _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
                 }
             };
-            Self::parse_paths(&res, opt_disable_filter, opt_canonical_paths, &hash_file)
+            Self::parse_paths(&res, opt_disable_filter, opt_canonical_paths, opt_silent, &hash_file)
         };
 
         if paths.is_empty() && !matches!(exec_mode, ExecMode::Test(_)) {
@@ -372,6 +372,7 @@ impl Config {
         raw_paths: &[PathBuf],
         opt_disable_filter: bool,
         opt_canonical_paths: bool,
+        opt_silent: bool,
         hash_file: &Path,
     ) -> Vec<PathBuf> {
         let auto_extension_filter = include_str!("../data/ffmpeg_extensions_list.txt");
@@ -404,7 +405,7 @@ impl Config {
                             return true
                         }
                     
-                    if path.extension().is_some() && path.is_file() {
+                    if !opt_silent && path.extension().is_some() && path.is_file() {
                         eprintln!("WARNING: {:?} contains an extension which is unknown to dano.  If you know this file type is acceptable to ffmpeg, you may use --disable-filter to force dano to accept its use.", path);
                     }
 
