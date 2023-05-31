@@ -154,9 +154,11 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
         }
     };
 
+    // why?  b/c the writing is the thing in write and dump mode and 
+    // this is just print info about the hash we may wish to send to dev null
     match config.exec_mode {
         ExecMode::Print | ExecMode::Duplicates | ExecMode::Test(_) => print_out_buf(&buffer),
-        _ => print_err_buf(&buffer),
+        ExecMode::Write(_) | ExecMode::Dump => print_err_buf(&buffer),
     }
 }
 
