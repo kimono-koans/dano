@@ -21,9 +21,9 @@ use std::time::SystemTime;
 use itertools::Itertools;
 
 use crate::ingest::RecordedFileInfo;
-use crate::{Config, ExecMode, HEXADECIMAL_RADIX};
+use crate::{Config, ExecMode};
 
-use crate::lookup::{FileInfo, HashValue};
+use crate::lookup::{FileInfo};
 use crate::process::{RemainderBundle, RemainderType};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
@@ -238,12 +238,9 @@ impl WriteableFileInfo {
                 // then dedup
                 let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
                     .iter()
-                    .into_group_map_by(|file_info| match &file_info.metadata {
-                        Some(metadata) => metadata.hash_value.clone(),
-                        None => HashValue {
-                            radix: HEXADECIMAL_RADIX,
-                            value: "0".into(),
-                        },
+                    .filter(|file_info| file_info.metadata.is_some())
+                    .into_group_map_by(|file_info| {
+                        file_info.metadata.as_ref().unwrap().hash_value.clone()
                     })
                     .into_iter()
                     .flat_map(|(_hash, group_file_info)| {
