@@ -53,7 +53,7 @@ impl ProcessedFiles {
         let file_map = FileMap::new(recorded_file_info)?;
         let mut exit_code = 0;
         // L
-        let mut new_filenames = Vec::new();
+        let mut modified_file_names = Vec::new();
         // R
         let mut new_files = Vec::new();
 
@@ -63,7 +63,7 @@ impl ProcessedFiles {
                 &file_map.verify(config, file_info)?
             {
                 match new_files_partitioned {
-                    Either::Left(file_info) => new_filenames.push(file_info.clone()),
+                    Either::Left(file_info) => modified_file_names.push(file_info.clone()),
                     Either::Right(file_info) => new_files.push(file_info.clone()),
                 }
                 if test_exit_code != &0 {
@@ -73,7 +73,7 @@ impl ProcessedFiles {
         }
 
         // sort new paths before writing to file, threads may complete in non-sorted order
-        new_filenames.par_sort_unstable_by_key(|file_info| file_info.path.clone());
+        modified_file_names.par_sort_unstable_by_key(|file_info| file_info.path.clone());
         new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
         let file_bundle = vec![
@@ -82,7 +82,7 @@ impl ProcessedFiles {
                 remainder_type: RemainderType::NewFile,
             },
             RemainderBundle {
-                files: new_filenames,
+                files: modified_file_names,
                 remainder_type: RemainderType::ModifiedFilename,
             },
         ];

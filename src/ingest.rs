@@ -76,13 +76,13 @@ impl RecordedFileInfo {
                 .paths
                 .par_iter()
                 .filter_map(|path| {
-                    let file_info = xattr::get(path, DANO_XATTR_KEY_NAME)
+                    let opt_file_info = xattr::get(path, DANO_XATTR_KEY_NAME)
                         .ok()
                         .flatten()
                         .and_then(|bytes| std::str::from_utf8(&bytes).ok().and_then(|line| {
                             deserialize(line).ok()
                         }));
-                    file_info.map(|file_info| (path, file_info))
+                    opt_file_info.map(|file_info| (path, file_info))
                 })
                 .map(|(path, file_info)| {
                     // use the actual path name always
