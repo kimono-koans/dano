@@ -21,6 +21,7 @@ use crossbeam_channel::Receiver;
 use itertools::Either;
 use rayon::prelude::*;
 
+use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
 use crate::lookup::{FileInfo, FileMetadata};
@@ -46,11 +47,11 @@ pub struct ProcessedFiles {
 impl ProcessedFiles {
     pub fn new(
         config: &Config,
-        recorded_file_info: &[FileInfo],
+        recorded_file_info: RecordedFileInfo,
         rx_item: Receiver<FileInfo>,
     ) -> DanoResult<ProcessedFiles> {
         // prepare for loop
-        let file_map = FileMap::new(recorded_file_info)?;
+        let file_map = FileMap::new(recorded_file_info.into_inner());
         let mut exit_code = 0;
         // L
         let mut modified_file_names = Vec::new();
@@ -106,17 +107,20 @@ impl Deref for FileMap {
     }
 }
 
-impl FileMap {
-    fn new(recorded_file_info: &[FileInfo]) -> DanoResult<Self> {
-        let recorded_file_info_map = recorded_file_info
-            .par_iter()
-            .cloned()
+impl From<Vec<FileInfo>> for FileMap {
+    fn from(value: Vec<FileInfo>) -> Self {
+        let recorded_file_info_map: BTreeMap<PathBuf, Option<FileMetadata>> = value
+            .into_iter()
             .map(|file_info| (file_info.path, file_info.metadata))
-            .collect::<BTreeMap<PathBuf, Option<FileMetadata>>>();
+            .collect();
 
-        Ok(Self {
-            inner: recorded_file_info_map,
-        })
+        Self { inner: recorded_file_info_map }
+    }
+}
+
+impl FileMap {
+    fn new(recorded_file_info: Vec<FileInfo>) -> Self {
+        recorded_file_info.into()
     }
 
     fn verify(
