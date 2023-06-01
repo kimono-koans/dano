@@ -16,7 +16,6 @@
 // that was distributed with this source code.
 
 use std::ops::Deref;
-use std::time::SystemTime;
 
 use itertools::Itertools;
 
@@ -247,12 +246,8 @@ impl WriteableFileInfo {
                     .into_iter()
                     .flat_map(|(_hash, group_file_info)| {
                         group_file_info.into_iter().max_by_key(|file_info| {
-                            match &file_info.metadata {
-                                Some(metadata) => metadata.last_written,
-                                None => SystemTime::UNIX_EPOCH,
-                            }
-                        })
-                    })
+                            file_info.metadata.as_ref().unwrap().last_written
+                    })})
                     .cloned()
                     .collect();
 
