@@ -114,7 +114,9 @@ impl From<Vec<FileInfo>> for FileMap {
             .map(|file_info| (file_info.path, file_info.metadata))
             .collect();
 
-        Self { inner: recorded_file_info_map }
+        Self {
+            inner: recorded_file_info_map,
+        }
     }
 }
 
