@@ -59,33 +59,24 @@ impl LegacyVersion {
 
     fn convert(&self, line: &str) -> DanoResult<FileInfo> {
         match self {
-            LegacyVersion::Version1 => FileInfoV1::from_recorded(line)?.convert(),
-            LegacyVersion::Version2 => FileInfoV2::from_recorded(line)?.convert(),
-            LegacyVersion::Version3 => FileInfoV3::from_recorded(line)?.convert(),
+            LegacyVersion::Version1 => FileInfoV1::try_from(line)?.convert(),
+            LegacyVersion::Version2 => FileInfoV2::try_from(line)?.convert(),
+            LegacyVersion::Version3 => FileInfoV3::try_from(line)?.convert(),
         }
     }
 }
 
 pub trait ConvertVersion {
-    fn from_recorded(line: &str) -> DanoResult<Self>
-    where
-        Self: std::marker::Sized;
     fn convert(&self) -> DanoResult<FileInfo>;
 }
 
 impl ConvertVersion for FileInfoV1 {
-    fn from_recorded(line: &str) -> DanoResult<Self> {
-        Self::from_recorded(line)
-    }
     fn convert(&self) -> DanoResult<FileInfo> {
         self.convert()
     }
 }
 
 impl ConvertVersion for FileInfoV2 {
-    fn from_recorded(line: &str) -> DanoResult<Self> {
-        Self::from_recorded(line)
-    }
     fn convert(&self) -> DanoResult<FileInfo> {
         self.convert()
     }
@@ -106,13 +97,18 @@ pub struct FileMetadataV1 {
     pub modify_time: SystemTime,
 }
 
-impl FileInfoV1 {
-    fn from_recorded(line: &str) -> DanoResult<Self> {
-        let rewrite = line.replace("FileInfo", "FileInfoV1");
+impl TryFrom<&str> for FileInfoV1 {
+    type Error = serde_json::Error;
+
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
+        let rewrite = line.replace("FileInfo", "FileInfoV3");
         let legacy_file_info: FileInfoV1 = serde_json::from_str(&rewrite)?;
 
         Ok(legacy_file_info)
     }
+}
+
+impl FileInfoV1 {
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
             hash_algo: metadata.hash_algo.to_owned(),
@@ -150,13 +146,18 @@ pub struct FileMetadataV2 {
     pub decoded: bool,
 }
 
-impl FileInfoV2 {
-    fn from_recorded(line: &str) -> DanoResult<Self> {
-        let rewrite = line.replace("FileInfo", "FileInfoV2");
+impl TryFrom<&str> for FileInfoV2 {
+    type Error = serde_json::Error;
+
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
+        let rewrite = line.replace("FileInfo", "FileInfoV3");
         let legacy_file_info: FileInfoV2 = serde_json::from_str(&rewrite)?;
 
         Ok(legacy_file_info)
     }
+}
+
+impl FileInfoV2 {
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
             hash_algo: metadata.hash_algo.to_owned(),
@@ -192,13 +193,18 @@ pub struct FileMetadataV3 {
     pub selected_streams: SelectedStreams,
 }
 
-impl FileInfoV3 {
-    fn from_recorded(line: &str) -> DanoResult<Self> {
+impl TryFrom<&str> for FileInfoV3 {
+    type Error = serde_json::Error;
+
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
         let rewrite = line.replace("FileInfo", "FileInfoV3");
         let legacy_file_info: FileInfoV3 = serde_json::from_str(&rewrite)?;
 
         Ok(legacy_file_info)
     }
+}
+
+impl FileInfoV3 {
     fn convert(&self) -> DanoResult<FileInfo> {
         let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
             hash_algo: metadata.hash_algo.to_owned(),
