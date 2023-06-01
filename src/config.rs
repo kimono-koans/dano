@@ -103,7 +103,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("IMPORT_FLAC")
                 .help("import flac checksums and write such information as dano recorded file information.")
                 .long("import-flac")
-                .conflicts_with_all(&["TEST", "PRINT", "DUMP"])
+                .conflicts_with_all(&["TEST", "PRINT", "DUMP", "DUPLICATES"])
                 .display_order(9))
         .arg(
             Arg::new("NUM_THREADS")
@@ -124,19 +124,19 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE_NEW")
-                .help("if new files are present in TEST mode, write new file info.")
+                .help("in TEST mode, if new files are present, write new file info.")
                 .long("write-new")
                 .requires("TEST")
-                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
                 .display_order(12),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
-                .help("if a file's hash matches a recorded hash, but that file now has a different file name, \
+                .help("in TEST mode, if a file's hash matches a recorded hash, but that file now has a different file name, \
                 overwrite the old file's recorded file info with the most current.")
                 .long("overwrite")
                 .requires("TEST")
-                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
                 .display_order(13),
         )
         .arg(
@@ -147,7 +147,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
-                .help("use canonical paths (instead of potentially relative paths).")
+                .help("use canonical paths (paths from the root directory) instead of potentially relative paths.")
                 .long("canonical-paths")
                 .display_order(15),
         )
@@ -174,17 +174,20 @@ fn parse_args() -> ArgMatches {
             Arg::new("DECODE")
                 .help("decode internal bitstream before hashing.  This option makes testing and writes much slower, but this option is potentially useful for lossless formats.")
                 .long("decode")
-                .conflicts_with_all(&["PRINT", "DUMP"])
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
                 .display_order(18))
         .arg(
             Arg::new("REWRITE_ALL")
-                .help("rewrite all recorded hashes to the latest and greatest format version.  When specified, dano will silently ignore any input files without recorded hashes.")
+                .help("rewrite all recorded hashes to the latest and greatest format version.  \
+                When specified, dano will silently ignore any input files without recorded hashes.")
                 .long("rewrite")
                 .requires("WRITE")
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "TEST"])
                 .display_order(19))
         .arg(
             Arg::new("ONLY")
-                .help("hash the an input file container's first audio or video stream only")
+                .help("hash the an input file container's first audio or video stream only, if available.  \
+                dano will fall back to default behavior, if no stream is available.")
                 .long("only")
                 .takes_value(true)
                 .require_equals(true)
@@ -196,7 +199,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
-            .conflicts_with_all(&["PRINT", "DUMP"])
+            .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
             .display_order(21))
         .get_matches()
 }
