@@ -34,7 +34,8 @@ pub enum RemainderBundle {
 }
 
 pub struct ProcessedFiles {
-    pub file_bundle: Vec<RemainderBundle>,
+    pub new_files: RemainderBundle,
+    pub modified_file_names: RemainderBundle,
     pub exit_code: i32,
 }
 
@@ -71,13 +72,9 @@ impl ProcessedFiles {
         modified_file_names.par_sort_unstable_by_key(|file_info| file_info.path.clone());
         new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
-        let file_bundle = vec![
-            RemainderBundle::NewFile(new_files),
-            RemainderBundle::ModifiedFilename(modified_file_names),
-        ];
-
         Ok(ProcessedFiles {
-            file_bundle,
+            new_files: RemainderBundle::NewFile(new_files),
+            modified_file_names: RemainderBundle::ModifiedFilename(modified_file_names),
             exit_code,
         })
     }

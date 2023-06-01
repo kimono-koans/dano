@@ -15,15 +15,13 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
-use std::ops::Deref;
-
 use itertools::Itertools;
 
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
 use crate::lookup::FileInfo;
-use crate::process::RemainderBundle;
+use crate::process::{ProcessedFiles, RemainderBundle};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError, DanoResult,
@@ -55,46 +53,23 @@ pub enum WriteType {
     OverwriteAll,
 }
 
-pub struct WriteOutBundle {
-    inner: Vec<RemainderBundle>,
-}
-
-impl WriteOutBundle {
-    fn into_inner(self) -> Vec<RemainderBundle> {
-        self.inner
-    }
-}
-
-impl From<Vec<RemainderBundle>> for WriteOutBundle {
-    fn from(vec: Vec<RemainderBundle>) -> Self {
-        Self { inner: vec }
-    }
-}
-
-impl Deref for WriteOutBundle {
-    type Target = Vec<RemainderBundle>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl WriteOutBundle {
-    pub fn write_out(self, config: &Config) -> DanoResult<()> {
-        self.into_inner()
+impl ProcessedFiles {
+    pub fn write_out(self, config: &Config) -> DanoResult<i32> {
+        [self.new_files, self.modified_file_names]
             .into_iter()
             .try_for_each(|remainder_bundle| {
                 // if files.empty() guard applies to both sides of the pattern
                 match &remainder_bundle {
-                    RemainderBundle::NewFile(files) | RemainderBundle::ModifiedFilename(files) if files.is_empty()  => {
+                    RemainderBundle::NewFile(files) | RemainderBundle::ModifiedFilename(files)
+                        if files.is_empty() =>
+                    {
                         Self::print_bundle_empty(config, &remainder_bundle);
                         Ok(())
-                    },
-                    _ => {
-                        remainder_bundle.write_out(config)
-                    },
+                    }
+                    _ => remainder_bundle.write_out(config),
                 }
-            })
+            })?;
+        Ok(self.exit_code)
     }
 
     fn print_bundle_empty(config: &Config, remainder_bundle: &RemainderBundle) {
@@ -182,12 +157,28 @@ impl RemainderBundle {
                 files.iter().try_for_each(|file_info| {
                     print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
                 })
-            },
+            }
         }
     }
 }
 
-pub type WriteableFileInfo = RecordedFileInfo;
+pub struct WriteableFileInfo {
+    inner: Vec<FileInfo>,
+}
+
+impl From<Vec<FileInfo>> for WriteableFileInfo {
+    fn from(value: Vec<FileInfo>) -> Self {
+        Self { inner: value }
+    }
+}
+
+impl From<RecordedFileInfo> for WriteableFileInfo {
+    fn from(value: RecordedFileInfo) -> Self {
+        Self {
+            inner: value.into_inner(),
+        }
+    }
+}
 
 impl WriteableFileInfo {
     pub fn write_new(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
@@ -195,23 +186,25 @@ impl WriteableFileInfo {
         // can always be enabled by env var so ad hoc debugging can be tricky
         if !config.opt_dry_run {
             if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
-                self.iter().try_for_each(write_non_file)
+                self.inner.iter().try_for_each(write_non_file)
             } else {
                 match write_type {
                     WriteType::Append => {
                         let mut output_file = get_output_file(config, WriteType::Append)?;
-                        self.iter()
+                        self.inner
+                            .iter()
                             .try_for_each(|file_info| write_file(file_info, &mut output_file))
                     }
                     WriteType::OverwriteAll => {
                         let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
 
-                        self.iter()
+                        self.inner
+                            .iter()
                             .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
 
                         std::fs::rename(
                             make_tmp_file(config.output_file.as_path()),
-                            config.output_file.clone(),
+                            &config.output_file,
                         )
                         .map_err(|err| err.into())
                     }
@@ -239,7 +232,7 @@ impl WriteableFileInfo {
 
                 // then dedup
                 let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
-                    .iter()
+                    .into_iter()
                     .filter(|file_info| file_info.metadata.is_some())
                     .into_group_map_by(|file_info| {
                         file_info.metadata.as_ref().unwrap().hash_value.clone()
@@ -250,10 +243,11 @@ impl WriteableFileInfo {
                             file_info.metadata.as_ref().unwrap().last_written
                         })
                     })
-                    .cloned()
                     .collect();
 
-                let writeable_file_info: WriteableFileInfo = unique_paths.into();
+                let writeable_file_info: WriteableFileInfo = Self {
+                    inner: unique_paths,
+                };
 
                 // and overwrite
                 writeable_file_info.write_new(config, WriteType::OverwriteAll)

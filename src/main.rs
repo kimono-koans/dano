@@ -33,7 +33,8 @@ use crate::lookup::FileInfo;
 use config::{Config, ExecMode};
 use ingest::RecordedFileInfo;
 use lookup::FileInfoLookup;
-use output::{WriteOutBundle, WriteType};
+use output::WriteType;
+use output::WriteableFileInfo;
 use process::{ProcessedFiles, RemainderBundle};
 use requests::{FileInfoRequest, RequestBundle};
 use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError, DanoResult};
@@ -76,27 +77,23 @@ fn exec() -> DanoResult<i32> {
 
             let processed_files = if write_config.opt_rewrite {
                 ProcessedFiles {
-                    file_bundle: vec![
-                        RemainderBundle::NewFile(Vec::new()),
-                        RemainderBundle::ModifiedFilename(recorded_file_info.into_inner()),
-                    ],
+                    new_files: RemainderBundle::NewFile(Vec::new()),
+                    modified_file_names: RemainderBundle::ModifiedFilename(
+                        recorded_file_info.into_inner(),
+                    ),
                     exit_code: DANO_CLEAN_EXIT_CODE,
                 }
             } else if write_config.opt_import_flac {
                 ProcessedFiles {
-                    file_bundle: vec![
-                        RemainderBundle::NewFile(recorded_file_info.into_inner()),
-                        RemainderBundle::ModifiedFilename(Vec::new()),
-                    ],
+                    new_files: RemainderBundle::NewFile(recorded_file_info.into_inner()),
+                    modified_file_names: RemainderBundle::ModifiedFilename(Vec::new()),
                     exit_code: DANO_CLEAN_EXIT_CODE,
                 }
             } else {
                 unreachable!()
             };
 
-            let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
-            new_files_bundle.write_out(&config)?;
-            processed_files.exit_code
+            processed_files.write_out(&config)?
         }
         ExecMode::Write(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
@@ -112,9 +109,7 @@ fn exec() -> DanoResult<i32> {
             let rx_item = FileInfoLookup::exec(&config, file_info_requests.into(), thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, recorded_file_info, rx_item)?;
 
-            let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
-            new_files_bundle.write_out(&config)?;
-            processed_files.exit_code
+            processed_files.write_out(&config)?
         }
         ExecMode::Test(_) => {
             let thread_pool = prepare_thread_pool(&config)?;
@@ -123,18 +118,17 @@ fn exec() -> DanoResult<i32> {
             let rx_item = FileInfoLookup::exec(&config, file_info_requests, thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, recorded_file_info, rx_item)?;
 
-            let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
-            new_files_bundle.write_out(&config)?;
+            let exit_code = processed_files.write_out(&config)?;
 
             if !config.is_single_path {
-                if processed_files.exit_code == DANO_CLEAN_EXIT_CODE {
+                if exit_code == DANO_CLEAN_EXIT_CODE {
                     let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
-                } else if processed_files.exit_code == DANO_DISORDER_EXIT_CODE {
+                } else if exit_code == DANO_DISORDER_EXIT_CODE {
                     let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
                 }
             }
 
-            processed_files.exit_code
+            exit_code
         }
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
@@ -207,7 +201,9 @@ fn exec() -> DanoResult<i32> {
                 .into());
             }
 
-            recorded_file_info.write_new(&config, WriteType::OverwriteAll)?;
+            let writable: WriteableFileInfo = recorded_file_info.into();
+
+            writable.write_new(&config, WriteType::OverwriteAll)?;
             if !config.opt_silent {
                 print_err_buf("Dump to dano output file was successful.\n")?
             }
