@@ -23,7 +23,7 @@ use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
 use crate::lookup::FileInfo;
-use crate::process::{RemainderBundle, RemainderType};
+use crate::process::RemainderBundle;
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
     write_non_file, DanoError, DanoResult,
@@ -84,36 +84,41 @@ impl WriteOutBundle {
         self.into_inner()
             .into_iter()
             .try_for_each(|remainder_bundle| {
-                if !remainder_bundle.files.is_empty() {
+                let files = match &remainder_bundle {
+                    RemainderBundle::NewFile(files) => files,
+                    RemainderBundle::ModifiedFilename(files) => files,
+                };
+
+                if !files.is_empty() {
                     remainder_bundle.write_out(config)
                 } else {
-                    Self::print_bundle_empty(config, &remainder_bundle.remainder_type);
+                    Self::print_bundle_empty(config, &remainder_bundle);
                     Ok(())
                 }
             })
     }
 
-    fn print_bundle_empty(config: &Config, remainder_type: &RemainderType) {
+    fn print_bundle_empty(config: &Config, remainder_bundle: &RemainderBundle) {
         if !config.is_single_path {
             match &config.exec_mode {
                 ExecMode::Test(test_config)
                     if !test_config.opt_write_new || !test_config.opt_overwrite_old =>
                 {
-                    match remainder_type {
-                        RemainderType::NewFile if !test_config.opt_write_new => {
+                    match remainder_bundle {
+                        RemainderBundle::NewFile(_) if !test_config.opt_write_new => {
                             eprintln!("{}{}", NEW_FILES_EMPTY, NOT_WRITE_NEW_SUFFIX);
                         }
-                        RemainderType::ModifiedFilename if !test_config.opt_overwrite_old => {
+                        RemainderBundle::ModifiedFilename(_) if !test_config.opt_overwrite_old => {
                             eprintln!("{}{}", MODIFIED_FILE_NAMES_EMPTY, NOT_OVERWRITE_OLD_SUFFIX);
                         }
                         _ => unreachable!(),
                     }
                 }
-                _ => match remainder_type {
-                    RemainderType::NewFile => {
+                _ => match remainder_bundle {
+                    RemainderBundle::NewFile(_) => {
                         eprintln!("{}", NEW_FILES_EMPTY);
                     }
-                    RemainderType::ModifiedFilename => {
+                    RemainderBundle::ModifiedFilename(_) => {
                         eprintln!("{}", MODIFIED_FILE_NAMES_EMPTY);
                     }
                 },
@@ -125,35 +130,28 @@ impl WriteOutBundle {
 impl RemainderBundle {
     fn write_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
-            ExecMode::Write(_) => match &self.remainder_type {
-                RemainderType::NewFile => {
+            ExecMode::Write(_) => match &self {
+                RemainderBundle::NewFile(_) => {
                     self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
                 }
-                &RemainderType::ModifiedFilename => {
+                RemainderBundle::ModifiedFilename(_) => {
                     self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
                 }
             },
-            ExecMode::Test(test_config) => {
-                if test_config.opt_write_new
-                    && matches!(self.remainder_type, RemainderType::NewFile)
-                {
+            ExecMode::Test(test_config) => match &self {
+                RemainderBundle::NewFile(_) if test_config.opt_write_new => {
                     self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
-                } else if test_config.opt_overwrite_old
-                    && matches!(&self.remainder_type, RemainderType::ModifiedFilename)
-                {
-                    self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
-                } else {
-                    match &self.remainder_type {
-                        RemainderType::NewFile => {
-                            self.print_write_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
-                        }
-                        RemainderType::ModifiedFilename => self.print_write_action(
-                            NOT_OVERWRITE_OLD_PREFIX,
-                            NOT_OVERWRITE_OLD_SUFFIX,
-                        )?,
-                    }
                 }
-            }
+                RemainderBundle::ModifiedFilename(_) if test_config.opt_overwrite_old => {
+                    self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
+                }
+                RemainderBundle::NewFile(_) => {
+                    self.print_write_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
+                }
+                RemainderBundle::ModifiedFilename(_) => {
+                    self.print_write_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?
+                }
+            },
             _ => unreachable!(),
         }
         Ok(())
@@ -170,17 +168,26 @@ impl RemainderBundle {
         } else {
             self.print_write_action(wet_prefix, EMPTY_STR)?;
 
-            let writeable_file_info: WriteableFileInfo = self.files.into();
-
-            match self.remainder_type {
-                RemainderType::ModifiedFilename => writeable_file_info.overwrite_all(config),
-                RemainderType::NewFile => writeable_file_info.write_new(config, WriteType::Append),
+            match self {
+                RemainderBundle::ModifiedFilename(files) => {
+                    let writable: WriteableFileInfo = files.into();
+                    writable.overwrite_all(config)
+                }
+                RemainderBundle::NewFile(files) => {
+                    let writable: WriteableFileInfo = files.into();
+                    writable.write_new(config, WriteType::Append)
+                }
             }
         }
     }
 
     fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
-        self.files.iter().try_for_each(|file_info| {
+        let files = match self {
+            RemainderBundle::NewFile(files) => files,
+            RemainderBundle::ModifiedFilename(files) => files,
+        };
+
+        files.iter().try_for_each(|file_info| {
             print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
         })
     }
@@ -247,7 +254,8 @@ impl WriteableFileInfo {
                     .flat_map(|(_hash, group_file_info)| {
                         group_file_info.into_iter().max_by_key(|file_info| {
                             file_info.metadata.as_ref().unwrap().last_written
-                    })})
+                        })
+                    })
                     .cloned()
                     .collect();
 

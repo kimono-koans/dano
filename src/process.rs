@@ -28,15 +28,9 @@ use crate::lookup::{FileInfo, FileMetadata};
 use crate::utility::{print_file_info, print_out_buf, DanoResult};
 
 #[derive(Debug, Clone)]
-pub enum RemainderType {
-    NewFile,
-    ModifiedFilename,
-}
-
-#[derive(Debug, Clone)]
-pub struct RemainderBundle {
-    pub files: Vec<FileInfo>,
-    pub remainder_type: RemainderType,
+pub enum RemainderBundle {
+    NewFile(Vec<FileInfo>),
+    ModifiedFilename(Vec<FileInfo>),
 }
 
 pub struct ProcessedFiles {
@@ -78,14 +72,8 @@ impl ProcessedFiles {
         new_files.par_sort_unstable_by_key(|file_info| file_info.path.clone());
 
         let file_bundle = vec![
-            RemainderBundle {
-                files: new_files,
-                remainder_type: RemainderType::NewFile,
-            },
-            RemainderBundle {
-                files: modified_file_names,
-                remainder_type: RemainderType::ModifiedFilename,
-            },
+            RemainderBundle::NewFile(new_files),
+            RemainderBundle::ModifiedFilename(modified_file_names),
         ];
 
         Ok(ProcessedFiles {

@@ -34,7 +34,7 @@ use config::{Config, ExecMode};
 use ingest::RecordedFileInfo;
 use lookup::FileInfoLookup;
 use output::{WriteOutBundle, WriteType};
-use process::{ProcessedFiles, RemainderBundle, RemainderType};
+use process::{ProcessedFiles, RemainderBundle};
 use requests::{FileInfoRequest, RequestBundle};
 use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError, DanoResult};
 
@@ -77,28 +77,16 @@ fn exec() -> DanoResult<i32> {
             let processed_files = if write_config.opt_rewrite {
                 ProcessedFiles {
                     file_bundle: vec![
-                        RemainderBundle {
-                            files: Vec::new(),
-                            remainder_type: RemainderType::NewFile,
-                        },
-                        RemainderBundle {
-                            files: recorded_file_info.into_inner(),
-                            remainder_type: RemainderType::ModifiedFilename,
-                        },
+                        RemainderBundle::NewFile(Vec::new()),
+                        RemainderBundle::ModifiedFilename(recorded_file_info.into_inner()),
                     ],
                     exit_code: DANO_CLEAN_EXIT_CODE,
                 }
             } else if write_config.opt_import_flac {
                 ProcessedFiles {
                     file_bundle: vec![
-                        RemainderBundle {
-                            files: recorded_file_info.into_inner(),
-                            remainder_type: RemainderType::NewFile,
-                        },
-                        RemainderBundle {
-                            files: Vec::new(),
-                            remainder_type: RemainderType::ModifiedFilename,
-                        },
+                        RemainderBundle::NewFile(recorded_file_info.into_inner()),
+                        RemainderBundle::ModifiedFilename(Vec::new()),
                     ],
                     exit_code: DANO_CLEAN_EXIT_CODE,
                 }
@@ -152,7 +140,7 @@ fn exec() -> DanoResult<i32> {
             if recorded_file_info.is_empty() {
                 return Err(DanoError::new("No recorded file info is available to print.").into());
             }
-            
+
             recorded_file_info
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
@@ -161,11 +149,17 @@ fn exec() -> DanoResult<i32> {
         }
         ExecMode::Duplicates => {
             if recorded_file_info.is_empty() {
-                return Err(DanoError::new("No recorded file info is available for duplicate comparison.").into());
+                return Err(DanoError::new(
+                    "No recorded file info is available for duplicate comparison.",
+                )
+                .into());
             }
 
             if recorded_file_info.len() == 1 {
-                return Err(DanoError::new("Duplicate comparison requires more than one instance of recorded file info.").into());
+                return Err(DanoError::new(
+                    "Duplicate comparison requires more than one instance of recorded file info.",
+                )
+                .into());
             }
 
             let sorted_group_map: BTreeMap<Box<str>, Vec<FileInfo>> = recorded_file_info
@@ -205,7 +199,7 @@ fn exec() -> DanoResult<i32> {
                     DanoError::new("No recorded file info is available to dump to file.").into(),
                 );
             }
-            
+
             if config.output_file.exists() {
                 return Err(DanoError::new(
                     "Output file already exists.  Quitting without dumping to file.",
