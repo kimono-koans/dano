@@ -59,23 +59,23 @@ impl LegacyVersion {
 
     fn convert(&self, line: &str) -> DanoResult<FileInfo> {
         match self {
-            LegacyVersion::Version1 => FileInfoV1::rewrite(line)?.convert(),
-            LegacyVersion::Version2 => FileInfoV2::rewrite(line)?.convert(),
-            LegacyVersion::Version3 => FileInfoV3::rewrite(line)?.convert(),
+            LegacyVersion::Version1 => FileInfoV1::from_recorded(line)?.convert(),
+            LegacyVersion::Version2 => FileInfoV2::from_recorded(line)?.convert(),
+            LegacyVersion::Version3 => FileInfoV3::from_recorded(line)?.convert(),
         }
     }
 }
 
 pub trait ConvertVersion {
-    fn rewrite(line: &str) -> DanoResult<Self>
+    fn from_recorded(line: &str) -> DanoResult<Self>
     where
         Self: std::marker::Sized;
     fn convert(&self) -> DanoResult<FileInfo>;
 }
 
 impl ConvertVersion for FileInfoV1 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
-        Self::rewrite(line)
+    fn from_recorded(line: &str) -> DanoResult<Self> {
+        Self::from_recorded(line)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
         self.convert()
@@ -83,8 +83,8 @@ impl ConvertVersion for FileInfoV1 {
 }
 
 impl ConvertVersion for FileInfoV2 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
-        Self::rewrite(line)
+    fn from_recorded(line: &str) -> DanoResult<Self> {
+        Self::from_recorded(line)
     }
     fn convert(&self) -> DanoResult<FileInfo> {
         self.convert()
@@ -107,7 +107,7 @@ pub struct FileMetadataV1 {
 }
 
 impl FileInfoV1 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
+    fn from_recorded(line: &str) -> DanoResult<Self> {
         let rewrite = line.replace("FileInfo", "FileInfoV1");
         let legacy_file_info: FileInfoV1 = serde_json::from_str(&rewrite)?;
 
@@ -151,7 +151,7 @@ pub struct FileMetadataV2 {
 }
 
 impl FileInfoV2 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
+    fn from_recorded(line: &str) -> DanoResult<Self> {
         let rewrite = line.replace("FileInfo", "FileInfoV2");
         let legacy_file_info: FileInfoV2 = serde_json::from_str(&rewrite)?;
 
@@ -193,7 +193,7 @@ pub struct FileMetadataV3 {
 }
 
 impl FileInfoV3 {
-    fn rewrite(line: &str) -> DanoResult<Self> {
+    fn from_recorded(line: &str) -> DanoResult<Self> {
         let rewrite = line.replace("FileInfo", "FileInfoV3");
         let legacy_file_info: FileInfoV3 = serde_json::from_str(&rewrite)?;
 
