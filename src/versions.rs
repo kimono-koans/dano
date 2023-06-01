@@ -101,7 +101,7 @@ impl TryFrom<&str> for FileInfoV1 {
     type Error = serde_json::Error;
 
     fn try_from(line: &str) -> Result<Self, Self::Error> {
-        let rewrite = line.replace("FileInfo", "FileInfoV3");
+        let rewrite = line.replace("FileInfo", "FileInfoV1");
         let legacy_file_info: FileInfoV1 = serde_json::from_str(&rewrite)?;
 
         Ok(legacy_file_info)
@@ -150,7 +150,7 @@ impl TryFrom<&str> for FileInfoV2 {
     type Error = serde_json::Error;
 
     fn try_from(line: &str) -> Result<Self, Self::Error> {
-        let rewrite = line.replace("FileInfo", "FileInfoV3");
+        let rewrite = line.replace("FileInfo", "FileInfoV2");
         let legacy_file_info: FileInfoV2 = serde_json::from_str(&rewrite)?;
 
         Ok(legacy_file_info)
