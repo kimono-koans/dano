@@ -226,7 +226,7 @@ impl FileMap {
                     }
                 }
 
-                // slow path
+                // slow path -- why? if we have hash match with a new path name
                 self.par_iter()
                     .filter_map(|(_file_map_path, file_map_metadata)| file_map_metadata.as_ref())
                     .any(|file_map_metadata| {
