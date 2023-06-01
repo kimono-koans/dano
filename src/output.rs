@@ -259,10 +259,10 @@ impl WriteableFileInfo {
                     .cloned()
                     .collect();
 
-                let printed_info: WriteableFileInfo = unique_paths.into();
+                let writeable_file_info: WriteableFileInfo = unique_paths.into();
 
                 // and overwrite
-                printed_info.write_new(config, WriteType::OverwriteAll)
+                writeable_file_info.write_new(config, WriteType::OverwriteAll)
             }
             _ => Ok(()),
         }
