@@ -151,48 +151,52 @@ fn exec() -> DanoResult<i32> {
         ExecMode::Print => {
             if recorded_file_info.is_empty() {
                 return Err(DanoError::new("No recorded file info is available to print.").into());
-            } else {
-                recorded_file_info
-                    .iter()
-                    .try_for_each(|file_info| print_file_info(&config, file_info))?;
             }
+            
+            recorded_file_info
+                .iter()
+                .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
             DANO_CLEAN_EXIT_CODE
         }
         ExecMode::Duplicates => {
             if recorded_file_info.is_empty() {
-                return Err(DanoError::new("No recorded file info is available to print.").into());
-            } else {
-                let sorted_group_map: BTreeMap<Box<str>, Vec<FileInfo>> = recorded_file_info
-                    .into_inner()
-                    .into_iter()
-                    .filter(|value| value.metadata.is_some())
-                    .into_group_map_by(|value| {
-                        value.metadata.as_ref().unwrap().hash_value.value.clone()
-                    })
-                    .drain()
-                    .collect();
+                return Err(DanoError::new("No recorded file info is available for duplicate comparison.").into());
+            }
 
-                let duplicates: Vec<FileInfo> = sorted_group_map
-                    .into_values()
-                    .filter(|value| value.len() > 1)
-                    .flatten()
-                    .collect();
+            if recorded_file_info.len() == 1 {
+                return Err(DanoError::new("Duplicate comparison requires more than one instance of recorded file info.").into());
+            }
 
-                if duplicates.is_empty() {
-                    if !config.opt_silent {
-                        eprintln!("No duplicates found.");
-                    }
-                    DANO_CLEAN_EXIT_CODE
-                } else {
-                    duplicates
-                        .iter()
-                        .try_for_each(|file_info| print_file_info(&config, file_info))?;
-                    if !config.opt_silent {
-                        eprintln!("WARN: Duplicates found.");
-                    }
-                    DANO_DISORDER_EXIT_CODE
+            let sorted_group_map: BTreeMap<Box<str>, Vec<FileInfo>> = recorded_file_info
+                .into_inner()
+                .into_iter()
+                .filter(|value| value.metadata.is_some())
+                .into_group_map_by(|value| {
+                    value.metadata.as_ref().unwrap().hash_value.value.clone()
+                })
+                .drain()
+                .collect();
+
+            let duplicates: Vec<FileInfo> = sorted_group_map
+                .into_values()
+                .filter(|value| value.len() > 1)
+                .flatten()
+                .collect();
+
+            if duplicates.is_empty() {
+                if !config.opt_silent {
+                    eprintln!("No duplicates found.");
                 }
+                DANO_CLEAN_EXIT_CODE
+            } else {
+                duplicates
+                    .iter()
+                    .try_for_each(|file_info| print_file_info(&config, file_info))?;
+                if !config.opt_silent {
+                    eprintln!("WARN: Duplicates found.");
+                }
+                DANO_DISORDER_EXIT_CODE
             }
         }
         ExecMode::Dump => {
@@ -200,16 +204,18 @@ fn exec() -> DanoResult<i32> {
                 return Err(
                     DanoError::new("No recorded file info is available to dump to file.").into(),
                 );
-            } else if config.output_file.exists() {
+            }
+            
+            if config.output_file.exists() {
                 return Err(DanoError::new(
                     "Output file already exists.  Quitting without dumping to file.",
                 )
                 .into());
-            } else {
-                recorded_file_info.write_new(&config, WriteType::OverwriteAll)?;
-                if !config.opt_silent {
-                    print_err_buf("Dump to dano output file was successful.\n")?
-                }
+            }
+
+            recorded_file_info.write_new(&config, WriteType::OverwriteAll)?;
+            if !config.opt_silent {
+                print_err_buf("Dump to dano output file was successful.\n")?
             }
 
             DANO_CLEAN_EXIT_CODE
