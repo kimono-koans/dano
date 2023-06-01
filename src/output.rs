@@ -84,16 +84,15 @@ impl WriteOutBundle {
         self.into_inner()
             .into_iter()
             .try_for_each(|remainder_bundle| {
-                let files = match &remainder_bundle {
-                    RemainderBundle::NewFile(files) => files,
-                    RemainderBundle::ModifiedFilename(files) => files,
-                };
-
-                if !files.is_empty() {
-                    remainder_bundle.write_out(config)
-                } else {
-                    Self::print_bundle_empty(config, &remainder_bundle);
-                    Ok(())
+                // if files.empty() guard applies to both sides of the pattern
+                match &remainder_bundle {
+                    RemainderBundle::NewFile(files) | RemainderBundle::ModifiedFilename(files) if files.is_empty()  => {
+                        Self::print_bundle_empty(config, &remainder_bundle);
+                        Ok(())
+                    },
+                    _ => {
+                        remainder_bundle.write_out(config)
+                    },
                 }
             })
     }
