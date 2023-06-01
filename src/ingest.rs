@@ -16,6 +16,7 @@
 // that was distributed with this source code.
 
 use std::ops::Deref;
+use std::path::Path;
 
 use rayon::prelude::*;
 
@@ -76,25 +77,20 @@ impl RecordedFileInfo {
                 .paths
                 .par_iter()
                 .filter_map(|path| {
-                    let opt_file_info = xattr::get(path, DANO_XATTR_KEY_NAME)
-                        .ok()
-                        .flatten()
-                        .and_then(|bytes| std::str::from_utf8(&bytes).ok().and_then(|line| {
-                            deserialize(line).ok()
-                        }));
+                    let opt_file_info = Self::from_recorded_xattr(&path);
                     opt_file_info.map(|file_info| (path, file_info))
                 })
                 .map(|(path, file_info)| {
                     // use the actual path name always
                     if path != &file_info.path {
-                        FileInfo {
+                        return FileInfo {
                             version: file_info.version,
                             path: path.to_owned(),
                             metadata: file_info.metadata,
                         }
-                    } else {
-                        file_info
                     }
+                    
+                    file_info
                 })
                 .collect()
         };
@@ -106,5 +102,29 @@ impl RecordedFileInfo {
 
         // combine
         Ok(file_info_from_xattrs)
+    }
+
+    fn from_recorded_xattr(path: &Path) -> Option<FileInfo> {
+        fn inner(path: &Path) -> DanoResult<Option<FileInfo>> {
+            let res = if let Some(bytes) = xattr::get(path, DANO_XATTR_KEY_NAME)? {
+                let line = std::str::from_utf8(&bytes)?;
+                let res = deserialize(line)?;
+                res
+            } else {
+                return Ok(None)
+            };
+
+            Ok(Some(res))
+        }
+
+        match inner(path) {
+            Ok(res) => {
+                res
+            }
+            Err(err) => {
+                eprintln!("ERROR: {:?}", err);
+                None
+            }
+        }
     }
 }
