@@ -124,16 +124,19 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE_NEW")
-                .help("if new files are present in TEST mode, append such file info.")
+                .help("if new files are present in TEST mode, write new file info.")
                 .long("write-new")
                 .requires("TEST")
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
                 .display_order(12),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
-                .help("if one file's hash matches another's, but they have different file name's, overwrite the old file's info with the most current.")
+                .help("if a file's hash matches a recorded hash, but that file now has a different file name, \
+                overwrite the old file's recorded file info with the most current.")
                 .long("overwrite")
-                .conflicts_with_all(&["PRINT", "DUMP"])
+                .requires("TEST")
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
                 .display_order(13),
         )
         .arg(
