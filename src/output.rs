@@ -168,27 +168,22 @@ impl RemainderBundle {
             self.print_write_action(wet_prefix, EMPTY_STR)?;
 
             match self {
-                RemainderBundle::ModifiedFilename(files) => {
+                RemainderBundle::ModifiedFilename(files) | RemainderBundle::NewFile(files) => {
                     let writable: WriteableFileInfo = files.into();
                     writable.overwrite_all(config)
-                }
-                RemainderBundle::NewFile(files) => {
-                    let writable: WriteableFileInfo = files.into();
-                    writable.write_new(config, WriteType::Append)
                 }
             }
         }
     }
 
     fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
-        let files = match self {
-            RemainderBundle::NewFile(files) => files,
-            RemainderBundle::ModifiedFilename(files) => files,
-        };
-
-        files.iter().try_for_each(|file_info| {
-            print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
-        })
+        match self {
+            RemainderBundle::NewFile(files) | RemainderBundle::ModifiedFilename(files) => {
+                files.iter().try_for_each(|file_info| {
+                    print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
+                })
+            },
+        }
     }
 }
 
