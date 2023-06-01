@@ -77,7 +77,7 @@ impl RecordedFileInfo {
                 .paths
                 .par_iter()
                 .filter_map(|path| {
-                    let opt_file_info = Self::from_recorded_xattr(&path);
+                    let opt_file_info = Self::read_file_info_from_xattr(path);
                     opt_file_info.map(|file_info| (path, file_info))
                 })
                 .map(|(path, file_info)| {
@@ -87,9 +87,9 @@ impl RecordedFileInfo {
                             version: file_info.version,
                             path: path.to_owned(),
                             metadata: file_info.metadata,
-                        }
+                        };
                     }
-                    
+
                     file_info
                 })
                 .collect()
@@ -104,22 +104,22 @@ impl RecordedFileInfo {
         Ok(file_info_from_xattrs)
     }
 
-    fn from_recorded_xattr(path: &Path) -> Option<FileInfo> {
+    fn read_file_info_from_xattr(path: &Path) -> Option<FileInfo> {
         fn inner(path: &Path) -> DanoResult<Option<FileInfo>> {
             if let Some(bytes) = xattr::get(path, DANO_XATTR_KEY_NAME)? {
                 let line = std::str::from_utf8(&bytes)?;
                 let res = deserialize(line)?;
-                
+
                 Ok(Some(res))
             } else {
                 Ok(None)
             }
         }
 
+        // key idea is to let errors be printed but also let the files, which have errors,
+        // to have those errors be flattened
         match inner(path) {
-            Ok(res) => {
-                res
-            }
+            Ok(res) => res,
             Err(err) => {
                 eprintln!("ERROR: {:?}", err);
                 None

@@ -452,9 +452,7 @@ impl Config {
         if !opt_silent && !bad_extensions.is_empty() {
             let unique: HashSet<Cow<str>> = bad_extensions.into_iter().collect();
 
-            let buffer: String = unique.iter().map(|ext| {
-                format!("{} ", ext)
-            }).collect();
+            let buffer: String = unique.iter().map(|ext| format!("{} ", ext)).collect();
 
             eprintln!("WARN: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
         }
@@ -464,10 +462,13 @@ impl Config {
             .map(|path| {
                 if opt_canonical_paths {
                     if let Ok(canonical) = path.canonicalize() {
-                        return canonical
+                        return canonical;
                     }
 
-                    eprintln!("WARN: Unable convert relative path to canonical path: {:?}", path);
+                    eprintln!(
+                        "WARN: Unable convert relative path to canonical path: {:?}",
+                        path
+                    );
                 }
 
                 path.to_path_buf()

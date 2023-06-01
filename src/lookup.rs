@@ -82,7 +82,7 @@ impl FileInfo {
                 None => config.opt_decode,
             };
             let stdout_string =
-                FileInfo::get_hash_value(&config, request, &ffmpeg_command, decoded)?;
+                FileInfo::get_hash_value(config, request, &ffmpeg_command, decoded)?;
             FileInfo::transmit_file_info(
                 request,
                 &stdout_string,
@@ -257,7 +257,7 @@ impl FileInfoLookup {
         let requested_paths_clone = requested_paths.deref().to_owned();
 
         let config_clone = config.clone();
-        let tx_item_clone = tx_item.clone();
+        let tx_item_clone = tx_item;
 
         std::thread::spawn(move || {
             // exec threads to hash files
@@ -267,7 +267,7 @@ impl FileInfoLookup {
                     let tx_item = &tx_item_clone;
 
                     file_info_scope.spawn(move |_| {
-                        if let Err(err) = FileInfo::generate(&config, request, &tx_item) {
+                        if let Err(err) = FileInfo::generate(config, request, tx_item) {
                             // probably want to see the error, but not exit the process
                             // when there is an error in a single thread
                             eprintln!("ERROR: {}", err);

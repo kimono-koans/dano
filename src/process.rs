@@ -149,10 +149,7 @@ impl FileMap {
             // always print, even in silent
             match config.exec_mode {
                 ExecMode::Test(_) => {
-                    print_out_buf(&format!(
-                        "{:?}: Path is a new file.\n",
-                        file_info.path
-                    ))?;
+                    print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
                     print_file_info(config, &file_info)?;

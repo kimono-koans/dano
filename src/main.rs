@@ -185,7 +185,8 @@ fn exec() -> DanoResult<i32> {
                     }
                     DANO_CLEAN_EXIT_CODE
                 } else {
-                    duplicates.iter()
+                    duplicates
+                        .iter()
                         .try_for_each(|file_info| print_file_info(&config, file_info))?;
                     if !config.opt_silent {
                         eprintln!("WARN: Duplicates found.");
