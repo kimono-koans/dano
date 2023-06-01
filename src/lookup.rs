@@ -181,18 +181,18 @@ impl FileInfo {
         } else {
             let res = match stdout_string.split_once('=') {
                 Some((first, last)) => {
-                    let hash_value = if let Ok(_parsed) =
-                        primitive_types::U512::from_str_radix(last, HEXADECIMAL_RADIX)
-                    {
-                        HashValue {
-                            radix: HEXADECIMAL_RADIX,
-                            value: last.trim_start_matches('0').into(),
-                        }
-                    } else {
-                        return Err(
-                            DanoError::new("Could not parse integer from ffmpeg output.").into(),
-                        );
-                    };
+                    let hash_value =
+                        if primitive_types::U512::from_str_radix(last, HEXADECIMAL_RADIX).is_ok() {
+                            HashValue {
+                                radix: HEXADECIMAL_RADIX,
+                                value: last.trim_start_matches('0').into(),
+                            }
+                        } else {
+                            return Err(DanoError::new(
+                                "Could not parse integer from ffmpeg output.",
+                            )
+                            .into());
+                        };
 
                     FileInfo {
                         path: request.path.to_owned(),
