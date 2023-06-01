@@ -106,15 +106,14 @@ impl RecordedFileInfo {
 
     fn from_recorded_xattr(path: &Path) -> Option<FileInfo> {
         fn inner(path: &Path) -> DanoResult<Option<FileInfo>> {
-            let res = if let Some(bytes) = xattr::get(path, DANO_XATTR_KEY_NAME)? {
+            if let Some(bytes) = xattr::get(path, DANO_XATTR_KEY_NAME)? {
                 let line = std::str::from_utf8(&bytes)?;
                 let res = deserialize(line)?;
-                res
+                
+                Ok(Some(res))
             } else {
-                return Ok(None)
-            };
-
-            Ok(Some(res))
+                Ok(None)
+            }
         }
 
         match inner(path) {
