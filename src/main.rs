@@ -121,10 +121,14 @@ fn exec() -> DanoResult<i32> {
             let exit_code = processed_files.write_out(&config)?;
 
             if !config.is_single_path {
-                if exit_code == DANO_CLEAN_EXIT_CODE {
-                    let _ = print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n");
-                } else if exit_code == DANO_DISORDER_EXIT_CODE {
-                    let _ = print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n");
+                match exit_code {
+                    i if i == DANO_CLEAN_EXIT_CODE => {
+                        print_err_buf("PASSED: File paths are consistent.  Paths contain no hash or filename mismatches.\n")?
+                    }
+                    i if i == DANO_DISORDER_EXIT_CODE => {
+                        print_err_buf("FAILED: File paths are inconsistent.  Some hash or filename mismatch was detected.\n")?
+                    }
+                    _ => {}
                 }
             }
 
