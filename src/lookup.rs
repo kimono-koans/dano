@@ -74,7 +74,7 @@ impl FileInfo {
     pub fn generate(
         config: &Config,
         request: &FileInfoRequest,
-        tx_item: Sender<FileInfo>,
+        tx_item: &Sender<FileInfo>,
     ) -> DanoResult<()> {
         if let Ok(ffmpeg_command) = which("ffmpeg") {
             let decoded = match request.decoded {
@@ -155,7 +155,7 @@ impl FileInfo {
     fn transmit_file_info(
         request: &FileInfoRequest,
         stdout_string: &str,
-        tx_item: Sender<FileInfo>,
+        tx_item: &Sender<FileInfo>,
         decoded: bool,
         selected_streams: &SelectedStreams,
     ) -> DanoResult<()> {
@@ -256,16 +256,18 @@ impl FileInfoLookup {
 
         let requested_paths_clone = requested_paths.deref().to_owned();
 
-        let config_arc = config.clone();
+        let config_clone = config.clone();
+        let tx_item_clone = tx_item.clone();
 
         std::thread::spawn(move || {
             // exec threads to hash files
             thread_pool.in_place_scope(|file_info_scope| {
                 requested_paths_clone.iter().for_each(|request| {
-                    let tx_item_clone = tx_item.clone();
-                    let config_clone = &config_arc;
+                    let config = &config_clone;
+                    let tx_item = &tx_item_clone;
+
                     file_info_scope.spawn(move |_| {
-                        if let Err(err) = FileInfo::generate(config_clone, request, tx_item_clone) {
+                        if let Err(err) = FileInfo::generate(&config, request, &tx_item) {
                             // probably want to see the error, but not exit the process
                             // when there is an error in a single thread
                             eprintln!("ERROR: {}", err);
