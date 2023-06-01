@@ -121,7 +121,7 @@ fn exec() -> DanoResult<i32> {
                 .filter(|request| request.hash_algo.is_none())
                 .collect();
 
-            let rx_item = FileInfoLookup::exec(&config, &file_info_requests.into(), thread_pool)?;
+            let rx_item = FileInfoLookup::exec(&config, file_info_requests.into(), thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();
@@ -132,7 +132,7 @@ fn exec() -> DanoResult<i32> {
             let thread_pool = prepare_thread_pool(&config)?;
 
             let file_info_requests = RequestBundle::new(&config, &recorded_file_info)?;
-            let rx_item = FileInfoLookup::exec(&config, &file_info_requests, thread_pool)?;
+            let rx_item = FileInfoLookup::exec(&config, file_info_requests, thread_pool)?;
             let processed_files = ProcessedFiles::new(&config, &recorded_file_info, rx_item)?;
 
             let new_files_bundle: WriteOutBundle = processed_files.file_bundle.into();

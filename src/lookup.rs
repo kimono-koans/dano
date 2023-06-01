@@ -17,7 +17,6 @@
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
-    ops::Deref,
     path::{Path, PathBuf},
     process::Command as ExecProcess,
     time::SystemTime,
@@ -248,13 +247,13 @@ pub struct FileInfoLookup;
 impl FileInfoLookup {
     pub fn exec(
         config: &Config,
-        requested_paths: &RequestBundle,
+        requested_paths: RequestBundle,
         thread_pool: ThreadPool,
     ) -> DanoResult<Receiver<FileInfo>> {
         let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
             crossbeam_channel::unbounded();
 
-        let requested_paths_clone = requested_paths.deref().to_owned();
+        let requested_paths_clone = requested_paths.into_inner();
 
         let config_clone = config.clone();
         let tx_item_clone = tx_item;
