@@ -66,17 +66,20 @@ impl LegacyVersion {
     }
 }
 
-pub trait ConvertVersion {
+pub trait ConvertVersion<'a>
+where
+    Self: TryFrom<&'a str, Error = serde_json::Error>,
+{
     fn convert(&self) -> DanoResult<FileInfo>;
 }
 
-impl ConvertVersion for FileInfoV1 {
+impl<'a> ConvertVersion<'a> for FileInfoV1 {
     fn convert(&self) -> DanoResult<FileInfo> {
         self.convert()
     }
 }
 
-impl ConvertVersion for FileInfoV2 {
+impl<'a> ConvertVersion<'a> for FileInfoV2 {
     fn convert(&self) -> DanoResult<FileInfo> {
         self.convert()
     }
