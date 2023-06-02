@@ -124,7 +124,7 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("WRITE_NEW")
-                .help("in TEST mode, if new files are present, write new file info.")
+                .help("in TEST mode, when not writing to an extended attribute, if new files are present, write new file info to the hash file.")
                 .long("write-new")
                 .requires("TEST")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
@@ -132,8 +132,8 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
-                .help("in TEST mode, if a file's hash matches a recorded hash, but that file now has a different file name, \
-                overwrite the old file's recorded file info with the most current.")
+                .help("in TEST mode, when not writing to an extended attribute, if a file's hash matches a recorded hash, but that file now has a different file name, \
+                overwrite file info with the most current to the hash file.")
                 .long("overwrite")
                 .requires("TEST")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
