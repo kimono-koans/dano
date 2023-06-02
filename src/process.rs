@@ -21,7 +21,7 @@ use crossbeam_channel::Receiver;
 use itertools::Either;
 use rayon::prelude::*;
 
-use crate::config::TestModeWriteOpt;
+use crate::config::WriteOpt;
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
@@ -117,8 +117,8 @@ impl FileMap {
         config: &Config,
         file_info: &'a FileInfo,
     ) -> DanoResult<(Option<Either<&'a FileInfo, &'a FileInfo>>, i32)> {
-        let is_same_hash = self.is_same_hash(&file_info);
-        let is_same_filename = self.is_same_filename(&file_info);
+        let is_same_hash = self.is_same_hash(file_info);
+        let is_same_filename = self.is_same_filename(file_info);
         let mut test_exit_code = 0;
 
         // must check whether metadata is none first
@@ -132,7 +132,7 @@ impl FileMap {
                     ))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &file_info)?;
+                    print_file_info(config, file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -145,7 +145,7 @@ impl FileMap {
                     print_out_buf(&format!("{:?}: Path is a new file.\n", file_info.path))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &file_info)?;
+                    print_file_info(config, file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -157,7 +157,7 @@ impl FileMap {
                         print_out_buf(&format!("{:?}: OK\n", &file_info.path))?;
                     }
                     ExecMode::Write(_) => {
-                        print_file_info(config, &file_info)?;
+                        print_file_info(config, file_info)?;
                     }
                     _ => unreachable!(),
                 }
@@ -167,7 +167,7 @@ impl FileMap {
             // always print, even in silent
             match &config.exec_mode {
                 ExecMode::Test(opt_test_write_opt) => {
-                    if matches!(opt_test_write_opt, Some(TestModeWriteOpt::OverwriteAll)) {
+                    if matches!(opt_test_write_opt, Some(WriteOpt::OverwriteAll)) {
                         print_out_buf(format!(
                             "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
                             file_info.path
@@ -183,7 +183,7 @@ impl FileMap {
                     }
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &file_info)?;
+                    print_file_info(config, file_info)?;
                 }
                 _ => unreachable!(),
             }
@@ -198,7 +198,7 @@ impl FileMap {
                     ))?;
                 }
                 ExecMode::Write(_) => {
-                    print_file_info(config, &file_info)?;
+                    print_file_info(config, file_info)?;
                 }
                 _ => unreachable!(),
             }

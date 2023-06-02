@@ -27,7 +27,7 @@ use itertools::Either;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{utility::read_stdin};
+use crate::utility::read_stdin;
 use crate::{DanoError, DanoResult, DANO_DEFAULT_HASH_FILE_NAME};
 
 fn parse_args() -> ArgMatches {
@@ -133,7 +133,7 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .help("in TEST mode, if a file's hash matches a recorded hash, but that file now has a different file name, \
-                overwrite the old file's recorded file info with the most current.")
+                overwrite the old file's recorded file info with the most current. OVERWRITE_OLD implies WRITE_NEW.")
                 .long("overwrite")
                 .requires("TEST")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
@@ -206,19 +206,20 @@ fn parse_args() -> ArgMatches {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WriteModeConfig {
+    pub opt_write_opt: Option<WriteOpt>,
     pub opt_rewrite: bool,
     pub opt_import_flac: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TestModeWriteOpt {
+pub enum WriteOpt {
     WriteNew,
     OverwriteAll,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecMode {
-    Test(Option<TestModeWriteOpt>),
+    Test(Option<WriteOpt>),
     Write(WriteModeConfig),
     Print,
     Dump,
@@ -287,20 +288,25 @@ impl Config {
         let opt_import_flac = matches.is_present("IMPORT_FLAC");
         let opt_rewrite = matches.is_present("REWRITE_ALL");
 
-
-
         let exec_mode = if matches.is_present("TEST") {
             let opt_test_write_opt = if matches.is_present("OVERWRITE_OLD") {
-                Some(TestModeWriteOpt::OverwriteAll)
+                Some(WriteOpt::OverwriteAll)
             } else if matches.is_present("WRITE_NEW") {
-                Some(TestModeWriteOpt::WriteNew)
+                Some(WriteOpt::WriteNew)
             } else {
                 None
             };
 
             ExecMode::Test(opt_test_write_opt)
         } else if matches.is_present("WRITE") || opt_rewrite || opt_import_flac {
+            let opt_write_opt = if opt_rewrite {
+                Some(WriteOpt::OverwriteAll)
+            } else {
+                Some(WriteOpt::WriteNew)
+            };
+
             ExecMode::Write(WriteModeConfig {
+                opt_write_opt,
                 opt_rewrite,
                 opt_import_flac,
             })

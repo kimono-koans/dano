@@ -20,7 +20,7 @@ use itertools::Itertools;
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
-use crate::config::TestModeWriteOpt;
+use crate::config::WriteOpt;
 use crate::lookup::FileInfo;
 use crate::process::{ProcessedFiles, RemainderBundle};
 use crate::utility::{
@@ -76,9 +76,7 @@ impl ProcessedFiles {
     fn print_bundle_empty(config: &Config, remainder_bundle: &RemainderBundle) {
         if !config.is_single_path {
             match &config.exec_mode {
-                ExecMode::Test(opt_test_write_opt)
-                    if opt_test_write_opt.is_none() =>
-                {
+                ExecMode::Test(opt_test_write_opt) if opt_test_write_opt.is_none() => {
                     match remainder_bundle {
                         RemainderBundle::NewFile(_) => {
                             eprintln!("{}{}", NEW_FILES_EMPTY, NOT_WRITE_NEW_SUFFIX);
@@ -104,27 +102,46 @@ impl ProcessedFiles {
 impl RemainderBundle {
     fn write_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
-            ExecMode::Write(_) => match self {
-                RemainderBundle::NewFile(files) => {
-                    WriteableFileInfo::from(files).write_action(config, None, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
-                }
-                RemainderBundle::ModifiedFilename(files) => {
-                    WriteableFileInfo::from(files).write_action(config, None, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
-                }
+            ExecMode::Write(write_mode_config) => match self {
+                RemainderBundle::NewFile(files) => WriteableFileInfo::from(files).write_action(
+                    config,
+                    &write_mode_config.opt_write_opt,
+                    NOT_WRITE_NEW_PREFIX,
+                    WRITE_NEW_PREFIX,
+                )?,
+                RemainderBundle::ModifiedFilename(files) => WriteableFileInfo::from(files)
+                    .write_action(
+                        config,
+                        &write_mode_config.opt_write_opt,
+                        NOT_OVERWRITE_OLD_PREFIX,
+                        OVERWRITE_OLD_PREFIX,
+                    )?,
             },
             ExecMode::Test(opt_test_write_opt) => match self {
-                RemainderBundle::NewFile(files) if matches!(opt_test_write_opt, Some(TestModeWriteOpt::WriteNew)) => {
-                    WriteableFileInfo::from(files).write_action(config, Some(TestModeWriteOpt::WriteNew), NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
+                RemainderBundle::NewFile(files)
+                    if matches!(opt_test_write_opt, Some(WriteOpt::WriteNew)) =>
+                {
+                    WriteableFileInfo::from(files).write_action(
+                        config,
+                        &Some(WriteOpt::WriteNew),
+                        NOT_WRITE_NEW_PREFIX,
+                        WRITE_NEW_PREFIX,
+                    )?
                 }
-                RemainderBundle::ModifiedFilename(files) if matches!(opt_test_write_opt, Some(TestModeWriteOpt::OverwriteAll)) => {
-                    WriteableFileInfo::from(files).write_action(config, Some(TestModeWriteOpt::OverwriteAll), NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
+                RemainderBundle::ModifiedFilename(files)
+                    if matches!(opt_test_write_opt, Some(WriteOpt::OverwriteAll)) =>
+                {
+                    WriteableFileInfo::from(files).write_action(
+                        config,
+                        &Some(WriteOpt::OverwriteAll),
+                        NOT_OVERWRITE_OLD_PREFIX,
+                        OVERWRITE_OLD_PREFIX,
+                    )?
                 }
-                RemainderBundle::NewFile(files) => {
-                    WriteableFileInfo::from(files).print_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
-                }
-                RemainderBundle::ModifiedFilename(files) => {
-                    WriteableFileInfo::from(files).print_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?
-                }
+                RemainderBundle::NewFile(files) => WriteableFileInfo::from(files)
+                    .print_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?,
+                RemainderBundle::ModifiedFilename(files) => WriteableFileInfo::from(files)
+                    .print_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?,
             },
             _ => unreachable!(),
         }
@@ -154,29 +171,32 @@ impl WriteableFileInfo {
     fn write_action(
         self,
         config: &Config,
-        opt_write_type: Option<TestModeWriteOpt>,
+        opt_write_type: &Option<WriteOpt>,
         dry_prefix: &str,
         wet_prefix: &str,
     ) -> DanoResult<()> {
         match opt_write_type {
-            _ if config.opt_dry_run => {
-                self.print_action(dry_prefix, EMPTY_STR)
-            }
-            None => {
-                self.print_action(dry_prefix, EMPTY_STR)
-            }
-            Some(TestModeWriteOpt::WriteNew) => {
+            _ if config.opt_dry_run => self.print_action(dry_prefix, EMPTY_STR),
+            None => match config.exec_mode {
+                ExecMode::Test(_) => self.print_action(dry_prefix, EMPTY_STR),
+                ExecMode::Write(_) => {
+                    self.print_action(wet_prefix, EMPTY_STR)?;
+                    self.write_new(config, WriteType::Append)
+                }
+                _ => unreachable!(),
+            },
+            Some(WriteOpt::WriteNew) => {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.write_new(config, WriteType::Append)
             }
-            Some(TestModeWriteOpt::OverwriteAll) => {
+            Some(WriteOpt::OverwriteAll) => {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.overwrite_all(config)
             }
         }
     }
 
-    fn print_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {    
+    fn print_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
         self.inner.iter().try_for_each(|file_info| {
             print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
         })
