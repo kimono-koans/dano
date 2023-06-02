@@ -177,7 +177,7 @@ fn print_file_header(config: &Config, output_file: &mut File) -> DanoResult<()> 
 pub fn get_output_file(config: &Config, write_type: WriteType) -> DanoResult<File> {
     let output_file = match write_type {
         WriteType::Append => config.output_file.clone(),
-        WriteType::OverwriteAll => make_tmp_file(&config.output_file),
+        WriteType::Overwrite => make_tmp_file(&config.output_file),
     };
 
     let is_first_run = !output_file.exists();

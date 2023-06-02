@@ -51,7 +51,7 @@ const MODIFIED_FILE_NAMES_EMPTY: &str = "No old file data to overwrite.";
 
 pub enum WriteType {
     Append,
-    OverwriteAll,
+    Overwrite,
 }
 
 impl ProcessedFiles {
@@ -230,7 +230,7 @@ impl WriteableFileInfo {
                 };
 
                 // and overwrite
-                writeable_file_info.write_new(config, WriteType::OverwriteAll)
+                writeable_file_info.write_new(config, WriteType::Overwrite)
             }
             _ => Ok(()),
         }
@@ -250,8 +250,8 @@ impl WriteableFileInfo {
                             .iter()
                             .try_for_each(|file_info| write_file(file_info, &mut output_file))
                     }
-                    WriteType::OverwriteAll => {
-                        let mut output_file = get_output_file(config, WriteType::OverwriteAll)?;
+                    WriteType::Overwrite => {
+                        let mut output_file = get_output_file(config, WriteType::Overwrite)?;
 
                         self.inner
                             .iter()
