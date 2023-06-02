@@ -141,20 +141,18 @@ impl RemainderBundle {
         dry_prefix: &str,
         wet_prefix: &str,
     ) -> DanoResult<()> {
-            match self {
-                RemainderBundle::ModifiedFilename(files) | RemainderBundle::NewFile(files) => {
-                    let writable_file_info: WriteableFileInfo = files.into();
+        match self {
+            RemainderBundle::ModifiedFilename(files) | RemainderBundle::NewFile(files) => {
+                let writable_file_info: WriteableFileInfo = files.into();
 
-                    writable_file_info.print_write_action(dry_prefix, EMPTY_STR)?;
-
-                    if !config.opt_dry_run {
-                        writable_file_info.print_write_action(wet_prefix, EMPTY_STR)?;
-                        writable_file_info.overwrite_all(config)?;
-                    }
-
-                    Ok(())
+                if !config.opt_dry_run {
+                    writable_file_info.print_write_action(wet_prefix, EMPTY_STR)?;
+                    writable_file_info.overwrite_all(config)
+                } else {
+                    writable_file_info.print_write_action(dry_prefix, EMPTY_STR)
                 }
             }
+        }
     }
     
 }
