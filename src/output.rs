@@ -104,57 +104,44 @@ impl ProcessedFiles {
 impl RemainderBundle {
     fn write_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
-            ExecMode::Write(_) => match &self {
-                RemainderBundle::NewFile(_) => {
-                    self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
-                }
-                RemainderBundle::ModifiedFilename(_) => {
-                    self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
-                }
-            },
-            ExecMode::Test(test_config) => match self {
-                RemainderBundle::NewFile(_) if test_config.opt_write_new => {
-                    self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
-                }
-                RemainderBundle::ModifiedFilename(_) if test_config.opt_overwrite_old => {
-                    self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
-                }
+            ExecMode::Write(_) => match self {
                 RemainderBundle::NewFile(files) => {
                     let writable_file_info: WriteableFileInfo = files.into();
 
-                    writable_file_info.print_write_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
+                    writable_file_info.write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
                 }
                 RemainderBundle::ModifiedFilename(files) => {
                     let writable_file_info: WriteableFileInfo = files.into();
 
-                    writable_file_info.print_write_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?
+                    writable_file_info.write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
+                }
+            },
+            ExecMode::Test(test_config) => match self {
+                RemainderBundle::NewFile(files) if test_config.opt_write_new => {
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    writable_file_info.write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
+                }
+                RemainderBundle::ModifiedFilename(files) if test_config.opt_overwrite_old => {
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    writable_file_info.write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
+                }
+                RemainderBundle::NewFile(files) => {
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    writable_file_info.print_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
+                }
+                RemainderBundle::ModifiedFilename(files) => {
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    writable_file_info.print_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?
                 }
             },
             _ => unreachable!(),
         }
         Ok(())
     }
-
-    fn exec_write_action(
-        self,
-        config: &Config,
-        dry_prefix: &str,
-        wet_prefix: &str,
-    ) -> DanoResult<()> {
-        match self {
-            RemainderBundle::ModifiedFilename(files) | RemainderBundle::NewFile(files) => {
-                let writable_file_info: WriteableFileInfo = files.into();
-
-                if config.opt_dry_run {
-                    writable_file_info.print_write_action(dry_prefix, EMPTY_STR)?;
-                    writable_file_info.overwrite_all(config)
-                } else {
-                    writable_file_info.print_write_action(wet_prefix, EMPTY_STR)
-                }
-            }
-        }
-    }
-    
 }
 
 pub struct WriteableFileInfo {
@@ -176,11 +163,24 @@ impl From<RecordedFileInfo> for WriteableFileInfo {
 }
 
 impl WriteableFileInfo {
-    fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {    
+    fn write_action(
+        self,
+        config: &Config,
+        dry_prefix: &str,
+        wet_prefix: &str,
+    ) -> DanoResult<()> {
+        if config.opt_dry_run {
+            self.print_action(dry_prefix, EMPTY_STR)?;
+            self.overwrite_all(config)
+        } else {
+            self.print_action(wet_prefix, EMPTY_STR)
+        }
+    }
+
+    fn print_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {    
         self.inner.iter().try_for_each(|file_info| {
             print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
         })
-            
     }
     
     pub fn write_new(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
