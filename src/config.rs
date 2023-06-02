@@ -206,7 +206,6 @@ fn parse_args() -> ArgMatches {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WriteModeConfig {
-    pub opt_write_opt: Option<WriteOpt>,
     pub opt_rewrite: bool,
     pub opt_import_flac: bool,
 }
@@ -299,14 +298,7 @@ impl Config {
 
             ExecMode::Test(opt_test_write_opt)
         } else if matches.is_present("WRITE") || opt_rewrite || opt_import_flac {
-            let opt_write_opt = if opt_rewrite {
-                Some(WriteOpt::OverwriteAll)
-            } else {
-                Some(WriteOpt::WriteNew)
-            };
-
             ExecMode::Write(WriteModeConfig {
-                opt_write_opt,
                 opt_rewrite,
                 opt_import_flac,
             })
