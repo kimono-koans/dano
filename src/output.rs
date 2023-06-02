@@ -20,7 +20,6 @@ use itertools::Itertools;
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
-use crate::config::WriteOpt;
 use crate::lookup::FileInfo;
 use crate::process::{ProcessedFiles, RemainderBundle};
 use crate::utility::{
@@ -76,7 +75,7 @@ impl ProcessedFiles {
     fn print_bundle_empty(config: &Config, remainder_bundle: &RemainderBundle) {
         if !config.is_single_path {
             match &config.exec_mode {
-                ExecMode::Test(opt_test_write_opt) if opt_test_write_opt.is_none() => {
+                ExecMode::Test(test_mode_config) if !test_mode_config.opt_overwrite_old || !test_mode_config.opt_write_new => {
                     match remainder_bundle {
                         RemainderBundle::NewFile(_) => {
                             eprintln!("{}{}", NEW_FILES_EMPTY, NOT_WRITE_NEW_SUFFIX);
@@ -115,9 +114,9 @@ impl RemainderBundle {
                         OVERWRITE_OLD_PREFIX,
                     )?,
             },
-            ExecMode::Test(opt_test_write_opt) => match self {
+            ExecMode::Test(test_mode_config) => match self {
                 RemainderBundle::NewFile(files)
-                    if matches!(opt_test_write_opt, Some(WriteOpt::WriteNew)) =>
+                    if test_mode_config.opt_write_new =>
                 {
                     WriteableFileInfo::from(files).exec(
                         config,
@@ -126,7 +125,7 @@ impl RemainderBundle {
                     )?
                 }
                 RemainderBundle::ModifiedFilename(files)
-                    if matches!(opt_test_write_opt, Some(WriteOpt::OverwriteAll)) =>
+                    if test_mode_config.opt_overwrite_old =>
                 {
                     WriteableFileInfo::from(files).exec(
                         config,
@@ -178,7 +177,7 @@ impl WriteableFileInfo {
                 self.print(wet_prefix, EMPTY_STR)?;
                 self.append_and_rewrite(config)
             }
-            ExecMode::Test(opt) if opt.is_some() => {
+            ExecMode::Test(test_mode_config) if test_mode_config.opt_write_new || test_mode_config.opt_overwrite_old => {
                 self.print(wet_prefix, EMPTY_STR)?;
                 self.append_and_rewrite(config)
             } 

@@ -133,7 +133,7 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("OVERWRITE_OLD")
                 .help("in TEST mode, if a file's hash matches a recorded hash, but that file now has a different file name, \
-                overwrite the old file's recorded file info with the most current. OVERWRITE_OLD implies WRITE_NEW.")
+                overwrite the old file's recorded file info with the most current.")
                 .long("overwrite")
                 .requires("TEST")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
@@ -211,14 +211,14 @@ pub struct WriteModeConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum WriteOpt {
-    WriteNew,
-    OverwriteAll,
+pub struct TestModeConfig {
+    pub opt_overwrite_old: bool,
+    pub opt_write_new: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecMode {
-    Test(Option<WriteOpt>),
+    Test(TestModeConfig),
     Write(WriteModeConfig),
     Print,
     Dump,
@@ -286,17 +286,16 @@ impl Config {
         let opt_decode = matches.is_present("DECODE");
         let opt_import_flac = matches.is_present("IMPORT_FLAC");
         let opt_rewrite = matches.is_present("REWRITE_ALL");
+        let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
+        let opt_write_new = matches.is_present("WRITE_NEW");
 
         let exec_mode = if matches.is_present("TEST") {
-            let opt_test_write_opt = if matches.is_present("OVERWRITE_OLD") {
-                Some(WriteOpt::OverwriteAll)
-            } else if matches.is_present("WRITE_NEW") {
-                Some(WriteOpt::WriteNew)
-            } else {
-                None
+            let test_mode_config= TestModeConfig {
+                opt_overwrite_old,
+                opt_write_new,
             };
 
-            ExecMode::Test(opt_test_write_opt)
+            ExecMode::Test(test_mode_config)
         } else if matches.is_present("WRITE") || opt_rewrite || opt_import_flac {
             ExecMode::Write(WriteModeConfig {
                 opt_rewrite,
