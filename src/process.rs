@@ -21,6 +21,7 @@ use crossbeam_channel::Receiver;
 use itertools::Either;
 use rayon::prelude::*;
 
+use crate::config::TestModeWriteOpt;
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
@@ -165,8 +166,8 @@ impl FileMap {
         } else if is_same_hash {
             // always print, even in silent
             match &config.exec_mode {
-                ExecMode::Test(test_config) => {
-                    if test_config.opt_write_new && test_config.opt_overwrite_old {
+                ExecMode::Test(opt_test_write_opt) => {
+                    if matches!(opt_test_write_opt, Some(TestModeWriteOpt::OverwriteAll)) {
                         print_out_buf(format!(
                             "{:?}: OK, but path has same hash for new filename.  Old file info has been overwritten.\n",
                             file_info.path

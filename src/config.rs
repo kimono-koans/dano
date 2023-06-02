@@ -27,7 +27,7 @@ use itertools::Either;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::utility::read_stdin;
+use crate::{utility::read_stdin};
 use crate::{DanoError, DanoResult, DANO_DEFAULT_HASH_FILE_NAME};
 
 fn parse_args() -> ArgMatches {
@@ -211,14 +211,14 @@ pub struct WriteModeConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TestModeConfig {
-    pub opt_write_new: bool,
-    pub opt_overwrite_old: bool,
+pub enum TestModeWriteOpt {
+    WriteNew,
+    OverwriteAll,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecMode {
-    Test(TestModeConfig),
+    Test(Option<TestModeWriteOpt>),
     Write(WriteModeConfig),
     Print,
     Dump,
@@ -280,20 +280,25 @@ impl Config {
         let opt_num_threads = matches
             .value_of_lossy("NUM_THREADS")
             .and_then(|num_threads_str| num_threads_str.parse::<usize>().ok());
-        let opt_write_new = matches.is_present("WRITE_NEW");
         let opt_silent = matches.is_present("SILENT");
-        let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
         let opt_disable_filter = matches.is_present("DISABLE_FILTER");
         let opt_canonical_paths = matches.is_present("CANONICAL_PATHS");
         let opt_decode = matches.is_present("DECODE");
         let opt_import_flac = matches.is_present("IMPORT_FLAC");
         let opt_rewrite = matches.is_present("REWRITE_ALL");
 
+
+
         let exec_mode = if matches.is_present("TEST") {
-            ExecMode::Test(TestModeConfig {
-                opt_overwrite_old,
-                opt_write_new,
-            })
+            let opt_test_write_opt = if matches.is_present("OVERWRITE_OLD") {
+                Some(TestModeWriteOpt::OverwriteAll)
+            } else if matches.is_present("WRITE_NEW") {
+                Some(TestModeWriteOpt::WriteNew)
+            } else {
+                None
+            };
+
+            ExecMode::Test(opt_test_write_opt)
         } else if matches.is_present("WRITE") || opt_rewrite || opt_import_flac {
             ExecMode::Write(WriteModeConfig {
                 opt_rewrite,
