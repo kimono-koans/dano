@@ -158,10 +158,10 @@ impl WriteableFileInfo {
         wet_prefix: &str,
     ) -> DanoResult<()> {
         if config.opt_dry_run {
-            self.print_action(dry_prefix, EMPTY_STR)?;
-            self.overwrite_all(config)
+            self.print_action(dry_prefix, EMPTY_STR)
         } else {
-            self.print_action(wet_prefix, EMPTY_STR)
+            self.print_action(wet_prefix, EMPTY_STR)?;
+            self.overwrite_all(config)
         }
     }
 
