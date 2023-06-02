@@ -112,18 +112,22 @@ impl RemainderBundle {
                     self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
                 }
             },
-            ExecMode::Test(test_config) => match &self {
+            ExecMode::Test(test_config) => match self {
                 RemainderBundle::NewFile(_) if test_config.opt_write_new => {
                     self.exec_write_action(config, NOT_WRITE_NEW_PREFIX, WRITE_NEW_PREFIX)?
                 }
                 RemainderBundle::ModifiedFilename(_) if test_config.opt_overwrite_old => {
                     self.exec_write_action(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?
                 }
-                RemainderBundle::NewFile(_) => {
-                    self.print_write_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
+                RemainderBundle::NewFile(files) => {
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    writable_file_info.print_write_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?
                 }
-                RemainderBundle::ModifiedFilename(_) => {
-                    self.print_write_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?
+                RemainderBundle::ModifiedFilename(files) => {
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    writable_file_info.print_write_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?
                 }
             },
             _ => unreachable!(),
@@ -137,29 +141,20 @@ impl RemainderBundle {
         dry_prefix: &str,
         wet_prefix: &str,
     ) -> DanoResult<()> {
-        if config.opt_dry_run {
-            self.print_write_action(dry_prefix, EMPTY_STR)
-        } else {
-            self.print_write_action(wet_prefix, EMPTY_STR)?;
-
             match self {
                 RemainderBundle::ModifiedFilename(files) | RemainderBundle::NewFile(files) => {
-                    let writable: WriteableFileInfo = files.into();
-                    writable.overwrite_all(config)
+                    let writable_file_info: WriteableFileInfo = files.into();
+
+                    if config.opt_dry_run {
+                        writable_file_info.print_write_action(dry_prefix, EMPTY_STR)
+                    } else {
+                        writable_file_info.print_write_action(wet_prefix, EMPTY_STR)?;
+                        writable_file_info.overwrite_all(config)
+                    }
                 }
             }
-        }
     }
-
-    fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
-        match self {
-            RemainderBundle::NewFile(files) | RemainderBundle::ModifiedFilename(files) => {
-                files.iter().try_for_each(|file_info| {
-                    print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
-                })
-            }
-        }
-    }
+    
 }
 
 pub struct WriteableFileInfo {
@@ -181,6 +176,13 @@ impl From<RecordedFileInfo> for WriteableFileInfo {
 }
 
 impl WriteableFileInfo {
+    fn print_write_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {    
+        self.inner.iter().try_for_each(|file_info| {
+            print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
+        })
+            
+    }
+    
     pub fn write_new(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
         // ExecMode::Dump is about writing to a file always want to skip xattrs
         // can always be enabled by env var so ad hoc debugging can be tricky
