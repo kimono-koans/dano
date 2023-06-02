@@ -56,12 +56,13 @@ impl ProcessedFiles {
         // loop while recv from channel
         while let Ok(file_info) = rx_item.recv() {
             if let (Some(new_files_partitioned), test_exit_code) =
-                &file_map.verify(config, file_info)?
+                &file_map.verify(config, &file_info)?
             {
                 match new_files_partitioned {
-                    Either::Left(file_info) => modified_file_names.push(file_info.clone()),
-                    Either::Right(file_info) => new_files.push(file_info.clone()),
+                    Either::Left(_) => modified_file_names.push(file_info),
+                    Either::Right(_) => new_files.push(file_info),
                 }
+
                 if test_exit_code != &0 {
                     exit_code = *test_exit_code
                 }
@@ -110,11 +111,11 @@ impl FileMap {
         recorded_file_info.into()
     }
 
-    fn verify(
+    fn verify<'a>(
         &self,
         config: &Config,
-        file_info: FileInfo,
-    ) -> DanoResult<(Option<Either<FileInfo, FileInfo>>, i32)> {
+        file_info: &'a FileInfo,
+    ) -> DanoResult<(Option<Either<&'a FileInfo, &'a FileInfo>>, i32)> {
         let is_same_hash = self.is_same_hash(&file_info);
         let is_same_filename = self.is_same_filename(&file_info);
         let mut test_exit_code = 0;
