@@ -39,8 +39,8 @@ const NOT_OVERWRITE_OLD_PREFIX: &str =
     "WARN: Not overwriting dano hash for (as overwriting is not specified): ";
 const NOT_OVERWRITE_OLD_SUFFIX: &str = ", --overwrite was not specified.";
 
-const NEW_FILES_EMPTY: &str = "No new file paths to write.";
-const MODIFIED_FILE_NAMES_EMPTY: &str = "No old file data to overwrite.";
+const NEW_FILES_EMPTY: &str = "No new file paths to write";
+const MODIFIED_FILE_NAMES_EMPTY: &str = "No old file data to overwrite";
 
 // in this mod "write" refers to writing to file or xattr
 // and "print" refers to printing out to stdout or stderr
@@ -87,10 +87,10 @@ impl ProcessedFiles {
                 }
                 _ => match remainder_bundle {
                     RemainderBundle::NewFile(_) => {
-                        eprintln!("{}", NEW_FILES_EMPTY);
+                        eprintln!("{}.", NEW_FILES_EMPTY);
                     }
                     RemainderBundle::ModifiedFilename(_) => {
-                        eprintln!("{}", MODIFIED_FILE_NAMES_EMPTY);
+                        eprintln!("{}.", MODIFIED_FILE_NAMES_EMPTY);
                     }
                 },
             }
