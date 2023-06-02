@@ -236,7 +236,7 @@ pub fn read_file_info_from_file(config: &Config) -> DanoResult<Vec<FileInfo>> {
     Ok(buffer.par_lines().flat_map(deserialize).collect())
 }
 
-pub fn read_stdin() -> DanoResult<Vec<String>> {
+pub fn read_stdin() -> DanoResult<Vec<PathBuf>> {
     let stdin = std::io::stdin();
     let mut stdin = stdin.lock();
     let mut buffer = Vec::new();
@@ -244,12 +244,13 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
 
     let buffer_string = std::str::from_utf8(&buffer)?;
 
-    let broken_string: Vec<String> = if buffer_string.contains(['\n', '\0']) {
+    let broken_string = if buffer_string.contains(['\n', '\0']) {
         // always split on newline or null char, if available
         buffer_string
             .split(&['\n', '\0'])
             .filter(|s| !s.is_empty())
             .map(|s| s.to_owned())
+            .map(PathBuf::from)
             .collect()
     } else if buffer_string.contains('\"') {
         buffer_string
@@ -258,13 +259,13 @@ pub fn read_stdin() -> DanoResult<Vec<String>> {
             .map(|s| s.trim())
             // remove any empty strings
             .filter(|s| !s.is_empty())
-            .map(|s| s.to_owned())
-            .collect::<Vec<String>>()
+            .map(PathBuf::from)
+            .collect()
     } else {
         buffer_string
             .split_ascii_whitespace()
             .filter(|s| !s.is_empty())
-            .map(|s| s.to_owned())
+            .map(PathBuf::from)
             .collect()
     };
 

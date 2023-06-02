@@ -352,7 +352,7 @@ impl Config {
             } else {
                 match &exec_mode {
                     ExecMode::Test(_) if hash_file.exists() => Vec::new(),
-                    _ => read_stdin()?.par_iter().map(PathBuf::from).collect(),
+                    _ => read_stdin()?,
                 }
             };
             Self::parse_paths(
