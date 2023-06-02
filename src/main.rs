@@ -208,6 +208,7 @@ fn exec() -> DanoResult<i32> {
             let writable: WriteableFileInfo = recorded_file_info.into();
 
             writable.write_new(&config, WriteType::OverwriteAll)?;
+            
             if !config.opt_silent {
                 print_err_buf("Dump to dano output file was successful.\n")?
             }
