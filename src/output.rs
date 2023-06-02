@@ -177,14 +177,7 @@ impl WriteableFileInfo {
     ) -> DanoResult<()> {
         match opt_write_type {
             _ if config.opt_dry_run => self.print_action(dry_prefix, EMPTY_STR),
-            None => match config.exec_mode {
-                ExecMode::Test(_) => self.print_action(dry_prefix, EMPTY_STR),
-                ExecMode::Write(_) => {
-                    self.print_action(wet_prefix, EMPTY_STR)?;
-                    self.write_new(config, WriteType::Append)
-                }
-                _ => unreachable!(),
-            },
+            None => self.print_action(dry_prefix, EMPTY_STR),
             Some(WriteOpt::WriteNew) => {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.write_new(config, WriteType::Append)
