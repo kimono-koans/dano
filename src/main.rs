@@ -27,7 +27,6 @@ mod versions;
 
 use std::collections::BTreeMap;
 
-use config::WriteOpt;
 use itertools::Itertools;
 
 use crate::lookup::FileInfo;
@@ -77,7 +76,7 @@ fn exec() -> DanoResult<i32> {
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
             let processed_files =
-                if matches!(write_config.opt_write_opt, Some(WriteOpt::OverwriteAll)) {
+                if write_config.opt_rewrite {
                     ProcessedFiles {
                         new_files: RemainderBundle::NewFile(Vec::new()),
                         modified_file_names: RemainderBundle::ModifiedFilename(
