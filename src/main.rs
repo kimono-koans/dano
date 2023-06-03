@@ -206,13 +206,13 @@ fn exec() -> DanoResult<i32> {
 
             let writable_file_info: WriteableFileInfo = recorded_file_info.into();
 
-            const WET_DUMP_PREFIX: &str = "Dumping dano hash for: ";
-            const DRY_DUMP_PREFIX: &str =
-                "Not dumping dano hash for (because dry run was specified): ";
+            const DUMP_PREFIX: &str = "Dumping dano hash for: ";
+            const NOT_DUMP_PREFIX: &str =
+                "WARN: Not dumping dano hash for (because dry run was specified): ";
 
-            match writable_file_info.exec(&config, DRY_DUMP_PREFIX, WET_DUMP_PREFIX) {
+            match writable_file_info.exec(&config, NOT_DUMP_PREFIX, DUMP_PREFIX) {
                 Ok(_) if config.opt_dry_run => {
-                    print_err_buf("Dry run dump to output file was successful.\n")?;
+                    print_err_buf("Dry run dump was successful.\n")?;
                     DANO_CLEAN_EXIT_CODE
                 }
                 Ok(_) => {
