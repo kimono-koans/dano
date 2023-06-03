@@ -198,35 +198,41 @@ impl WriteableFileInfo {
         // append new paths
         self.write_action(config, WriteType::Append)?;
 
-        // read back
-        let recorded_file_info_with_duplicates: Vec<FileInfo> =
-            if config.output_file.exists() {
-                read_file_info_from_file(config)?
-            } else {
-                return Err(DanoError::new("No valid output file exists").into());
+        // XATTR can be enabled via env var, so need to guard against it be enabled
+        // in modes it which we must write to disk, such as DUMP
+        if !config.opt_xattr || matches!(config.exec_mode, ExecMode::Dump) {
+            // read back
+            let recorded_file_info_with_duplicates: Vec<FileInfo> =
+                if config.output_file.exists() {
+                    read_file_info_from_file(config)?
+                } else {
+                    return Err(DanoError::new("No valid output file exists").into());
+                };
+
+            // then dedup
+            let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
+                .into_iter()
+                .filter(|file_info| file_info.metadata.is_some())
+                .into_group_map_by(|file_info| {
+                    file_info.metadata.as_ref().unwrap().hash_value.clone()
+                })
+                .into_iter()
+                .flat_map(|(_hash, group_file_info)| {
+                    group_file_info.into_iter().max_by_key(|file_info| {
+                        file_info.metadata.as_ref().unwrap().last_written
+                    })
+                })
+                .collect();
+
+            let writeable_file_info: WriteableFileInfo = Self {
+                inner: unique_paths,
             };
 
-        // then dedup
-        let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
-            .into_iter()
-            .filter(|file_info| file_info.metadata.is_some())
-            .into_group_map_by(|file_info| {
-                file_info.metadata.as_ref().unwrap().hash_value.clone()
-            })
-            .into_iter()
-            .flat_map(|(_hash, group_file_info)| {
-                group_file_info.into_iter().max_by_key(|file_info| {
-                    file_info.metadata.as_ref().unwrap().last_written
-                })
-            })
-            .collect();
+            // and overwrite
+            writeable_file_info.write_action(config, WriteType::Overwrite)?
+        }
 
-        let writeable_file_info: WriteableFileInfo = Self {
-            inner: unique_paths,
-        };
-
-        // and overwrite
-        writeable_file_info.write_action(config, WriteType::Overwrite)
+        Ok(())
     }
 
     pub fn write_action(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {

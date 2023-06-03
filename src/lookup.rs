@@ -32,6 +32,46 @@ use crate::requests::{FileInfoRequest, RequestBundle};
 use crate::utility::DanoError;
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION, HEXADECIMAL_RADIX};
 
+pub struct FileInfoLookup;
+
+impl FileInfoLookup {
+    pub fn exec(
+        config: &Config,
+        requested_paths: RequestBundle,
+        thread_pool: ThreadPool,
+    ) -> DanoResult<Receiver<FileInfo>> {
+        let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
+            crossbeam_channel::unbounded();
+
+        let requested_paths_clone = requested_paths.into_inner();
+
+        let config_clone = config.clone();
+        let tx_item_clone = tx_item;
+
+        std::thread::spawn(move || {
+            // exec threads to hash files
+            thread_pool.in_place_scope(|file_info_scope| {
+                requested_paths_clone.iter().for_each(|request| {
+                    let config = &config_clone;
+                    let tx_item = &tx_item_clone;
+
+                    file_info_scope.spawn(move |_| {
+                        if let Err(err) = FileInfo::generate(config, request, tx_item) {
+                            // probably want to see the error, but not exit the process
+                            // when there is an error in a single thread
+                            eprintln!("ERROR: {}", err);
+                        }
+                    })
+                });
+            });
+        });
+
+        // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
+        // explicit drop is: drop(tx_item);
+        Ok(rx_item)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileInfo {
     pub version: usize,
@@ -242,42 +282,3 @@ impl FileInfo {
     }
 }
 
-pub struct FileInfoLookup;
-
-impl FileInfoLookup {
-    pub fn exec(
-        config: &Config,
-        requested_paths: RequestBundle,
-        thread_pool: ThreadPool,
-    ) -> DanoResult<Receiver<FileInfo>> {
-        let (tx_item, rx_item): (Sender<FileInfo>, Receiver<FileInfo>) =
-            crossbeam_channel::unbounded();
-
-        let requested_paths_clone = requested_paths.into_inner();
-
-        let config_clone = config.clone();
-        let tx_item_clone = tx_item;
-
-        std::thread::spawn(move || {
-            // exec threads to hash files
-            thread_pool.in_place_scope(|file_info_scope| {
-                requested_paths_clone.iter().for_each(|request| {
-                    let config = &config_clone;
-                    let tx_item = &tx_item_clone;
-
-                    file_info_scope.spawn(move |_| {
-                        if let Err(err) = FileInfo::generate(config, request, tx_item) {
-                            // probably want to see the error, but not exit the process
-                            // when there is an error in a single thread
-                            eprintln!("ERROR: {}", err);
-                        }
-                    })
-                });
-            });
-        });
-
-        // implicitly drop tx_item at end of scope, otherwise we will hold onto the ref and loop forever
-        // explicit drop is: drop(tx_item);
-        Ok(rx_item)
-    }
-}
