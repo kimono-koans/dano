@@ -204,19 +204,29 @@ fn exec() -> DanoResult<i32> {
                 .into());
             }
 
-            let writable: WriteableFileInfo = recorded_file_info.into();
+            let writable_file_info: WriteableFileInfo = recorded_file_info.into();
 
             const WET_DUMP_PREFIX: &str = "Dumping dano hash for: ";
             const DRY_DUMP_PREFIX: &str =
                 "Not dumping dano hash for (because dry run was specified): ";
 
-            writable.exec(&config, DRY_DUMP_PREFIX, WET_DUMP_PREFIX)?;
-
-            if !config.opt_silent {
-                print_err_buf("Dump to dano output file was successful.\n")?
+            match writable_file_info.exec(&config, DRY_DUMP_PREFIX, WET_DUMP_PREFIX) {
+                Ok(_) if config.opt_dry_run => {
+                    print_err_buf("Dry run dump to output file was successful.\n")?;
+                    DANO_CLEAN_EXIT_CODE
+                }
+                Ok(_) => {
+                    if !config.opt_silent {
+                        print_err_buf("Dump to dano output file was successful.\n")?;
+                    }
+                    DANO_CLEAN_EXIT_CODE
+                }
+                Err(err) => {
+                    let msg = format!("ERROR: Dump to dano output file was unsuccessful for the following reason: {:?}\n", err);
+                    print_err_buf(&msg)?;
+                    DANO_ERROR_EXIT_CODE
+                }
             }
-
-            DANO_CLEAN_EXIT_CODE
         }
     };
 

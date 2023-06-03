@@ -199,7 +199,7 @@ fn parse_args() -> ArgMatches {
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
-            .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
+            .conflicts_with_all(&["PRINT", "DUPLICATES"])
             .display_order(21))
         .get_matches()
 }
