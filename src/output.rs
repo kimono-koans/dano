@@ -77,7 +77,9 @@ impl ProcessedFiles {
     fn print_bundle_empty(config: &Config, remainder_bundle: &RemainderBundle) {
         if !config.is_single_path {
             match &config.exec_mode {
-                ExecMode::Test(test_mode_config) if !test_mode_config.opt_overwrite_old || !test_mode_config.opt_write_new => {
+                ExecMode::Test(test_mode_config)
+                    if !test_mode_config.opt_overwrite_old || !test_mode_config.opt_write_new =>
+                {
                     match remainder_bundle {
                         RemainderBundle::NewFile(_) => {
                             eprintln!("{}{}", NEW_FILES_EMPTY, NOT_WRITE_NEW_SUFFIX);
@@ -103,32 +105,26 @@ impl ProcessedFiles {
 impl RemainderBundle {
     fn write_out(self, config: &Config) -> DanoResult<()> {
         match &config.exec_mode {
-            ExecMode::Write(_) => match self {
-                RemainderBundle::NewFile(files) => WriteableFileInfo::from(files).exec(
-                    config,
-                    NOT_WRITE_NEW_PREFIX,
-                    WRITE_NEW_PREFIX,
-                )?,
-                RemainderBundle::ModifiedFilename(files) => WriteableFileInfo::from(files)
-                    .exec(
+            ExecMode::Write(_) => {
+                match self {
+                    RemainderBundle::NewFile(files) => WriteableFileInfo::from(files).exec(
                         config,
-                        NOT_OVERWRITE_OLD_PREFIX,
-                        OVERWRITE_OLD_PREFIX,
+                        NOT_WRITE_NEW_PREFIX,
+                        WRITE_NEW_PREFIX,
                     )?,
-            },
+                    RemainderBundle::ModifiedFilename(files) => WriteableFileInfo::from(files)
+                        .exec(config, NOT_OVERWRITE_OLD_PREFIX, OVERWRITE_OLD_PREFIX)?,
+                }
+            }
             ExecMode::Test(test_mode_config) => match self {
-                RemainderBundle::NewFile(files)
-                    if test_mode_config.opt_write_new =>
-                {
+                RemainderBundle::NewFile(files) if test_mode_config.opt_write_new => {
                     WriteableFileInfo::from(files).exec(
                         config,
                         NOT_WRITE_NEW_PREFIX,
                         WRITE_NEW_PREFIX,
                     )?
                 }
-                RemainderBundle::ModifiedFilename(files)
-                    if test_mode_config.opt_overwrite_old =>
-                {
+                RemainderBundle::ModifiedFilename(files) if test_mode_config.opt_overwrite_old => {
                     WriteableFileInfo::from(files).exec(
                         config,
                         NOT_OVERWRITE_OLD_PREFIX,
@@ -136,9 +132,9 @@ impl RemainderBundle {
                     )?
                 }
                 RemainderBundle::NewFile(files) => WriteableFileInfo::from(files)
-                    .print(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?,
+                    .print_action(NOT_WRITE_NEW_PREFIX, NOT_WRITE_NEW_SUFFIX)?,
                 RemainderBundle::ModifiedFilename(files) => WriteableFileInfo::from(files)
-                    .print(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?,
+                    .print_action(NOT_OVERWRITE_OLD_PREFIX, NOT_OVERWRITE_OLD_SUFFIX)?,
             },
             _ => unreachable!(),
         }
@@ -165,32 +161,31 @@ impl From<RecordedFileInfo> for WriteableFileInfo {
 }
 
 impl WriteableFileInfo {
-    fn exec(
-        self,
-        config: &Config,
-        dry_prefix: &str,
-        wet_prefix: &str,
-    ) -> DanoResult<()> {
+    fn exec(self, config: &Config, dry_prefix: &str, wet_prefix: &str) -> DanoResult<()> {
         match &config.exec_mode {
-            _ if config.opt_dry_run => {
-                self.print(dry_prefix, EMPTY_STR)
-            },
+            _ if config.opt_dry_run => self.print_action(dry_prefix, EMPTY_STR),
+            // XATTR can be enabled via env var, because of this we don't want it to conflict with any other option,
+            // so need to guard against it be enabled in modes it which we must write to disk, such as DUMP
+            _ if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) => {
+                self.print_action(wet_prefix, EMPTY_STR)?;
+                self.write_action_xattr()
+            }
             ExecMode::Write(_) | ExecMode::Dump => {
-                self.print(wet_prefix, EMPTY_STR)?;
+                self.print_action(wet_prefix, EMPTY_STR)?;
                 self.append_and_rewrite(config)
             }
-            ExecMode::Test(test_mode_config) if test_mode_config.opt_write_new || test_mode_config.opt_overwrite_old => {
-                self.print(wet_prefix, EMPTY_STR)?;
+            ExecMode::Test(test_mode_config)
+                if test_mode_config.opt_write_new || test_mode_config.opt_overwrite_old =>
+            {
+                self.print_action(wet_prefix, EMPTY_STR)?;
                 self.append_and_rewrite(config)
-            } 
-            ExecMode::Test(_) => {
-                self.print(dry_prefix, EMPTY_STR)
             }
+            ExecMode::Test(_) => self.print_action(dry_prefix, EMPTY_STR),
             _ => unreachable!(),
         }
     }
 
-    fn print(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
+    fn print_action(&self, prefix: &str, suffix: &str) -> DanoResult<()> {
         self.inner.iter().try_for_each(|file_info| {
             print_err_buf(&format!("{}{:?}{}\n", prefix, file_info.path, suffix))
         })
@@ -198,72 +193,61 @@ impl WriteableFileInfo {
 
     fn append_and_rewrite(&self, config: &Config) -> DanoResult<()> {
         // append new paths
-        self.write_action(config, WriteType::Append)?;
+        self.write_action_file(config, WriteType::Append)?;
 
-        // XATTR can be enabled via env var, so need to guard against it be enabled
-        // in modes it which we must write to disk, such as DUMP
-        if !config.opt_xattr || matches!(config.exec_mode, ExecMode::Dump) {
-            // read back
-            let recorded_file_info_with_duplicates: Vec<FileInfo> =
-                if config.output_file.exists() {
-                    read_file_info_from_file(config)?
-                } else {
-                    return Err(DanoError::new("No valid output file exists").into());
-                };
+        // read back
+        let recorded_file_info_with_duplicates: Vec<FileInfo> = if config.output_file.exists() {
+            read_file_info_from_file(config)?
+        } else {
+            return Err(DanoError::new("No valid output file exists").into());
+        };
 
-            // then dedup and sort
-            let unique_paths: BTreeSet<FileInfo> = recorded_file_info_with_duplicates
-                .into_iter()
-                .filter(|file_info| file_info.metadata.is_some())
-                .into_group_map_by(|file_info| {
-                    file_info.metadata.as_ref().unwrap().hash_value.clone()
-                })
-                .into_iter()
-                .flat_map(|(_hash, group_file_info)| {
-                    group_file_info.into_iter().max_by_key(|file_info| {
-                        file_info.metadata.as_ref().unwrap().last_written
-                    })
-                })
-                .collect();
+        // then dedup and sort
+        let unique_paths: BTreeSet<FileInfo> = recorded_file_info_with_duplicates
+            .into_iter()
+            .filter(|file_info| file_info.metadata.is_some())
+            .into_group_map_by(|file_info| file_info.metadata.as_ref().unwrap().hash_value.clone())
+            .into_iter()
+            .flat_map(|(_hash, group_file_info)| {
+                group_file_info
+                    .into_iter()
+                    .max_by_key(|file_info| file_info.metadata.as_ref().unwrap().last_written)
+            })
+            .collect();
 
-            let writeable_file_info: WriteableFileInfo = Self {
-                inner: unique_paths.into_iter().collect(),
-            };
+        let writeable_file_info: WriteableFileInfo = Self {
+            inner: unique_paths.into_iter().collect(),
+        };
 
-            // and overwrite
-            writeable_file_info.write_action(config, WriteType::Overwrite)?
-        }
-
-        Ok(())
+        // and overwrite
+        writeable_file_info.write_action_file(config, WriteType::Overwrite)
     }
 
-    pub fn write_action(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
-        // ExecMode::Dump is about writing to a file always want to skip xattrs
-        // can always be enabled by env var so ad hoc debugging can be tricky
-            if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) {
-                self.inner.iter().try_for_each(write_non_file)
-            } else {
-                match write_type {
-                    WriteType::Append => {
-                        let mut output_file = get_output_file(config, WriteType::Append)?;
-                        self.inner
-                            .iter()
-                            .try_for_each(|file_info| write_file(file_info, &mut output_file))
-                    }
-                    WriteType::Overwrite => {
-                        let mut output_file = get_output_file(config, WriteType::Overwrite)?;
+    fn write_action_xattr(&self) -> DanoResult<()> {
+        self.inner.iter().try_for_each(write_non_file)
+    }
 
-                        self.inner
-                            .iter()
-                            .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
-
-                        std::fs::rename(
-                            make_tmp_file(config.output_file.as_path()),
-                            &config.output_file,
-                        )
-                        .map_err(|err| err.into())
-                    }
-                }
+    pub fn write_action_file(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
+        match write_type {
+            WriteType::Append => {
+                let mut output_file = get_output_file(config, WriteType::Append)?;
+                self.inner
+                    .iter()
+                    .try_for_each(|file_info| write_file(file_info, &mut output_file))
             }
+            WriteType::Overwrite => {
+                let mut output_file = get_output_file(config, WriteType::Overwrite)?;
+
+                self.inner
+                    .iter()
+                    .try_for_each(|file_info| write_file(file_info, &mut output_file))?;
+
+                std::fs::rename(
+                    make_tmp_file(config.output_file.as_path()),
+                    &config.output_file,
+                )
+                .map_err(|err| err.into())
+            }
+        }
     }
 }

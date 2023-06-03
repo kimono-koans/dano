@@ -75,24 +75,23 @@ fn exec() -> DanoResult<i32> {
                 .iter()
                 .try_for_each(|file_info| print_file_info(&config, file_info))?;
 
-            let processed_files =
-                if write_config.opt_rewrite {
-                    ProcessedFiles {
-                        new_files: RemainderBundle::NewFile(Vec::new()),
-                        modified_file_names: RemainderBundle::ModifiedFilename(
-                            recorded_file_info.into_inner(),
-                        ),
-                        exit_code: DANO_CLEAN_EXIT_CODE,
-                    }
-                } else if write_config.opt_import_flac {
-                    ProcessedFiles {
-                        new_files: RemainderBundle::NewFile(recorded_file_info.into_inner()),
-                        modified_file_names: RemainderBundle::ModifiedFilename(Vec::new()),
-                        exit_code: DANO_CLEAN_EXIT_CODE,
-                    }
-                } else {
-                    unreachable!()
-                };
+            let processed_files = if write_config.opt_rewrite {
+                ProcessedFiles {
+                    new_files: RemainderBundle::NewFile(Vec::new()),
+                    modified_file_names: RemainderBundle::ModifiedFilename(
+                        recorded_file_info.into_inner(),
+                    ),
+                    exit_code: DANO_CLEAN_EXIT_CODE,
+                }
+            } else if write_config.opt_import_flac {
+                ProcessedFiles {
+                    new_files: RemainderBundle::NewFile(recorded_file_info.into_inner()),
+                    modified_file_names: RemainderBundle::ModifiedFilename(Vec::new()),
+                    exit_code: DANO_CLEAN_EXIT_CODE,
+                }
+            } else {
+                unreachable!()
+            };
 
             processed_files.write_out(&config)?
         }
@@ -208,7 +207,7 @@ fn exec() -> DanoResult<i32> {
 
             let writable: WriteableFileInfo = recorded_file_info.into();
 
-            writable.write_action(&config, WriteType::Overwrite)?;
+            writable.write_action_file(&config, WriteType::Overwrite)?;
 
             if !config.opt_silent {
                 print_err_buf("Dump to dano output file was successful.\n")?

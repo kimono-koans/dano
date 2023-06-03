@@ -290,7 +290,7 @@ impl Config {
         let opt_write_new = matches.is_present("WRITE_NEW");
 
         let exec_mode = if matches.is_present("TEST") {
-            let test_mode_config= TestModeConfig {
+            let test_mode_config = TestModeConfig {
                 opt_overwrite_old,
                 opt_write_new,
             };
