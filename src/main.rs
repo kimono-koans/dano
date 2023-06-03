@@ -33,7 +33,6 @@ use crate::lookup::FileInfo;
 use config::{Config, ExecMode};
 use ingest::RecordedFileInfo;
 use lookup::FileInfoLookup;
-use output::WriteType;
 use output::WriteableFileInfo;
 use process::{ProcessedFiles, RemainderBundle};
 use requests::{FileInfoRequest, RequestBundle};
@@ -207,7 +206,11 @@ fn exec() -> DanoResult<i32> {
 
             let writable: WriteableFileInfo = recorded_file_info.into();
 
-            writable.write_action_file(&config, WriteType::Overwrite)?;
+            const WET_DUMP_PREFIX: &str = "Dumping dano hash for: ";
+            const DRY_DUMP_PREFIX: &str =
+                "Not dumping dano hash for (because dry run was specified): ";
+
+            writable.exec(&config, DRY_DUMP_PREFIX, WET_DUMP_PREFIX)?;
 
             if !config.opt_silent {
                 print_err_buf("Dump to dano output file was successful.\n")?

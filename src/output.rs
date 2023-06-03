@@ -161,7 +161,7 @@ impl From<RecordedFileInfo> for WriteableFileInfo {
 }
 
 impl WriteableFileInfo {
-    fn exec(self, config: &Config, dry_prefix: &str, wet_prefix: &str) -> DanoResult<()> {
+    pub fn exec(self, config: &Config, dry_prefix: &str, wet_prefix: &str) -> DanoResult<()> {
         match &config.exec_mode {
             _ if config.opt_dry_run => self.print_action(dry_prefix, EMPTY_STR),
             // XATTR can be enabled via env var, because of this we don't want it to conflict with any other option,
@@ -170,7 +170,11 @@ impl WriteableFileInfo {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.write_action_xattr()
             }
-            ExecMode::Write(_) | ExecMode::Dump => {
+            ExecMode::Dump => {
+                self.print_action(wet_prefix, EMPTY_STR)?;
+                self.append_and_rewrite(config)
+            }
+            ExecMode::Write(_) => {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.append_and_rewrite(config)
             }
@@ -227,7 +231,7 @@ impl WriteableFileInfo {
         self.inner.iter().try_for_each(write_non_file)
     }
 
-    pub fn write_action_file(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
+    fn write_action_file(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {
         match write_type {
             WriteType::Append => {
                 let mut output_file = get_output_file(config, WriteType::Append)?;
