@@ -15,6 +15,8 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
+use std::collections::BTreeSet;
+
 use itertools::Itertools;
 
 use crate::ingest::RecordedFileInfo;
@@ -209,8 +211,8 @@ impl WriteableFileInfo {
                     return Err(DanoError::new("No valid output file exists").into());
                 };
 
-            // then dedup
-            let unique_paths: Vec<FileInfo> = recorded_file_info_with_duplicates
+            // then dedup and sort
+            let unique_paths: BTreeSet<FileInfo> = recorded_file_info_with_duplicates
                 .into_iter()
                 .filter(|file_info| file_info.metadata.is_some())
                 .into_group_map_by(|file_info| {
@@ -225,7 +227,7 @@ impl WriteableFileInfo {
                 .collect();
 
             let writeable_file_info: WriteableFileInfo = Self {
-                inner: unique_paths,
+                inner: unique_paths.into_iter().collect(),
             };
 
             // and overwrite
