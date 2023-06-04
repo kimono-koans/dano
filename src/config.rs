@@ -371,6 +371,7 @@ impl Config {
                     _ => read_stdin()?,
                 }
             };
+
             Self::parse_paths(
                 &res,
                         &exec_mode,
@@ -465,9 +466,8 @@ impl Config {
                                 eprintln!("{}", &msg);
                             }
                         }
+                        return false;
                     }
-
-                    return false;
                 }
 
                 if path.file_name() == Some(hash_file.as_os_str()) {
