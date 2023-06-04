@@ -285,8 +285,7 @@ impl Config {
             .into());
         };
 
-        let opt_xattr =
-            matches.is_present("XATTR") || std::env::var_os(XATTR_ENV_KEY).is_some();
+        let opt_xattr = matches.is_present("XATTR") || std::env::var_os(XATTR_ENV_KEY).is_some();
         let opt_dry_run = matches.is_present("DRY_RUN")
             || (matches.is_present("PRINT") && matches.is_present("WRITE"));
         let opt_num_threads = matches
@@ -374,7 +373,7 @@ impl Config {
 
             Self::parse_paths(
                 &res,
-                        &exec_mode,
+                &exec_mode,
                 opt_disable_filter,
                 opt_canonical_paths,
                 opt_silent,
@@ -456,13 +455,17 @@ impl Config {
             .filter(|path| {
                 if let &ExecMode::Clean = exec_mode {
                     if path.file_name() == Some(OsStr::new(DANO_DEFAULT_HASH_FILE_NAME)) {
-                        match std::fs::remove_file(&path) {
+                        match std::fs::remove_file(path) {
                             Ok(_) => {
-                                let msg = format!("dano hash file successfully removed: {:?}", path);
+                                let msg =
+                                    format!("dano hash file successfully removed: {:?}", path);
                                 println!("{}", &msg);
-                            },
+                            }
                             Err(err) => {
-                                let msg = format!("ERROR: Removal of dano hash file failed: {:?}: {:?}", path, err);
+                                let msg = format!(
+                                    "ERROR: Removal of dano hash file failed: {:?}: {:?}",
+                                    path, err
+                                );
                                 eprintln!("{}", &msg);
                             }
                         }
@@ -483,9 +486,9 @@ impl Config {
             })
             .filter_map(|path| {
                 if !opt_disable_filter {
-                   let path_ref = &path;
-                    
-                   let opt_extension =  path_ref.extension();
+                    let path_ref = &path;
+
+                    let opt_extension = path_ref.extension();
 
                     if auto_extension_filter
                         .lines()
