@@ -276,7 +276,7 @@ impl Config {
         };
 
         let opt_xattr =
-            matches.is_present("XATTR") || std::env::var_os(&OsStr::new(XATTR_ENV_KEY)).is_some();
+            matches.is_present("XATTR") || std::env::var_os(XATTR_ENV_KEY).is_some();
         let opt_dry_run = matches.is_present("DRY_RUN")
             || (matches.is_present("PRINT") && matches.is_present("WRITE"));
         let opt_num_threads = matches
