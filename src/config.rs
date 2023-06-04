@@ -30,6 +30,8 @@ use serde::{Deserialize, Serialize};
 use crate::utility::read_stdin;
 use crate::{DanoError, DanoResult, DANO_DEFAULT_HASH_FILE_NAME};
 
+const XATTR_ENV_KEY: &str = "DANO_XATTR_WRITES";
+
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
         .about("dano is a wrapper for ffmpeg that checksums the internal bitstreams of held within certain media files/containers, \
@@ -274,7 +276,7 @@ impl Config {
         };
 
         let opt_xattr =
-            matches.is_present("XATTR") || std::env::var_os("DANO_XATTR_WRITES").is_some();
+            matches.is_present("XATTR") || std::env::var_os(&OsStr::new(XATTR_ENV_KEY)).is_some();
         let opt_dry_run = matches.is_present("DRY_RUN")
             || (matches.is_present("PRINT") && matches.is_present("WRITE"));
         let opt_num_threads = matches

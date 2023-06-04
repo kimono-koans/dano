@@ -170,11 +170,7 @@ impl WriteableFileInfo {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.write_action_xattr()
             }
-            ExecMode::Dump => {
-                self.print_action(wet_prefix, EMPTY_STR)?;
-                self.append_and_rewrite(config)
-            }
-            ExecMode::Write(_) => {
+            ExecMode::Dump | ExecMode::Write(_) => {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.append_and_rewrite(config)
             }
