@@ -72,7 +72,7 @@ fn exec() -> DanoResult<i32> {
                 .iter().filter_map(|path| {
                     match remove_dano_xattr(&path) {
                         Ok(_) => {
-                            eprintln!("dano successfully removed extended attribute from: {:?}", path);
+                            println!("dano successfully removed extended attribute from: {:?}", path);
                             None
                         },
                         Err(err) if err.to_string().contains("No data available") => {
@@ -86,10 +86,10 @@ fn exec() -> DanoResult<i32> {
                 }).collect();
 
             if errors.is_empty() {
-                eprintln!("All dano extended attributes successfully cleaned.");
+                println!("All dano extended attributes successfully cleaned.");
                 DANO_CLEAN_EXIT_CODE
             } else {
-                eprintln!("ERROR: Could not clean extended attributes form the following paths: {:?}", errors);
+                println!("ERROR: Could not clean extended attributes form the following paths: {:?}", errors);
                 DANO_ERROR_EXIT_CODE
             }
         }

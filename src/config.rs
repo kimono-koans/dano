@@ -459,7 +459,7 @@ impl Config {
                         match std::fs::remove_file(&path) {
                             Ok(_) => {
                                 let msg = format!("dano hash file successfully removed: {:?}", path);
-                                eprintln!("{}", &msg);
+                                println!("{}", &msg);
                             },
                             Err(err) => {
                                 let msg = format!("ERROR: Removal of dano hash file failed: {:?}: {:?}", path, err);
