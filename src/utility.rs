@@ -53,7 +53,7 @@ pub fn prepare_thread_pool(config: &Config) -> DanoResult<ThreadPool> {
     Ok(thread_pool)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DanoError {
     pub details: String,
 }
@@ -109,8 +109,16 @@ pub fn write_non_file(file_info: &FileInfo) -> DanoResult<()> {
     write_out_xattr(&serialized, file_info)
 }
 
+pub fn remove_dano_xattr(path: &Path) -> DanoResult<()> {
+    match xattr::get(path, DANO_XATTR_KEY_NAME).ok().flatten() {
+        Some(_) => xattr::remove(path, DANO_XATTR_KEY_NAME).map_err(|err| err.into()),
+        None => {
+            Err(DanoError::new(&format!("dano extended attribute for following path does not exist: {:?}.", path)).into())
+        }   
+    }
+}
+
 fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
-    // always remove and reset when writing xattrs
     let _ = xattr::remove(&file_info.path, DANO_XATTR_KEY_NAME);
     xattr::set(&file_info.path, DANO_XATTR_KEY_NAME, out_string.as_bytes())
         .map_err(|err| err.into())
@@ -155,7 +163,7 @@ pub fn print_file_info(config: &Config, file_info: &FileInfo) -> DanoResult<()> 
     // this fn used then is just to print info about the hash.  we may wish to send to dev null
     match config.exec_mode {
         ExecMode::Print | ExecMode::Duplicates | ExecMode::Test(_) => print_out_buf(&buffer),
-        ExecMode::Write(_) | ExecMode::Dump => print_err_buf(&buffer),
+        ExecMode::Write(_) | ExecMode::Dump | ExecMode::Clean => print_err_buf(&buffer),
     }
 }
 

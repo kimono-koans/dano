@@ -26,8 +26,9 @@ mod utility;
 mod versions;
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
-use itertools::Itertools;
+use itertools::{Itertools};
 
 use crate::lookup::FileInfo;
 use config::{Config, ExecMode};
@@ -36,7 +37,7 @@ use lookup::FileInfoLookup;
 use output::WriteableFileInfo;
 use process::{ProcessedFiles, RemainderBundle};
 use requests::{FileInfoRequest, RequestBundle};
-use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError, DanoResult};
+use utility::{prepare_thread_pool, print_err_buf, print_file_info, DanoError, DanoResult, remove_dano_xattr};
 
 const DANO_FILE_INFO_VERSION: usize = 4;
 const HEXADECIMAL_RADIX: u32 = 16;
@@ -65,6 +66,30 @@ fn exec() -> DanoResult<i32> {
     let recorded_file_info = RecordedFileInfo::new(&config)?;
 
     let exit_code = match &config.exec_mode {
+        ExecMode::Clean => {
+           // dano_hashes.txt is removed during recorded_file_info ingest
+            let errors: Vec<&PathBuf> = config.paths
+                .iter().filter_map(|path| {
+                    match remove_dano_xattr(&path) {
+                        Ok(_) => {
+                            eprintln!("dano successfully removed extended attribute from: {:?}", path);
+                            None
+                        },
+                        Err(err) => {
+                            eprintln!("ERROR: {}", err);
+                            Some(path)
+                        }
+                    }
+                }).collect();
+
+            if errors.is_empty() {
+                eprintln!("All dano extended attributes successfully cleaned.");
+                DANO_CLEAN_EXIT_CODE
+            } else {
+                eprintln!("ERROR: Could not clean extended attributes form the following paths: {:?}", errors);
+                DANO_ERROR_EXIT_CODE
+            }
+        }
         ExecMode::Write(write_config)
             if write_config.opt_rewrite || write_config.opt_import_flac =>
         {
