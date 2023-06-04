@@ -110,12 +110,7 @@ pub fn write_non_file(file_info: &FileInfo) -> DanoResult<()> {
 }
 
 pub fn remove_dano_xattr(path: &Path) -> DanoResult<()> {
-    match xattr::get(path, DANO_XATTR_KEY_NAME).ok().flatten() {
-        Some(_) => xattr::remove(path, DANO_XATTR_KEY_NAME).map_err(|err| err.into()),
-        None => {
-            Err(DanoError::new(&format!("dano extended attribute for following path does not exist: {:?}.", path)).into())
-        }   
-    }
+    xattr::remove(path, DANO_XATTR_KEY_NAME).map_err(|err| err.into())
 }
 
 fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {

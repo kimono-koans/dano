@@ -75,6 +75,9 @@ fn exec() -> DanoResult<i32> {
                             eprintln!("dano successfully removed extended attribute from: {:?}", path);
                             None
                         },
+                        Err(err) if err.to_string().contains("No data available") => {
+                            None
+                        }
                         Err(err) => {
                             eprintln!("ERROR: {}", err);
                             Some(path)
