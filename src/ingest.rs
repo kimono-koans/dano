@@ -56,8 +56,11 @@ impl RecordedFileInfo {
         };
 
         // if empty, no valid hashes to test in test mode, and we should quit
-        if let ExecMode::Test(_) = &config.exec_mode {
-            if recorded_file_info.is_empty() {
+        if let ExecMode::Test(test_mode_config) = &config.exec_mode {
+            if recorded_file_info.is_empty()
+                && !test_mode_config.opt_overwrite_old
+                && !test_mode_config.opt_write_new
+            {
                 return Err(DanoError::new("No valid hashes to test.  Quitting.").into());
             }
         }
