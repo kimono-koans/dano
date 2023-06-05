@@ -16,7 +16,6 @@
 // that was distributed with this source code.
 
 use std::{
-    borrow::Cow,
     collections::HashSet,
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -75,6 +74,7 @@ fn parse_args() -> ArgMatches {
                 .help("write the new input files' hash information.  If no other flags are specified, dano will ignore files which already have file hashes.")
                 .short('w')
                 .long("write")
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "CLEAN", "TEST"])
                 .display_order(4))
         .arg(
             Arg::new("TEST")
@@ -83,30 +83,39 @@ fn parse_args() -> ArgMatches {
                 .long("test")
                 .alias("compare")
                 .short_alias('c')
+                .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "CLEAN", "WRITE"])
                 .display_order(5))
         .arg(
             Arg::new("PRINT")
                 .help("pretty print all recorded file information (discovered within both the hash file and any xattrs).")
                 .short('p')
                 .long("print")
+                .conflicts_with_all(&["DUMP", "DUPLICATES", "CLEAN", "WRITE", "TEST"])
                 .display_order(6))
         .arg(
             Arg::new("DUMP")
                 .help("dump the recorded file information (in hash file and xattrs) to the output file (don't test/compare).")
                 .long("dump")
+                .conflicts_with_all(&["DUPLICATES", "CLEAN", "WRITE", "PRINT", "TEST"])
                 .display_order(7))
         .arg(
             Arg::new("DUPLICATES")
                 .help("show any hash value duplicates discovered when reading back recorded file information (in hash file and xattrs).")
                 .long("duplicates")
                 .aliases(&["dupes"])
+                .conflicts_with_all(&["DUMP", "CLEAN", "WRITE", "PRINT", "TEST"])
                 .display_order(8))
+        .arg(
+            Arg::new("CLEAN")
+                .help("remove any hash files, given as input files, and remove any extended attributes, given as input files.")
+                .long("clean")
+                .display_order(9))
         .arg(
             Arg::new("IMPORT_FLAC")
                 .help("import flac checksums and write such information as dano recorded file information.")
                 .long("import-flac")
                 .conflicts_with_all(&["TEST", "PRINT", "DUMP", "DUPLICATES"])
-                .display_order(9))
+                .display_order(10))
         .arg(
             Arg::new("NUM_THREADS")
                 .help("requested number of threads to use for file processing.  Default is the number of logical cores.")
@@ -116,13 +125,13 @@ fn parse_args() -> ArgMatches {
                 .min_values(1)
                 .require_equals(true)
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(10))
+                .display_order(11))
         .arg(
             Arg::new("SILENT")
                 .help("quiet many informational messages (such as \"OK\").")
                 .short('s')
                 .long("silent")
-                .display_order(11),
+                .display_order(12),
         )
         .arg(
             Arg::new("WRITE_NEW")
@@ -130,7 +139,7 @@ fn parse_args() -> ArgMatches {
                 .long("write-new")
                 .requires("TEST")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
-                .display_order(12),
+                .display_order(13),
         )
         .arg(
             Arg::new("OVERWRITE_OLD")
@@ -139,19 +148,19 @@ fn parse_args() -> ArgMatches {
                 .long("overwrite")
                 .requires("TEST")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "WRITE"])
-                .display_order(13),
+                .display_order(14),
         )
         .arg(
             Arg::new("DISABLE_FILTER")
                 .help("disable the default filtering of file extensions which ffmpeg lists as \"common\" extensions for supported file formats.")
                 .long("disable-filter")
-                .display_order(14),
+                .display_order(15),
         )
         .arg(
             Arg::new("CANONICAL_PATHS")
                 .help("use canonical paths (paths from the root directory) instead of potentially relative paths.")
                 .long("canonical-paths")
-                .display_order(15),
+                .display_order(16),
         )
         .arg(
             Arg::new("XATTR")
@@ -160,7 +169,7 @@ fn parse_args() -> ArgMatches {
                 When XATTR is enabled, if a write is requested, dano will always overwrite extended attributes previously written.")
                 .short('x')
                 .long("xattr")
-                .display_order(16),
+                .display_order(17),
         )
         .arg(
             Arg::new("HASH_ALGO")
@@ -171,13 +180,13 @@ fn parse_args() -> ArgMatches {
                 .require_equals(true)
                 .possible_values(["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(17))
+                .display_order(18))
         .arg(
             Arg::new("DECODE")
                 .help("decode internal bitstream before hashing.  This option makes testing and writes much slower, but this option is potentially useful for lossless formats.")
                 .long("decode")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
-                .display_order(18))
+                .display_order(19))
         .arg(
             Arg::new("REWRITE_ALL")
                 .help("rewrite all recorded hashes to the latest and greatest format version.  \
@@ -185,7 +194,7 @@ fn parse_args() -> ArgMatches {
                 .long("rewrite")
                 .requires("WRITE")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "TEST"])
-                .display_order(19))
+                .display_order(20))
         .arg(
             Arg::new("ONLY")
                 .help("hash the an input file container's first audio or video stream only, if available.  \
@@ -196,13 +205,13 @@ fn parse_args() -> ArgMatches {
                 .possible_values(["audio", "video"])
                 .value_parser(clap::builder::ValueParser::os_string())
                 .requires("WRITE")
-                .display_order(20))
+                .display_order(21))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .conflicts_with_all(&["PRINT", "DUPLICATES"])
-            .display_order(21))
+            .display_order(22))
         .get_matches()
 }
 
@@ -225,6 +234,7 @@ pub enum ExecMode {
     Print,
     Dump,
     Duplicates,
+    Clean,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -290,7 +300,9 @@ impl Config {
         let opt_overwrite_old = matches.is_present("OVERWRITE_OLD");
         let opt_write_new = matches.is_present("WRITE_NEW");
 
-        let exec_mode = if matches.is_present("TEST") {
+        let exec_mode = if matches.is_present("CLEAN") {
+            ExecMode::Clean
+        } else if matches.is_present("TEST") {
             let test_mode_config = TestModeConfig {
                 opt_overwrite_old,
                 opt_write_new,
@@ -310,7 +322,7 @@ impl Config {
             ExecMode::Duplicates
         } else {
             return Err(DanoError::new(
-                "You must specify an execution mode: TEST, WRITE, PRINT or DUMP",
+                "You must specify an execution mode: TEST, WRITE, DUPLICATES, CLEAN, PRINT or DUMP",
             )
             .into());
         };
@@ -358,8 +370,10 @@ impl Config {
                     _ => read_stdin()?,
                 }
             };
+
             Self::parse_paths(
                 &res,
+                &exec_mode,
                 opt_disable_filter,
                 opt_canonical_paths,
                 opt_silent,
@@ -390,6 +404,7 @@ impl Config {
 
     fn parse_paths(
         raw_paths: &[PathBuf],
+        exec_mode: &ExecMode,
         opt_disable_filter: bool,
         opt_canonical_paths: bool,
         opt_silent: bool,
@@ -423,51 +438,6 @@ impl Config {
                 eprintln!("ERROR: Path cannot be serialized to string: {:?}", path);
                 false
             })
-            .filter(|path| {
-                if path.file_name() == Some(OsStr::new(hash_file)) {
-                    eprintln!(
-                        "ERROR: File name is the name of a dano hash file: {:?}",
-                        path
-                    );
-                    return false;
-                }
-
-                true
-            })
-            .filter_map(|path| {
-                if !opt_disable_filter {
-                    let opt_extension = path.extension();
-
-                    if auto_extension_filter
-                        .lines()
-                        .any(|extension| opt_extension == Some(OsStr::new(extension)))
-                    {
-                        return Some(Either::Right(path.as_path()));
-                    }
-
-                    if let Some(ext) = opt_extension {
-                        return Some(Either::Left(ext.to_string_lossy()));
-                    }
-
-                    // what are these None cases: hidden files (dot files),
-                    // no file name, no extension
-                    return None;
-                }
-
-                Some(Either::Right(path.as_path()))
-            })
-            .partition_map(|item| item);
-
-        if !opt_silent && !bad_extensions.is_empty() {
-            let unique: HashSet<Cow<str>> = bad_extensions.into_iter().collect();
-
-            let buffer: String = unique.iter().map(|ext| format!("{} ", ext)).collect();
-
-            eprintln!("WARN: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
-        }
-
-        valid_paths
-            .iter()
             .map(|path| {
                 if opt_canonical_paths {
                     if let Ok(canonical) = path.canonicalize() {
@@ -480,8 +450,74 @@ impl Config {
                     );
                 }
 
-                path.to_path_buf()
+                path.to_owned()
             })
-            .collect()
+            .filter(|path| {
+                if let &ExecMode::Clean = exec_mode {
+                    if path.file_name() == Some(OsStr::new(DANO_DEFAULT_HASH_FILE_NAME)) {
+                        match std::fs::remove_file(path) {
+                            Ok(_) => {
+                                let msg =
+                                    format!("dano hash file successfully removed: {:?}", path);
+                                println!("{}", &msg);
+                            }
+                            Err(err) => {
+                                let msg = format!(
+                                    "ERROR: Removal of dano hash file failed: {:?}: {:?}",
+                                    path, err
+                                );
+                                eprintln!("{}", &msg);
+                            }
+                        }
+                        return false;
+                    }
+                }
+
+                if path.file_name() == Some(hash_file.as_os_str()) {
+                    eprintln!(
+                        "ERROR: File name is the name of a dano hash file: {:?}",
+                        path
+                    );
+
+                    return false;
+                }
+
+                true
+            })
+            .filter_map(|path| {
+                if !opt_disable_filter {
+                    let path_ref = &path;
+
+                    let opt_extension = path_ref.extension();
+
+                    if auto_extension_filter
+                        .lines()
+                        .any(|extension| opt_extension == Some(OsStr::new(extension)))
+                    {
+                        return Some(Either::Right(path));
+                    }
+
+                    if let Some(ext) = opt_extension {
+                        return Some(Either::Left(ext.to_string_lossy().to_string()));
+                    }
+
+                    // what are these None cases: hidden files (dot files),
+                    // no file name, no extension
+                    return None;
+                }
+
+                Some(Either::Right(path))
+            })
+            .partition_map(|item| item);
+
+        if !opt_silent && !bad_extensions.is_empty() {
+            let unique: HashSet<String> = bad_extensions.into_iter().collect();
+
+            let buffer: String = unique.iter().map(|ext| format!("{} ", ext)).collect();
+
+            eprintln!("WARN: The following are extensions which are unknown to dano: {:?}.  dano has excluded all files with these extensions.  If you know these file types are acceptable to ffmpeg, you may use --disable-filter to force dano to accept their use.", buffer.trim());
+        }
+
+        valid_paths
     }
 }
