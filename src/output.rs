@@ -19,6 +19,7 @@ use std::collections::BTreeSet;
 
 use itertools::Itertools;
 
+use crate::config::WriteMode;
 use crate::ingest::RecordedFileInfo;
 use crate::{Config, ExecMode};
 
@@ -26,7 +27,7 @@ use crate::lookup::FileInfo;
 use crate::process::{ProcessedFiles, RemainderBundle};
 use crate::utility::{
     get_output_file, make_tmp_file, print_err_buf, read_file_info_from_file, write_file,
-    write_non_file, DanoError, DanoResult,
+    write_native, write_xattr, DanoError, DanoResult,
 };
 
 const WRITE_NEW_PREFIX: &str = "Writing dano hash for: ";
@@ -166,9 +167,17 @@ impl WriteableFileInfo {
             _ if config.opt_dry_run => self.print_action(dry_prefix, EMPTY_STR),
             // XATTR can be enabled via env var, because of this we don't want it to conflict with any other option,
             // so need to guard against it be enabled in modes it which we must write to disk, such as DUMP
-            _ if config.opt_xattr && !matches!(config.exec_mode, ExecMode::Dump) => {
+            _ if matches!(config.write_mode, WriteMode::WriteXattr)
+                && !matches!(config.exec_mode, ExecMode::Dump) =>
+            {
                 self.print_action(wet_prefix, EMPTY_STR)?;
                 self.write_action_xattr()
+            }
+            _ if matches!(config.write_mode, WriteMode::WriteNativeMetadata)
+                && !matches!(config.exec_mode, ExecMode::Dump) =>
+            {
+                self.print_action(wet_prefix, EMPTY_STR)?;
+                self.write_action_native()
             }
             ExecMode::Dump | ExecMode::Write(_) => {
                 self.print_action(wet_prefix, EMPTY_STR)?;
@@ -224,7 +233,11 @@ impl WriteableFileInfo {
     }
 
     fn write_action_xattr(&self) -> DanoResult<()> {
-        self.inner.iter().try_for_each(write_non_file)
+        self.inner.iter().try_for_each(write_xattr)
+    }
+
+    fn write_action_native(&self) -> DanoResult<()> {
+        self.inner.iter().try_for_each(write_native)
     }
 
     fn write_action_file(&self, config: &Config, write_type: WriteType) -> DanoResult<()> {

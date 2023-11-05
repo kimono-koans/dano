@@ -25,6 +25,7 @@ use std::{
 
 use rayon::{prelude::*, ThreadPool};
 use serde_json::Value;
+use which::which;
 
 use crate::lookup::FileInfo;
 use crate::output::WriteType;
@@ -96,7 +97,7 @@ pub fn write_file(file_info: &FileInfo, output_file: &mut File) -> DanoResult<()
     write_out_file(&serialized, output_file)
 }
 
-pub fn write_non_file(file_info: &FileInfo) -> DanoResult<()> {
+pub fn write_xattr(file_info: &FileInfo) -> DanoResult<()> {
     // write empty path for path, because we a re writing to an actual path
     // that may change if the file name is changed
     let rewrite = FileInfo {
@@ -109,6 +110,19 @@ pub fn write_non_file(file_info: &FileInfo) -> DanoResult<()> {
     write_out_xattr(&serialized, file_info)
 }
 
+pub fn write_native(file_info: &FileInfo) -> DanoResult<()> {
+    // write empty path for path, because we a re writing to an actual path
+    // that may change if the file name is changed
+    let rewrite = FileInfo {
+        version: file_info.version,
+        path: PathBuf::new(),
+        metadata: file_info.metadata.to_owned(),
+    };
+
+    let serialized = serialize(&rewrite)?;
+    write_out_native(&serialized, file_info)
+}
+
 pub fn remove_dano_xattr(path: &Path) -> DanoResult<()> {
     xattr::remove(path, DANO_XATTR_KEY_NAME).map_err(|err| err.into())
 }
@@ -117,6 +131,25 @@ fn write_out_xattr(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
     let _ = xattr::remove(&file_info.path, DANO_XATTR_KEY_NAME);
     xattr::set(&file_info.path, DANO_XATTR_KEY_NAME, out_string.as_bytes())
         .map_err(|err| err.into())
+}
+
+fn write_out_native(out_string: &str, file_info: &FileInfo) -> DanoResult<()> {
+    let ffmpeg_cmd = if let Ok(ffmpeg_cmd) = which("ffmpeg") {
+        ffmpeg_cmd
+    } else {
+        return Err(DanoError::new(
+            "'ffmpeg' command not found. Make sure the command 'metaflac' is in your path.",
+        )
+        .into());
+    };
+
+    let path_string = path.to_string_lossy();
+
+    let process_args = vec!["--metadata", path_string.as_ref()];
+
+    let process_output = ExecProcess::new(ffmpeg_cmd).args(&process_args).output()?;
+    let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
+    let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 }
 
 pub fn print_err_buf(err_buf: &str) -> DanoResult<()> {

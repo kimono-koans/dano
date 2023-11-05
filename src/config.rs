@@ -30,6 +30,7 @@ use crate::utility::read_stdin;
 use crate::{DanoError, DanoResult, DANO_DEFAULT_HASH_FILE_NAME};
 
 const XATTR_ENV_KEY: &str = "DANO_XATTR_WRITES";
+const NATIVE_ENV_KEY: &str = "DANO_NATIVE_WRITES";
 
 fn parse_args() -> ArgMatches {
     clap::Command::new(crate_name!())
@@ -163,13 +164,22 @@ fn parse_args() -> ArgMatches {
                 .display_order(16),
         )
         .arg(
+            Arg::new("NATIVE_METADATA")
+                .help("try to write (dano will always try to read) hash to any input file's native metadata format.  \
+                Can also be enabled by setting environment variable DANO_NATIVE_WRITES to any value (such as: export DANO_NATIVE_WRITES=enabled).  \
+                When NATIVE_METADATA is enabled, if a write is requested, dano will always overwrite previously written metadata.")
+                .short('n')
+                .long("native")
+                .display_order(17),
+        )
+        .arg(
             Arg::new("XATTR")
                 .help("try to write (dano will always try to read) hash to any input file's extended attributes.  \
                 Can also be enabled by setting environment variable DANO_XATTR_WRITES to any value (such as: export DANO_XATTR_WRITES=enabled).  \
                 When XATTR is enabled, if a write is requested, dano will always overwrite extended attributes previously written.")
                 .short('x')
                 .long("xattr")
-                .display_order(17),
+                .display_order(18),
         )
         .arg(
             Arg::new("HASH_ALGO")
@@ -180,13 +190,13 @@ fn parse_args() -> ArgMatches {
                 .require_equals(true)
                 .possible_values(["murmur3", "md5", "crc32", "adler32", "sha1", "sha160", "sha256", "sha384", "sha512"])
                 .value_parser(clap::builder::ValueParser::os_string())
-                .display_order(18))
+                .display_order(19))
         .arg(
             Arg::new("DECODE")
                 .help("decode internal bitstream before hashing.  This option makes testing and writes much slower, but this option is potentially useful for lossless formats.")
                 .long("decode")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES"])
-                .display_order(19))
+                .display_order(20))
         .arg(
             Arg::new("REWRITE_ALL")
                 .help("rewrite all recorded hashes to the latest and greatest format version.  \
@@ -194,7 +204,7 @@ fn parse_args() -> ArgMatches {
                 .long("rewrite")
                 .requires("WRITE")
                 .conflicts_with_all(&["PRINT", "DUMP", "DUPLICATES", "TEST"])
-                .display_order(20))
+                .display_order(21))
         .arg(
             Arg::new("ONLY")
                 .help("hash the an input file container's first audio or video stream only, if available.  \
@@ -205,13 +215,13 @@ fn parse_args() -> ArgMatches {
                 .possible_values(["audio", "video"])
                 .value_parser(clap::builder::ValueParser::os_string())
                 .requires("WRITE")
-                .display_order(21))
+                .display_order(22))
         .arg(
             Arg::new("DRY_RUN")
             .help("print the information to stdout that would be written to disk.")
             .long("dry-run")
             .conflicts_with_all(&["PRINT", "DUPLICATES"])
-            .display_order(22))
+            .display_order(23))
         .get_matches()
 }
 
@@ -225,6 +235,13 @@ pub struct WriteModeConfig {
 pub struct TestModeConfig {
     pub opt_overwrite_old: bool,
     pub opt_write_new: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WriteMode {
+    WriteFile,
+    WriteXattr,
+    WriteNativeMetadata,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,9 +264,9 @@ pub enum SelectedStreams {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub exec_mode: ExecMode,
+    pub write_mode: WriteMode,
     pub opt_silent: bool,
     pub opt_decode: bool,
-    pub opt_xattr: bool,
     pub opt_dry_run: bool,
     pub is_single_path: bool,
     pub opt_num_threads: Option<usize>,
@@ -285,7 +302,17 @@ impl Config {
             .into());
         };
 
-        let opt_xattr = matches.is_present("XATTR") || std::env::var_os(XATTR_ENV_KEY).is_some();
+        let write_mode = if matches.is_present("XATTR") || std::env::var_os(XATTR_ENV_KEY).is_some()
+        {
+            WriteMode::WriteXattr
+        } else if matches.is_present("NATIVE_METADATA")
+            || std::env::var_os(NATIVE_ENV_KEY).is_some()
+        {
+            WriteMode::WriteNativeMetadata
+        } else {
+            WriteMode::WriteFile
+        };
+
         let opt_dry_run = matches.is_present("DRY_RUN")
             || (matches.is_present("PRINT") && matches.is_present("WRITE"));
         let opt_num_threads = matches
@@ -387,10 +414,10 @@ impl Config {
 
         Ok(Config {
             exec_mode,
+            write_mode,
             opt_silent,
             opt_num_threads,
             opt_decode,
-            opt_xattr,
             opt_dry_run,
             is_single_path: { paths.len() <= 1 },
             selected_streams,
