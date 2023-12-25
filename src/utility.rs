@@ -185,22 +185,20 @@ pub fn get_output_file(config: &Config, write_type: WriteType) -> DanoResult<Fil
 
     let is_first_run = !output_file.exists();
 
-    if let Ok(mut output_file) = OpenOptions::new()
+    let mut output_file = OpenOptions::new()
         // should overwrite the file always
         // FYI append() is for adding to the file
+        .create(true)
         .append(true)
         // create_new() will only create if DNE
         // create on a file that exists just opens
-        .create(true)
-        .open(&output_file)
-    {
-        if is_first_run {
-            print_file_header(config, &mut output_file)?
-        }
-        Ok(output_file)
-    } else {
-        Err(DanoError::new("dano could not open a file to append.").into())
+        .open(&output_file)?;
+
+    if is_first_run {
+        print_file_header(config, &mut output_file)?
     }
+
+    Ok(output_file)
 }
 
 fn write_out_file(out_string: &str, open_file: &mut File) -> DanoResult<()> {
