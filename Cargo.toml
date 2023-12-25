@@ -1,6 +1,6 @@
 [package]
 name = "dano"
-version = "0.8.2"
+version = "0.8.3"
 edition = "2021"
 keywords = ["checksum", "verify", "media", "cli-utility", "storage"]
 description = "A CLI tool for generating checksums of media bitstreams"
@@ -25,7 +25,7 @@ which = { version = "5.0.0", default-features = false }
 serde = { version = "1.0.163", features = ["derive"] }
 serde_json = { version = "1.0.96" } # need alloc or std
 itertools = { version = "0.12.0" } # use_std, use_alloc for into_group_map_by()
-crossbeam-channel = { version = "0.5.8", default-features = false }
+crossbeam-channel = { version = "0.5.10", default-features = false, features = ["std"] }
 num_cpus = { version = "1.15", default-features = false }
 xattr = { version = "1.0.0", default-features = false }
 
