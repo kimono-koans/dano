@@ -34,6 +34,7 @@ pub struct FileInfoRequest {
     pub hash_algo: Option<Box<str>>,
     pub decoded: Option<bool>,
     pub selected_streams: Option<SelectedStreams>,
+    pub bits_per_second: Option<u8>,
 }
 
 pub struct RequestBundle {
@@ -72,6 +73,7 @@ impl RequestBundle {
             hash_algo: Some(metadata.hash_algo.clone()),
             decoded: Some(metadata.decoded),
             selected_streams: Some(metadata.selected_streams.to_owned()),
+            bits_per_second: metadata.opt_bits_per_second,
         }
     }
 
@@ -82,6 +84,7 @@ impl RequestBundle {
             hash_algo: None,
             decoded: None,
             selected_streams: None,
+            bits_per_second: None,
         }
     }
 
