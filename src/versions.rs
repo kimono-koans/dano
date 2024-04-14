@@ -29,6 +29,7 @@ pub enum LegacyVersion {
     Version1,
     Version2,
     Version3,
+    Version4,
 }
 
 impl LegacyVersion {
@@ -51,6 +52,7 @@ impl LegacyVersion {
             1 => LegacyVersion::Version1,
             2 => LegacyVersion::Version2,
             3 => LegacyVersion::Version3,
+            4 => LegacyVersion::Version4,
             _ => return Err(DanoError::new("Legacy version number is invalid").into()),
         };
 
@@ -62,6 +64,7 @@ impl LegacyVersion {
             LegacyVersion::Version1 => FileInfoV1::try_from(line)?.convert(),
             LegacyVersion::Version2 => FileInfoV2::try_from(line)?.convert(),
             LegacyVersion::Version3 => FileInfoV3::try_from(line)?.convert(),
+            LegacyVersion::Version4 => FileInfoV4::try_from(line)?.convert(),
         }
     }
 }
@@ -123,6 +126,7 @@ impl FileInfoV1 {
             modify_time: metadata.modify_time,
             decoded: false,
             selected_streams: SelectedStreams::All,
+            opt_bits_per_second: None,
         });
 
         Ok(FileInfo {
@@ -169,6 +173,7 @@ impl FileInfoV2 {
             modify_time: metadata.modify_time,
             decoded: metadata.decoded,
             selected_streams: SelectedStreams::All,
+            opt_bits_per_second: None,
         });
 
         Ok(FileInfo {
@@ -216,6 +221,55 @@ impl FileInfoV3 {
             modify_time: metadata.modify_time,
             decoded: metadata.decoded,
             selected_streams: metadata.selected_streams.to_owned(),
+            opt_bits_per_second: None,
+        });
+
+        Ok(FileInfo {
+            version: DANO_FILE_INFO_VERSION,
+            path: self.path.to_owned(),
+            metadata: new_metadata,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct FileInfoV4 {
+    pub version: usize,
+    pub path: PathBuf,
+    pub metadata: Option<FileMetadata>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct FileMetadataV4 {
+    pub hash_algo: Box<str>,
+    pub hash_value: HashValue,
+    pub last_written: SystemTime,
+    pub modify_time: SystemTime,
+    pub decoded: bool,
+    pub selected_streams: SelectedStreams,
+}
+
+impl TryFrom<&str> for FileInfoV4 {
+    type Error = serde_json::Error;
+
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
+        let rewrite = line.replace("FileInfo", "FileInfoV3");
+        let legacy_file_info: FileInfoV4 = serde_json::from_str(&rewrite)?;
+
+        Ok(legacy_file_info)
+    }
+}
+
+impl FileInfoV4 {
+    fn convert(&self) -> DanoResult<FileInfo> {
+        let new_metadata = self.metadata.as_ref().map(|metadata| FileMetadata {
+            hash_algo: metadata.hash_algo.to_owned(),
+            hash_value: metadata.hash_value.to_owned(),
+            last_written: metadata.last_written,
+            modify_time: metadata.modify_time,
+            decoded: metadata.decoded,
+            selected_streams: metadata.selected_streams.to_owned(),
+            opt_bits_per_second: None,
         });
 
         Ok(FileInfo {

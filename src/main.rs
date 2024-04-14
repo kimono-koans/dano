@@ -41,7 +41,7 @@ use utility::{
     prepare_thread_pool, print_err_buf, print_file_info, remove_dano_xattr, DanoError, DanoResult,
 };
 
-const DANO_FILE_INFO_VERSION: usize = 4;
+const DANO_FILE_INFO_VERSION: usize = 5;
 const HEXADECIMAL_RADIX: u32 = 16;
 const DANO_XATTR_KEY_NAME: &str = "user.dano.checksum";
 const DANO_DEFAULT_HASH_FILE_NAME: &str = "dano_hashes.txt";

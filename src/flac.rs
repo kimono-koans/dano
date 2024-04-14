@@ -15,6 +15,7 @@
 // For the full copyright and license information, please view the LICENSE file
 // that was distributed with this source code.
 
+use std::str::FromStr;
 use std::{path::Path, process::Command as ExecProcess, time::SystemTime};
 
 use rayon::prelude::*;
@@ -52,12 +53,13 @@ impl RecordedFileInfo {
                     None
                 }
             })
-            .map(
-                |path| match Self::import_flac_hash_value(path, &metaflac_cmd) {
-                    Ok(hash_value) => Self::generate_flac_file_info(path, hash_value),
-                    Err(err) => Err(err),
-                },
-            )
+            .map(|path| {
+                Self::generate_flac_file_info(
+                    path,
+                    Self::import_flac_hash_value(path, &metaflac_cmd)?,
+                    Self::import_flac_bps_value(path, &metaflac_cmd)?,
+                )
+            })
             .collect()
     }
 
@@ -101,7 +103,47 @@ impl RecordedFileInfo {
         Ok(hash_value)
     }
 
-    fn generate_flac_file_info(path: &Path, hash_value: HashValue) -> DanoResult<FileInfo> {
+    fn import_flac_bps_value(path: &Path, metaflac_command: &Path) -> DanoResult<u8> {
+        // all snapshots should have the same timestamp
+        let path_string = path.to_string_lossy();
+
+        let process_args = vec!["--show-bps", path_string.as_ref()];
+
+        let process_output = ExecProcess::new(metaflac_command)
+            .args(&process_args)
+            .output()?;
+        let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
+        let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
+
+        if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
+            let msg = format!("Error: Path is not a valid FLAC file: {}", path_string);
+            return Err(DanoError::new(&msg).into());
+        }
+
+        let bps_value = if let Ok(bps) = std::primitive::u8::from_str(stdout_string) {
+            bps
+        } else {
+            return Err(DanoError::new("Could not parse integer from ffmpeg output.").into());
+        };
+
+        if stdout_string.is_empty() {
+            // likely file DNE?, except we have already check when we parsed input files
+            // so this is a catch all, here we just bail if we have no explanation to give the user
+            let msg = format!(
+                "Error: Could not generate hash from FLAC file: {}",
+                path_string
+            );
+            return Err(DanoError::new(&msg).into());
+        }
+
+        Ok(bps_value)
+    }
+
+    fn generate_flac_file_info(
+        path: &Path,
+        hash_value: HashValue,
+        bps_value: u8,
+    ) -> DanoResult<FileInfo> {
         Ok(FileInfo {
             path: path.to_owned(),
             version: DANO_FILE_INFO_VERSION,
@@ -112,6 +154,7 @@ impl RecordedFileInfo {
                 modify_time: path.metadata()?.modified()?,
                 selected_streams: FLAC_SELECTED_STREAMS,
                 decoded: FLAC_DECODED,
+                opt_bits_per_second: Some(bps_value),
             }),
         })
     }

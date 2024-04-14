@@ -237,6 +237,8 @@ pub enum ExecMode {
     Clean,
 }
 
+pub type OptBitsPerSecond = Option<u8>;
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum SelectedStreams {
     All,
