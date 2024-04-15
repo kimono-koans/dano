@@ -30,7 +30,6 @@ crossbeam-channel = { version = "0.5.10", default-features = false, features = [
 ] }
 num_cpus = { version = "1.15", default-features = false }
 xattr = { version = "1.0.0", default-features = false }
-md5 = "0.7.0"
 
 [package.metadata.deb]
 maintainer = "kimono koans <https://github.com/kimono-koans/>"
