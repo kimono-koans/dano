@@ -166,8 +166,8 @@ impl FileInfo {
         };
 
         let (stdout_string, stderr) = match request.bits_per_second {
-            // this is really flac specific
-            Some(bps) if decoded && request.hash_algo.as_deref() == Some("MD5") => {
+            // this is really high bit rate FLAC specific
+            Some(bps) if bps != 16 && decoded && request.hash_algo.as_deref() == Some("MD5") => {
                 let format = format!("s{}le", bps.to_string());
 
                 let process_args = vec!["-i", &path_string, "-f", &format, "-"];
