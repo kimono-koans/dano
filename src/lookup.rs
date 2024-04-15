@@ -24,7 +24,6 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use md5::Digest;
 use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
@@ -262,8 +261,6 @@ impl FileInfo {
 
             Ok(())
         } else {
-            eprintln!("{}", stdout_string);
-
             let res = match stdout_string.split_once('=') {
                 Some((first, last)) => {
                     let hash_value =
@@ -330,7 +327,8 @@ impl FileInfo {
     fn hash(opt_child_stdout: Option<ChildStdout>) -> DanoResult<String> {
         use std::io::BufReader;
 
-        let mut hash = md5::Md5::new();
+        let mut hash = md5::Context::new();
+
         if let Some(child_stdout) = opt_child_stdout {
             let mut buffer = BufReader::new(child_stdout);
 
@@ -341,7 +339,7 @@ impl FileInfo {
                             break;
                         }
 
-                        hash.update(buf);
+                        hash.consume(buf);
                         buf.len()
                     }
                     Err(err) => match err.kind() {
@@ -357,11 +355,9 @@ impl FileInfo {
             return Err(DanoError::new("Could not obtain stdout").into());
         }
 
-        let res = hash.finalize();
+        let res = hash.compute();
 
         let formatted = format!("MD5={:X?}", res);
-
-        eprintln!("{}", formatted);
 
         Ok(formatted)
     }
