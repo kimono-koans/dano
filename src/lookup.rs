@@ -176,6 +176,7 @@ impl FileInfo {
                     .args(&process_args)
                     .stdin(Stdio::piped())
                     .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
                     .spawn()?;
 
                 let opt_child_stdout = process.stdout.take();
@@ -196,6 +197,7 @@ impl FileInfo {
                     .args(&process_args)
                     .stdin(Stdio::piped())
                     .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
                     .spawn()?;
 
                 let mut stdout_string = String::new();
@@ -209,18 +211,24 @@ impl FileInfo {
             }
         };
 
-        let mut stderr_string = String::new();
+        match stderr {
+            Some(mut stderr) => {
+                let mut stderr_string = String::new();
 
-        stderr.unwrap().read_to_string(&mut stderr_string)?;
+                stderr.read_to_string(&mut stderr_string)?;
 
-        if stderr_string.trim().contains("incorrect codec parameters") {
-            let msg = format!(
-                "Error: Invalid hash algorithm specified.  \
-                This version of ffmpeg does not support: {} .  \
-                Upgrade or specify another hash algorithm.",
-                config.selected_hash_algo
-            );
-            return Err(DanoError::new(&msg).into());
+                if stderr_string.trim().contains("incorrect codec parameters") {
+                    let msg = format!(
+                        "Error: Invalid hash algorithm specified.  \
+                        This version of ffmpeg does not support: {} .  \
+                        Upgrade or specify another hash algorithm.",
+                        config.selected_hash_algo
+                    );
+                    return Err(DanoError::new(&msg).into());
+                }
+            }
+
+            None => {}
         }
 
         Ok(stdout_string.into())
@@ -254,6 +262,8 @@ impl FileInfo {
 
             Ok(())
         } else {
+            eprintln!("{}", stdout_string);
+
             let res = match stdout_string.split_once('=') {
                 Some((first, last)) => {
                     let hash_value =
@@ -349,7 +359,9 @@ impl FileInfo {
 
         let res = hash.finalize();
 
-        let formatted = format!("{:X?}  MD5", res);
+        let formatted = format!("MD5={:X?}", res);
+
+        eprintln!("{}", formatted);
 
         Ok(formatted)
     }
