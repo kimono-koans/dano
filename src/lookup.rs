@@ -17,20 +17,24 @@
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
+    io::{BufRead, Read},
     path::{Path, PathBuf},
-    process::Command as ExecProcess,
+    process::{ChildStdout, Command as ExecProcess},
     time::SystemTime,
 };
 
 use crossbeam_channel::{Receiver, Sender};
+use md5::Digest;
 use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
+use std::io::ErrorKind;
 use which::which;
 
 use crate::config::{OptBitsPerSecond, SelectedStreams};
 use crate::requests::{FileInfoRequest, RequestBundle};
 use crate::utility::DanoError;
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION, HEXADECIMAL_RADIX};
+use std::process::Stdio;
 
 pub struct FileInfoLookup;
 
@@ -161,33 +165,63 @@ impl FileInfo {
             SelectedStreams::VideoOnly => Some("0:v?"),
         };
 
-        let process_args = FileInfo::build_process_args(
-            &path_string,
-            hash_algo,
-            decoded,
-            opt_selected_streams_str,
-        );
+        let (stdout_string, stderr) = match request.bits_per_second {
+            // this is really flac specific
+            Some(bps) if decoded && request.hash_algo.as_deref() == Some("MD5") => {
+                let format = format!("s{}le", bps.to_string());
 
-        let process_output = ExecProcess::new(ffmpeg_command)
-            .args(&process_args)
-            .output()?;
+                let process_args = vec!["-i", &path_string, "-f", &format, "-"];
 
-        let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
+                let mut process = ExecProcess::new(ffmpeg_command)
+                    .args(&process_args)
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .spawn()?;
 
-        match std::str::from_utf8(&process_output.stderr) {
-            Ok(stderr_string) if stderr_string.trim().contains("incorrect codec parameters") => {
-                let msg = format!(
-                    "Error: Invalid hash algorithm specified.  \
+                let opt_child_stdout = process.stdout.take();
+
+                let stdout_string = Self::hash(opt_child_stdout)?;
+
+                (stdout_string, process.stderr)
+            }
+            _ => {
+                let process_args = FileInfo::build_process_args(
+                    &path_string,
+                    hash_algo,
+                    decoded,
+                    opt_selected_streams_str,
+                );
+
+                let process_output = ExecProcess::new(ffmpeg_command)
+                    .args(&process_args)
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .spawn()?;
+
+                let mut stdout_string = String::new();
+
+                process_output
+                    .stdout
+                    .unwrap()
+                    .read_to_string(&mut stdout_string)?;
+
+                (stdout_string, process_output.stderr)
+            }
+        };
+
+        let mut stderr_string = String::new();
+
+        stderr.unwrap().read_to_string(&mut stderr_string)?;
+
+        if stderr_string.trim().contains("incorrect codec parameters") {
+            let msg = format!(
+                "Error: Invalid hash algorithm specified.  \
                 This version of ffmpeg does not support: {} .  \
                 Upgrade or specify another hash algorithm.",
-                    config.selected_hash_algo
-                );
-                return Err(DanoError::new(&msg).into());
-            }
-            // ffmpeg stderr can produce invalid UTF8 sequences which cause dano to
-            // error out in a very confusing way.  Better just to flatten that error here.
-            _ => (),
-        };
+                config.selected_hash_algo
+            );
+            return Err(DanoError::new(&msg).into());
+        }
 
         Ok(stdout_string.into())
     }
@@ -281,5 +315,42 @@ impl FileInfo {
         process_args.extend(end_opts);
 
         process_args
+    }
+
+    fn hash(opt_child_stdout: Option<ChildStdout>) -> DanoResult<String> {
+        use std::io::BufReader;
+
+        let mut hash = md5::Md5::new();
+        if let Some(child_stdout) = opt_child_stdout {
+            let mut buffer = BufReader::new(child_stdout);
+
+            loop {
+                let consumed = match buffer.fill_buf() {
+                    Ok(buf) => {
+                        if buf.is_empty() {
+                            break;
+                        }
+
+                        hash.update(buf);
+                        buf.len()
+                    }
+                    Err(err) => match err.kind() {
+                        ErrorKind::Interrupted => continue,
+                        ErrorKind::UnexpectedEof => break,
+                        _ => return Err(err.into()),
+                    },
+                };
+
+                buffer.consume(consumed);
+            }
+        } else {
+            return Err(DanoError::new("Could not obtain stdout").into());
+        }
+
+        let res = hash.finalize();
+
+        let formatted = format!("{:X?}  MD5", res);
+
+        Ok(formatted)
     }
 }
