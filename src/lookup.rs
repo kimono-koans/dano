@@ -26,6 +26,7 @@ use std::{
 use crossbeam_channel::{Receiver, Sender};
 use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
+use std::io::BufReader;
 use std::io::ErrorKind;
 use which::which;
 
@@ -325,7 +326,6 @@ impl FileInfo {
     }
 
     fn hash(opt_child_stdout: Option<ChildStdout>) -> DanoResult<String> {
-        use std::io::BufReader;
         const IN_BUFFER_SIZE: usize = 65536;
 
         let mut hash = md5::Context::new();
