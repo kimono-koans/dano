@@ -207,8 +207,6 @@ impl FileInfo {
                     .unwrap()
                     .read_to_string(&mut stdout_string)?;
 
-                eprintln!("{}", stdout_string);
-
                 let res = stdout_string.trim();
 
                 (res.to_string(), process_output.stderr)
