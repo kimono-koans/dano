@@ -326,11 +326,12 @@ impl FileInfo {
 
     fn hash(opt_child_stdout: Option<ChildStdout>) -> DanoResult<String> {
         use std::io::BufReader;
+        const IN_BUFFER_SIZE: usize = 65536;
 
         let mut hash = md5::Context::new();
 
         if let Some(child_stdout) = opt_child_stdout {
-            let mut buffer = BufReader::new(child_stdout);
+            let mut buffer = BufReader::with_capacity(IN_BUFFER_SIZE, child_stdout);
 
             loop {
                 let consumed = match buffer.fill_buf() {
