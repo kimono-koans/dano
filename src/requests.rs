@@ -34,7 +34,7 @@ pub struct FileInfoRequest {
     pub hash_algo: Option<Box<str>>,
     pub decoded: Option<bool>,
     pub selected_streams: Option<SelectedStreams>,
-    pub bits_per_second: Option<u8>,
+    pub bits_per_second: Option<u32>,
 }
 
 pub struct RequestBundle {

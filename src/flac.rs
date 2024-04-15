@@ -103,7 +103,7 @@ impl RecordedFileInfo {
         Ok(hash_value)
     }
 
-    fn import_flac_bps_value(path: &Path, metaflac_command: &Path) -> DanoResult<u8> {
+    fn import_flac_bps_value(path: &Path, metaflac_command: &Path) -> DanoResult<u32> {
         // all snapshots should have the same timestamp
         let path_string = path.to_string_lossy();
 
@@ -120,7 +120,7 @@ impl RecordedFileInfo {
             return Err(DanoError::new(&msg).into());
         }
 
-        let bps_value = if let Ok(bps) = std::primitive::u8::from_str(stdout_string) {
+        let bps_value = if let Ok(bps) = std::primitive::u32::from_str(stdout_string) {
             bps
         } else {
             return Err(DanoError::new("Could not parse integer from ffmpeg output.").into());
@@ -142,7 +142,7 @@ impl RecordedFileInfo {
     fn generate_flac_file_info(
         path: &Path,
         hash_value: HashValue,
-        bps_value: u8,
+        bps_value: u32,
     ) -> DanoResult<FileInfo> {
         Ok(FileInfo {
             path: path.to_owned(),
