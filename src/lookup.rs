@@ -27,7 +27,7 @@ use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::config::{OptBitsPerSecond, SelectedStreams};
+use crate::config::{OptFlacBitsPerSecond, SelectedStreams};
 use crate::requests::{FileInfoRequest, RequestBundle};
 use crate::utility::DanoError;
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION, HEXADECIMAL_RADIX};
@@ -107,7 +107,7 @@ pub struct FileMetadata {
     pub modify_time: SystemTime,
     pub decoded: bool,
     pub selected_streams: SelectedStreams,
-    pub opt_bits_per_second: OptBitsPerSecond,
+    pub opt_bits_per_second: OptFlacBitsPerSecond,
 }
 
 impl FileInfo {
