@@ -23,10 +23,10 @@ use std::{
 
 use rayon::prelude::*;
 
-use crate::config::SelectedStreams;
 use crate::lookup::{FileInfo, FileMetadata};
 use crate::utility::DanoResult;
 use crate::Config;
+use crate::{config::SelectedStreams, ingest::RecordedFileInfo};
 
 #[derive(Debug, Clone)]
 pub struct FileInfoRequest {
@@ -34,6 +34,7 @@ pub struct FileInfoRequest {
     pub hash_algo: Option<Box<str>>,
     pub decoded: Option<bool>,
     pub selected_streams: Option<SelectedStreams>,
+    pub bits_per_second: Option<u32>,
 }
 
 pub struct RequestBundle {
@@ -72,6 +73,7 @@ impl RequestBundle {
             hash_algo: Some(metadata.hash_algo.clone()),
             decoded: Some(metadata.decoded),
             selected_streams: Some(metadata.selected_streams.to_owned()),
+            bits_per_second: metadata.opt_bits_per_second,
         }
     }
 
@@ -82,6 +84,20 @@ impl RequestBundle {
             hash_algo: None,
             decoded: None,
             selected_streams: None,
+            bits_per_second: None,
+        }
+    }
+
+    // new requests
+    fn as_flac_request(path: &Path) -> FileInfoRequest {
+        let opt_bps = RecordedFileInfo::import_flac_bps_value(path).ok();
+
+        FileInfoRequest {
+            path: path.to_owned(),
+            hash_algo: None,
+            decoded: None,
+            selected_streams: None,
+            bits_per_second: opt_bps,
         }
     }
 
@@ -106,7 +122,15 @@ impl RequestBundle {
             .map(
                 |path| match recorded_file_info_requests.get(path.as_path()) {
                     Some(value) => (path.as_path(), value.to_owned()),
-                    None => (path.as_path(), Self::as_new_request(path)),
+                    None => {
+                        if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
+                            if &ext.to_lowercase() == "flac" {
+                                return (path.as_path(), Self::as_flac_request(path));
+                            }
+                        }
+
+                        (path.as_path(), Self::as_new_request(path))
+                    }
                 },
             )
             .collect();

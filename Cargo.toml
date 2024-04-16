@@ -6,7 +6,7 @@ keywords = ["checksum", "verify", "media", "cli-utility", "storage"]
 description = "A CLI tool for generating checksums of media bitstreams"
 repository = "https://github.com/kimono-koans/dano"
 readme = "README.md"
-categories = [ "command-line-utilities",  "os" ]
+categories = ["command-line-utilities", "os"]
 license = "MPL-2.0"
 documentation = "https://github.com/kimono-koans/dano/blob/master/README.md"
 
@@ -15,17 +15,19 @@ maintenance = { status = "actively-developed" }
 
 [profile.release]
 debug = true
-opt-level = "z"  # Aggressively optimize for size.
+opt-level = "z" # Aggressively optimize for size.
 
 [dependencies]
 primitive-types = { version = "0.12.1", default-features = false }
 clap = { version = "3.2.8", features = ["cargo"] }
 rayon = { version = "1.7.0", default-features = false }
-which = { version = "5.0.0", default-features = false }
+which = { version = "6.0.1", default-features = false }
 serde = { version = "1.0.163", features = ["derive"] }
 serde_json = { version = "1.0.96" } # need alloc or std
 itertools = { version = "0.12.0" } # use_std, use_alloc for into_group_map_by()
-crossbeam-channel = { version = "0.5.10", default-features = false, features = ["std"] }
+crossbeam-channel = { version = "0.5.10", default-features = false, features = [
+    "std",
+] }
 num_cpus = { version = "1.15", default-features = false }
 xattr = { version = "1.0.0", default-features = false }
 
@@ -44,9 +46,29 @@ suggests = "flac (>=1.3.3)"
 section = "utility"
 priority = "optional"
 assets = [
-    ["target/release/dano", "usr/bin/dano", "755"],
-    ["dano.1", "usr/share/man/man1/dano.1", "644"],
-    ["README.md", "usr/share/doc/dano/README", "644"],
-    ["LICENSE", "usr/share/doc/dano/LICENSE", "644"],
-    ["third_party/LICENSES_THIRD_PARTY.html", "usr/share/doc/dano/LICENSES_THIRD_PARTY.html", "644"],
+    [
+        "target/release/dano",
+        "usr/bin/dano",
+        "755",
+    ],
+    [
+        "dano.1",
+        "usr/share/man/man1/dano.1",
+        "644",
+    ],
+    [
+        "README.md",
+        "usr/share/doc/dano/README",
+        "644",
+    ],
+    [
+        "LICENSE",
+        "usr/share/doc/dano/LICENSE",
+        "644",
+    ],
+    [
+        "third_party/LICENSES_THIRD_PARTY.html",
+        "usr/share/doc/dano/LICENSES_THIRD_PARTY.html",
+        "644",
+    ],
 ]

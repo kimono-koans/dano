@@ -27,7 +27,7 @@ use rayon::ThreadPool;
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::config::SelectedStreams;
+use crate::config::{OptFlacBitsPerSecond, SelectedStreams};
 use crate::requests::{FileInfoRequest, RequestBundle};
 use crate::utility::DanoError;
 use crate::{Config, DanoResult, DANO_FILE_INFO_VERSION, HEXADECIMAL_RADIX};
@@ -107,6 +107,7 @@ pub struct FileMetadata {
     pub modify_time: SystemTime,
     pub decoded: bool,
     pub selected_streams: SelectedStreams,
+    pub opt_bits_per_second: OptFlacBitsPerSecond,
 }
 
 impl FileInfo {
@@ -160,35 +161,39 @@ impl FileInfo {
             SelectedStreams::VideoOnly => Some("0:v?"),
         };
 
+        let opt_bits_per_second_str = request.bits_per_second.map(|bps| {
+            let bits = format!("pcm_s{}le", bps.to_string());
+            bits
+        });
+
         let process_args = FileInfo::build_process_args(
             &path_string,
             hash_algo,
             decoded,
             opt_selected_streams_str,
+            &opt_bits_per_second_str,
         );
 
         let process_output = ExecProcess::new(ffmpeg_command)
             .args(&process_args)
             .output()?;
 
-        let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
+        let stdout = std::str::from_utf8(&process_output.stdout)?.trim();
+        let stderr = std::str::from_utf8(&process_output.stderr)?.trim();
 
-        match std::str::from_utf8(&process_output.stderr) {
-            Ok(stderr_string) if stderr_string.trim().contains("incorrect codec parameters") => {
+        if !stderr.is_empty() {
+            if stderr.contains("incorrect codec parameters") {
                 let msg = format!(
                     "Error: Invalid hash algorithm specified.  \
-                This version of ffmpeg does not support: {} .  \
-                Upgrade or specify another hash algorithm.",
+                    This version of ffmpeg does not support: {} .  \
+                    Upgrade or specify another hash algorithm.",
                     config.selected_hash_algo
                 );
                 return Err(DanoError::new(&msg).into());
             }
-            // ffmpeg stderr can produce invalid UTF8 sequences which cause dano to
-            // error out in a very confusing way.  Better just to flatten that error here.
-            _ => (),
-        };
+        }
 
-        Ok(stdout_string.into())
+        Ok(stdout.into())
     }
 
     fn transmit_file_info(
@@ -244,6 +249,7 @@ impl FileInfo {
                             modify_time: request.path.metadata()?.modified()?,
                             selected_streams: selected_streams.to_owned(),
                             decoded,
+                            opt_bits_per_second: request.bits_per_second,
                         }),
                     }
                 }
@@ -260,21 +266,26 @@ impl FileInfo {
         hash_algo: &'a str,
         decoded: bool,
         opt_selected_streams_str: Option<&'a str>,
+        opt_bits_per_second: &'a Option<String>,
     ) -> Vec<&'a str> {
         let mut process_args = vec!["-i", path_string];
 
         let end_opts = vec!["-f", "hash", "-hash", hash_algo, "-"];
-
-        let codec_copy = vec!["-codec", "copy"];
 
         if let Some(selected_streams_str) = opt_selected_streams_str {
             process_args.push("-map");
             process_args.push(selected_streams_str);
         }
 
-        if !decoded {
+        if decoded {
+            if let Some(bps_string) = opt_bits_per_second {
+                let codec_copy: Vec<&str> = vec!["-c", &bps_string];
+                process_args.extend(codec_copy);
+            }
+        } else {
+            let codec_copy: Vec<&str> = vec!["-codec", "copy"];
             process_args.extend(codec_copy);
-        };
+        }
 
         process_args.extend(end_opts);
 
