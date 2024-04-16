@@ -23,10 +23,10 @@ use std::{
 
 use rayon::prelude::*;
 
-use crate::config::SelectedStreams;
 use crate::lookup::{FileInfo, FileMetadata};
 use crate::utility::DanoResult;
 use crate::Config;
+use crate::{config::SelectedStreams, ingest::RecordedFileInfo};
 
 #[derive(Debug, Clone)]
 pub struct FileInfoRequest {
@@ -88,6 +88,19 @@ impl RequestBundle {
         }
     }
 
+    // new requests
+    fn as_flac_request(path: &Path) -> FileInfoRequest {
+        let opt_bps = RecordedFileInfo::import_flac_bps_value(path).ok();
+
+        FileInfoRequest {
+            path: path.to_owned(),
+            hash_algo: None,
+            decoded: None,
+            selected_streams: None,
+            bits_per_second: opt_bps,
+        }
+    }
+
     pub fn new(config: &Config, recorded_file_info: &[FileInfo]) -> DanoResult<Self> {
         let mut recorded_file_info_requests: BTreeMap<&Path, FileInfoRequest> = recorded_file_info
             .par_iter()
@@ -109,7 +122,15 @@ impl RequestBundle {
             .map(
                 |path| match recorded_file_info_requests.get(path.as_path()) {
                     Some(value) => (path.as_path(), value.to_owned()),
-                    None => (path.as_path(), Self::as_new_request(path)),
+                    None => {
+                        if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
+                            if &ext.to_lowercase() == "flac" {
+                                return (path.as_path(), Self::as_flac_request(path));
+                            }
+                        }
+
+                        (path.as_path(), Self::as_new_request(path))
+                    }
                 },
             )
             .collect();

@@ -249,7 +249,7 @@ impl FileInfo {
                             modify_time: request.path.metadata()?.modified()?,
                             selected_streams: selected_streams.to_owned(),
                             decoded,
-                            opt_bits_per_second: None,
+                            opt_bits_per_second: request.bits_per_second,
                         }),
                     }
                 }
@@ -277,16 +277,14 @@ impl FileInfo {
             process_args.push(selected_streams_str);
         }
 
-        if !decoded {
-            let codec_copy: Vec<&str> = vec!["-codec", "copy"];
-            process_args.extend(codec_copy);
-        }
-
-        if decoded && hash_algo == "MD5" {
+        if decoded {
             if let Some(bps_string) = opt_bits_per_second {
                 let codec_copy: Vec<&str> = vec!["-c", &bps_string];
                 process_args.extend(codec_copy);
             }
+        } else {
+            let codec_copy: Vec<&str> = vec!["-codec", "copy"];
+            process_args.extend(codec_copy);
         }
 
         process_args.extend(end_opts);

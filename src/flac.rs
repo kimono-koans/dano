@@ -34,15 +34,6 @@ const FLAC_SELECTED_STREAMS: SelectedStreams = SelectedStreams::AudioOnly;
 
 impl RecordedFileInfo {
     pub fn from_flac(config: &Config) -> DanoResult<Vec<FileInfo>> {
-        let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
-            metaflac_cmd
-        } else {
-            return Err(DanoError::new(
-                "'metaflac' command not found. Make sure the command 'metaflac' is in your path.",
-            )
-            .into());
-        };
-
         config
             .paths
             .par_iter()
@@ -56,20 +47,29 @@ impl RecordedFileInfo {
             .map(|path| {
                 Self::generate_flac_file_info(
                     path,
-                    Self::import_flac_hash_value(path, &metaflac_cmd)?,
-                    Self::import_flac_bps_value(path, &metaflac_cmd)?,
+                    Self::import_flac_hash_value(path)?,
+                    Self::import_flac_bps_value(path)?,
                 )
             })
             .collect()
     }
 
-    fn import_flac_hash_value(path: &Path, metaflac_command: &Path) -> DanoResult<HashValue> {
+    fn import_flac_hash_value(path: &Path) -> DanoResult<HashValue> {
+        let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
+            metaflac_cmd
+        } else {
+            return Err(DanoError::new(
+                "'metaflac' command not found. Make sure the command 'metaflac' is in your path.",
+            )
+            .into());
+        };
+
         // all snapshots should have the same timestamp
         let path_string = path.to_string_lossy();
 
         let process_args = vec!["--show-md5sum", path_string.as_ref()];
 
-        let process_output = ExecProcess::new(metaflac_command)
+        let process_output = ExecProcess::new(metaflac_cmd)
             .args(&process_args)
             .output()?;
         let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
@@ -103,13 +103,22 @@ impl RecordedFileInfo {
         Ok(hash_value)
     }
 
-    fn import_flac_bps_value(path: &Path, metaflac_command: &Path) -> DanoResult<u32> {
+    pub fn import_flac_bps_value(path: &Path) -> DanoResult<u32> {
+        let metaflac_cmd = if let Ok(metaflac_cmd) = which("metaflac") {
+            metaflac_cmd
+        } else {
+            return Err(DanoError::new(
+                "'metaflac' command not found. Make sure the command 'metaflac' is in your path.",
+            )
+            .into());
+        };
+
         // all snapshots should have the same timestamp
         let path_string = path.to_string_lossy();
 
         let process_args = vec!["--show-bps", path_string.as_ref()];
 
-        let process_output = ExecProcess::new(metaflac_command)
+        let process_output = ExecProcess::new(metaflac_cmd)
             .args(&process_args)
             .output()?;
         let stdout_string = std::str::from_utf8(&process_output.stdout)?.trim();
