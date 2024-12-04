@@ -69,6 +69,7 @@ impl LegacyVersion {
     }
 }
 
+#[allow(dead_code)]
 pub trait ConvertVersion<'a>
 where
     Self: TryFrom<&'a str, Error = serde_json::Error>,

@@ -81,7 +81,7 @@ impl RecordedFileInfo {
         }
 
         let hash_value =
-            if primitive_types::U512::from_str_radix(stdout_string, HEXADECIMAL_RADIX).is_ok() {
+            if stdout_string.chars().all(|c| c.is_ascii_hexdigit()) && stdout_string.len() <= 128 {
                 HashValue {
                     radix: HEXADECIMAL_RADIX,
                     value: stdout_string.trim_start_matches('0').into(),
