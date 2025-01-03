@@ -79,15 +79,14 @@ impl RecordedFileInfo {
             config
                 .paths
                 .par_iter()
-                .filter_map(|path| {
-                    let opt_file_info = Self::read_file_info_from_xattr(path);
-
-                    match opt_file_info {
-                        Some(file_info) => Some((path, file_info)),
-                        None => {
-                            eprintln!("NOTICE: No extended attribute exists for path: {:?}", path);
-                            None
-                        }
+                .filter_map(|path| match Self::read_file_info_from_xattr(path) {
+                    Some(file_info) => Some((path, file_info)),
+                    None => {
+                        eprintln!(
+                            "NOTICE: No dano extended attribute exists for path: {:?}",
+                            path
+                        );
+                        None
                     }
                 })
                 .map(|(path, file_info)| {
