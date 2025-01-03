@@ -182,16 +182,16 @@ impl FileInfo {
         let stdout = std::str::from_utf8(&process_output.stdout)?.trim();
         let stderr = std::str::from_utf8(&process_output.stderr)?.trim();
 
-        if !stderr.is_empty() {
+        if !process_output.status.success() {
             if stderr.contains("incorrect codec parameters") {
-                let msg = format!(
-                    "Invalid hash algorithm specified.  \
-                    This version of ffmpeg does not support: {} .  \
-                    Upgrade or specify another hash algorithm.",
+                eprintln!(
+                    "WARN: ffmpeg 'incorrect codec parameters' error may indicate that invalid hash algorithm specified.  \
+                    Possible this version of ffmpeg does not support: {} .",
                     config.selected_hash_algo
                 );
-                return Err(DanoError::new(&msg).into());
             }
+
+            return Err(DanoError::new(&stderr).into());
         }
 
         Ok(stdout.into())
