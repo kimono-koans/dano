@@ -76,7 +76,7 @@ impl RecordedFileInfo {
         let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
         if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
-            let msg = format!("Error: Path is not a valid FLAC file: {}", path_string);
+            let msg = format!("Path is not a valid FLAC file: {}", path_string);
             return Err(DanoError::new(&msg).into());
         }
 
@@ -93,10 +93,7 @@ impl RecordedFileInfo {
         if stdout_string.is_empty() {
             // likely file DNE?, except we have already check when we parsed input files
             // so this is a catch all, here we just bail if we have no explanation to give the user
-            let msg = format!(
-                "Error: Could not generate hash from FLAC file: {}",
-                path_string
-            );
+            let msg = format!("Could not generate hash from FLAC file: {}", path_string);
             return Err(DanoError::new(&msg).into());
         }
 
@@ -125,7 +122,7 @@ impl RecordedFileInfo {
         let stderr_string = std::str::from_utf8(&process_output.stderr)?.trim();
 
         if stderr_string.contains("FLAC__METADATA_CHAIN_STATUS_NOT_A_FLAC_FILE") {
-            let msg = format!("Error: Path is not a valid FLAC file: {}", path_string);
+            let msg = format!("Path is not a valid FLAC file: {}", path_string);
             return Err(DanoError::new(&msg).into());
         }
 
@@ -138,10 +135,7 @@ impl RecordedFileInfo {
         if stdout_string.is_empty() {
             // likely file DNE?, except we have already check when we parsed input files
             // so this is a catch all, here we just bail if we have no explanation to give the user
-            let msg = format!(
-                "Error: Could not generate hash from FLAC file: {}",
-                path_string
-            );
+            let msg = format!("Could not generate hash from FLAC file: {}", path_string);
             return Err(DanoError::new(&msg).into());
         }
 

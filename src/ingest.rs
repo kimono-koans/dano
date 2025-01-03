@@ -83,7 +83,7 @@ impl RecordedFileInfo {
                     Some(file_info) => Some((path, file_info)),
                     None => {
                         eprintln!(
-                            "NOTICE: No dano extended attribute exists for path: {:?}",
+                            "WARN: No dano extended attribute exists for path: {:?}",
                             path
                         );
                         None
