@@ -1,6 +1,6 @@
 [package]
 name = "dano"
-version = "0.9.1"
+version = "0.9.0"
 edition = "2021"
 keywords = ["checksum", "verify", "media", "cli-utility", "storage"]
 description = "A CLI tool for generating checksums of media bitstreams"
@@ -23,11 +23,11 @@ inherits = "release"
 [dependencies]
 clap = { version = "3.2.25", features = ["cargo"] }
 rayon = { version = "1.10.0", default-features = false }
-which = { version = "7.0.1", default-features = false }
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = { version = "1.0.134" } # need alloc or std
-itertools = { version = "0.14.0" } # use_std, use_alloc for into_group_map_by()
-crossbeam-channel = { version = "0.5.14", default-features = false, features = [
+which = { version = "7.0.0", default-features = false }
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = { version = "1.0.133" } # need alloc or std
+itertools = { version = "0.13.0" } # use_std, use_alloc for into_group_map_by()
+crossbeam-channel = { version = "0.5.13", default-features = false, features = [
     "std",
 ] }
 num_cpus = { version = "1.16.0", default-features = false }
