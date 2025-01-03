@@ -81,7 +81,14 @@ impl RecordedFileInfo {
                 .par_iter()
                 .filter_map(|path| {
                     let opt_file_info = Self::read_file_info_from_xattr(path);
-                    opt_file_info.map(|file_info| (path, file_info))
+
+                    match opt_file_info {
+                        Some(file_info) => Some((path, file_info)),
+                        None => {
+                            eprintln!("NOTICE: No extended attribute exists for path: {:?}", path);
+                            None
+                        }
+                    }
                 })
                 .map(|(path, file_info)| {
                     // use the actual path name always

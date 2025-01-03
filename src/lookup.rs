@@ -150,6 +150,7 @@ impl FileInfo {
             Some(hash_algo) => hash_algo,
             None => &config.selected_hash_algo,
         };
+
         let selected_streams = match &request.selected_streams {
             Some(selected_streams) => selected_streams,
             None => &config.selected_streams,
@@ -184,7 +185,7 @@ impl FileInfo {
         if !stderr.is_empty() {
             if stderr.contains("incorrect codec parameters") {
                 let msg = format!(
-                    "Error: Invalid hash algorithm specified.  \
+                    "Invalid hash algorithm specified.  \
                     This version of ffmpeg does not support: {} .  \
                     Upgrade or specify another hash algorithm.",
                     config.selected_hash_algo
