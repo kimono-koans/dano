@@ -58,8 +58,8 @@ impl FileInfoLookup {
                     file_info_scope.spawn(move |_| {
                         if let Err(err) = FileInfo::generate(config, request, tx_item) {
                             // probably want to see the error, but not exit the process
-                            // when there is an error in a single thread
-                            eprintln!("ERROR: {}", err);
+                            // when there is an error in a single request/thread
+                            eprintln!("ERROR: {:?} from issued request {:?}", err, request);
                         }
                     })
                 });
