@@ -193,6 +193,7 @@ pub struct FileInfoV3 {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[allow(unused)]
 pub struct FileMetadataV3 {
     pub hash_algo: Box<str>,
     pub hash_value: HashValue,
@@ -241,6 +242,7 @@ pub struct FileInfoV4 {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[allow(unused)]
 pub struct FileMetadataV4 {
     pub hash_algo: Box<str>,
     pub hash_value: HashValue,
