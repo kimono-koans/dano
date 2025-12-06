@@ -17,11 +17,13 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+    - name: Use latest Rust stable toolchain
+      uses: dtolnay/rust-toolchain@stable
     - name: Install cargo-deb
       run: cargo install cargo-deb
-    - name: Build  package with cargo-deb
-      run: cargo deb --profile deb --separate-debug-symbols -- --locked
+    - name: Build package with cargo-deb
+      run: cargo deb --install --separate-debug-symbols --compress-debug-symbols --profile deb -- --locked --features "std" --features "acls"
     - name: Install alien
       run: sudo apt-get install -y alien
     - name: Convert deb to rpm with alien
